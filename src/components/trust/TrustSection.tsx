@@ -68,13 +68,20 @@ export const TrustSection = (): JSX.Element => {
       </header>
 
       <div className="flex flex-col md:flex-row items-stretch gap-6 self-stretch w-full">
-        {trustCards.map((card) => (
+        {trustCards.map((card, index) => (
           <article
             key={card.title}
-            className="flex flex-col items-start gap-4 p-6 flex-1 bg-white rounded-2xl border border-solid border-[#e5e0d9] shadow-[0px_2px_8px_#0000000d]"
+            className={`
+              shine-wrap card-lift
+              flex flex-col items-start gap-4 p-6 flex-1
+              bg-white rounded-2xl border border-solid border-[#e5e0d9]
+              shadow-[0px_2px_8px_#0000000d]
+              animate-fade-up
+              ${index === 0 ? "delay-100" : index === 1 ? "delay-200" : "delay-300"}
+            `}
           >
             <div
-              className="w-12 h-12 flex items-center justify-center bg-[#fbf8f0] rounded-xl"
+              className="w-12 h-12 flex items-center justify-center bg-[#fbf8f0] rounded-xl transition-transform duration-300 group-hover:scale-110"
               aria-hidden="true"
             >
               {card.icon}
