@@ -1,15 +1,9 @@
-import Image from "next/image";
-import shield from "./icons/shield.svg";
-import lock from "./icons/lock.svg";
-import cash from "./icons/cash.svg";
-
 const trustCards = [
   {
-    title: "✓ CIT-U Verified",
+    title: "CIT-U Verified",
     titleClassName: "text-[#7a1f32]",
     description:
       "Students register using their official @cit.edu email to guarantee security.",
-    // simple inline icon — replace with <img src=...> if you add SVGs
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -64,11 +58,11 @@ export const TrustSection = (): JSX.Element => {
       <header className="flex flex-col items-center gap-2 self-stretch w-full text-center">
         <h2
           id="trust-section-heading"
-          className="font-bold text-[#161414] text-[32px] leading-tight"
+          className="font-bold text-3xl md:text-[32px] tracking-tight text-[#161414]"
         >
           Built for the CIT-U Student Community
         </h2>
-        <p className="font-normal text-[#4a4340] text-base">
+        <p className="font-normal text-base text-[#4a4340]">
           Safer, local peer-to-peer exchanges designed around university life
         </p>
       </header>
@@ -85,12 +79,10 @@ export const TrustSection = (): JSX.Element => {
             >
               {card.icon}
             </div>
-
-            <h3 className={`font-bold ${card.titleClassName} text-xl`}>
+            <h3 className={`font-bold text-xl tracking-tight ${card.titleClassName}`}>
               {card.title}
             </h3>
-
-            <p className="self-stretch font-normal text-[#4a4340] text-sm leading-[21px]">
+            <p className="self-stretch font-normal text-sm leading-relaxed text-[#4a4340]">
               {card.description}
             </p>
           </article>

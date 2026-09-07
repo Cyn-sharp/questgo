@@ -6,12 +6,12 @@ export const FinalCta = (): JSX.Element => {
     >
       <h2
         id="final-cta-heading"
-        className="font-extrabold text-[#7a1f32] text-3xl md:text-4xl leading-tight [text-shadow:0px_6px_16px_#7a1f3214] max-w-2xl"
+        className="font-extrabold text-3xl md:text-4xl tracking-tight text-[#7a1f32] max-w-2xl [text-shadow:0px_6px_16px_#7a1f3214]"
       >
         Ready to Start Your First Quest?
       </h2>
 
-      <p className="font-normal text-[#4a4340] text-base max-w-lg">
+      <p className="font-normal text-base md:text-lg text-[#4a4340] max-w-lg">
         Join the CIT-U student community today and turn everyday tasks into
         opportunities.
       </p>
@@ -19,20 +19,15 @@ export const FinalCta = (): JSX.Element => {
       <div className="flex flex-wrap items-center justify-center gap-4">
         <a
           href="/register"
-          className="inline-flex items-center justify-center px-6 py-3 bg-[#7a1f32] hover:bg-[#661a2a] rounded-xl shadow-[0px_8px_18px_#7a1f3226] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7a1f32]"
+          className="inline-flex items-center justify-center px-6 py-3 bg-[#7a1f32] hover:bg-[#661a2a] rounded-xl shadow-[0px_8px_18px_#7a1f3226] transition font-semibold text-[15px] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7a1f32]"
         >
-          <span className="font-semibold text-white text-[15px]">
-            Create an Account
-          </span>
+          Create an Account
         </a>
-
         <a
           href="/login"
-          className="inline-flex items-center justify-center px-6 py-3 bg-white hover:bg-[#fff0f0] rounded-xl border-[1.5px] border-solid border-[#7a1f32] shadow-[0px_6px_16px_#00000012] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7a1f32]"
+          className="inline-flex items-center justify-center px-6 py-3 bg-white hover:bg-[#fff0f0] rounded-xl border-[1.5px] border-solid border-[#7a1f32] shadow-[0px_6px_16px_#00000012] transition font-semibold text-[15px] text-[#7a1f32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7a1f32]"
         >
-          <span className="font-semibold text-[#7a1f32] text-[15px]">
-            Log In
-          </span>
+          Log In
         </a>
       </div>
     </section>

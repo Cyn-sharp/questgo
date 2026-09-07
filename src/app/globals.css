@@ -1,41 +1,33 @@
 @import "tailwindcss";
 
-:root {
-  --animate-spin: spin 1s linear infinite;
+@theme {
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 }
 
-.animate-fade-in {
-  animation: fade-in 1s var(--animation-delay, 0s) ease forwards;
-}
-
-.animate-fade-up {
-  animation: fade-up 1s var(--animation-delay, 0s) ease forwards;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(1turn);
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
-}
 
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
+  body {
+    @apply font-sans font-normal text-base text-[#161414] leading-relaxed;
   }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 
-@keyframes fade-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-sans font-bold tracking-tight text-[#161414] leading-tight;
   }
-  to {
-    opacity: 1;
-    transform: none;
+
+  p {
+    @apply font-normal leading-relaxed text-[#4a4340];
+  }
+
+  a {
+    @apply no-underline;
   }
 }
