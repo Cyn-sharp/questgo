@@ -1,6 +1,7 @@
 import { HeroSection } from "@/components/hero/HeroSection";
 import { TrustSection } from "@/components/trust/TrustSection";
 import { HowItWorks } from "@/components/how-it-works/HowItWorks";
+import { SafetyChecklist } from "@/components/safety/SafetyChecklist";
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
       <HeroSection />
       <TrustSection />
       <HowItWorks />
+      <SafetyChecklist />
     </>
   );
 }
