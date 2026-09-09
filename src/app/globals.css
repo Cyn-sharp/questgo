@@ -1,26 +1,170 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* =========================================================
+   QUESTGO DESIGN TOKENS
+   ========================================================= */
+
+@theme {
+  --color-cream: #fbf8f0;
+  --color-dark: #161414;
+  --color-maroon: #7a1f32;
+  --color-maroon-dark: #5f1727;
+  --color-gold: #c9a227;
+  --color-gold-light: #d9aa28;
+  --color-parchment: #f6ecc8;
+  --color-muted: #4a4340;
+  --color-subtle: #d8d3cc;
+  --color-border: #e5e0d8;
+  --color-white: #ffffff;
+
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
+  --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* =========================================================
+   BASE
+   ========================================================= */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-cream);
+    color: var(--color-dark);
+    @apply font-sans font-normal text-base leading-relaxed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    @apply font-sans font-bold tracking-tight leading-tight;
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  img, svg {
+    display: block;
+    max-width: 100%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* =========================================================
+   SHARED CLASS HELPERS (optional; ui/ components preferred)
+   ========================================================= */
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
+      font-semibold text-[15px] text-white transition-all duration-200;
+    background-color: var(--color-maroon);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-maroon-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
+      font-semibold text-[15px] transition-all duration-200 bg-white;
+    color: var(--color-maroon);
+    border: 1.5px solid var(--color-maroon);
+  }
+
+  .btn-outline:hover {
+    background-color: var(--color-cream);
+    transform: translateY(-2px);
+  }
+
+  .card-surface {
+    @apply rounded-2xl border bg-white;
+    border-color: var(--color-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1
+      text-xs font-semibold tracking-wide;
+    color: var(--color-maroon);
+    background-color: var(--color-parchment);
+  }
+
+  .page-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .page-container {
+      padding-inline: 4rem;
+    }
+  }
 }
+
+/* =========================================================
+   SHARED ANIMATIONS
+   ========================================================= */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.7s ease-out both;
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 2s ease-in-out infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
