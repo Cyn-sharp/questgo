@@ -48,18 +48,44 @@ export const HowItWorks = (): JSX.Element => {
         {steps.map((step) => (
           <li
             key={step.number}
-            className="flex flex-col items-start gap-3 p-5 flex-1 bg-[#fbf8f0] rounded-2xl border border-solid border-[#e5e0d9] shadow-[0px_2px_8px_#0000000d]"
+            className="
+              group shine-wrap flex flex-col items-start gap-3 p-5 flex-1
+              rounded-2xl border border-solid border-[#e5e0d9] bg-[#fbf8f0]
+              shadow-[0px_2px_8px_#0000000d]
+              transition-all duration-300 ease-out
+              hover:bg-[#7a1f32] hover:border-[#7a1f32]
+              hover:scale-[1.03] hover:-translate-y-1
+              hover:shadow-[0_16px_40px_rgba(122,31,50,0.25)]
+            "
           >
             <span
-              className="font-extrabold text-[40px] leading-none tracking-tight text-[#c9a227] [text-shadow:0px_4px_10px_#7a1f3214]"
+              className="
+                relative z-[1] font-extrabold text-[40px] leading-none tracking-tight text-[#c9a227]
+                transition-all duration-300
+                group-hover:text-[#f6ecc8] group-hover:scale-110
+              "
               aria-hidden="true"
             >
               {step.number}
             </span>
-            <h3 className="font-bold text-lg tracking-wide text-[#7a1f32]">
+
+            <h3
+              className="
+                relative z-[1] font-bold text-lg tracking-wide text-[#7a1f32]
+                transition-colors duration-300
+                group-hover:text-white
+              "
+            >
               {step.title}
             </h3>
-            <p className="self-stretch font-normal text-sm leading-relaxed text-[#4a4340]">
+
+            <p
+              className="
+                relative z-[1] self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
+                transition-colors duration-300
+                group-hover:text-white/85
+              "
+            >
               {step.description}
             </p>
           </li>
