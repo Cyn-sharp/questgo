@@ -1,16 +1,10 @@
 @import "tailwindcss";
 
 /* =========================================================
-   QUESTGO — GLOBAL DESIGN SYSTEM
-   Shared across all pages and features
-   ========================================================= */
-
-/* =========================================================
-   1. DESIGN TOKENS
+   QUESTGO DESIGN TOKENS
    ========================================================= */
 
 @theme {
-  /* Colors */
   --color-cream: #fbf8f0;
   --color-dark: #161414;
   --color-maroon: #7a1f32;
@@ -23,32 +17,21 @@
   --color-border: #e5e0d8;
   --color-white: #ffffff;
 
-  /* Fonts */
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
 
-  /* Layout */
-  --page-gutter: 4rem;
-
-  /* Shadows */
   --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
+  --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
 }
 
 /* =========================================================
-   2. BASE STYLES
+   BASE
    ========================================================= */
 
 @layer base {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
   }
 
@@ -60,12 +43,7 @@
     @apply font-sans font-normal text-base leading-relaxed;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     margin: 0;
     @apply font-sans font-bold tracking-tight leading-tight;
   }
@@ -73,7 +51,6 @@
   p {
     margin: 0;
     color: var(--color-muted);
-    @apply font-normal leading-relaxed;
   }
 
   a {
@@ -81,17 +58,7 @@
     text-decoration: none;
   }
 
-  img,
-  svg,
-  video {
-    display: block;
-    max-width: 100%;
-  }
-
-  button,
-  input,
-  select,
-  textarea {
+  button, input, select, textarea {
     font: inherit;
     color: inherit;
   }
@@ -102,42 +69,36 @@
 
   button:disabled {
     cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  img, svg {
+    display: block;
+    max-width: 100%;
   }
 }
 
 /* =========================================================
-   3. SHARED COMPONENT STYLES
+   SHARED CLASS HELPERS (optional; ui/ components preferred)
    ========================================================= */
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2
-      rounded-xl px-7 py-4
-      font-semibold text-base
-      text-white
-      transition-all duration-200;
-
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
+      font-semibold text-[15px] text-white transition-all duration-200;
     background-color: var(--color-maroon);
   }
 
   .btn-primary:hover {
     background-color: var(--color-maroon-dark);
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(122, 31, 50, 0.35);
-  }
-
-  .btn-primary:active {
-    transform: translateY(0);
+    box-shadow: var(--shadow-glow);
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2
-      rounded-xl px-6 py-3.5
-      font-semibold text-base
-      transition-all duration-200;
-
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
+      font-semibold text-[15px] transition-all duration-200 bg-white;
     color: var(--color-maroon);
-    background-color: var(--color-white);
     border: 1.5px solid var(--color-maroon);
   }
 
@@ -146,344 +107,64 @@
     transform: translateY(-2px);
   }
 
-  .btn-glow {
-    transition: transform 0.2s ease, box-shadow 0.25s ease,
-      background-color 0.2s ease;
-  }
-
-  .btn-glow:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(122, 31, 50, 0.35);
-  }
-
-  .btn-glow:active {
-    transform: translateY(0);
-  }
-
   .card-surface {
     @apply rounded-2xl border bg-white;
     border-color: var(--color-border);
     box-shadow: var(--shadow-card);
   }
 
-  .card-lift {
-    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.35s ease, border-color 0.35s ease;
-  }
-
-  .card-lift:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 16px 40px rgba(22, 20, 20, 0.12);
-  }
-
   .badge-gold {
-    @apply inline-flex items-center gap-1
-      rounded-full px-2.5 py-1
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1
       text-xs font-semibold tracking-wide;
-
     color: var(--color-maroon);
     background-color: var(--color-parchment);
-  }
-
-  .focus-ring {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
-    --tw-ring-color: var(--color-gold);
-  }
-
-  /* Shine sweep on hover */
-  .shine-wrap {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .shine-wrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 45%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.35),
-      transparent
-    );
-    transform: translateX(-120%) skewX(-15deg);
-    pointer-events: none;
-  }
-
-  .shine-wrap:hover::after {
-    animation: shine 0.85s ease forwards;
-  }
-
-  /* Hero particles */
-  .particles {
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-  }
-
-  .particle {
-    position: absolute;
-    width: 5px;
-    height: 5px;
-    border-radius: 9999px;
-    background: var(--color-gold);
-    opacity: 0;
-    animation: particle-float 2.4s ease-out infinite;
-  }
-
-  .particle:nth-child(1) {
-    left: 18%;
-    bottom: 12%;
-    animation-delay: 0s;
-  }
-
-  .particle:nth-child(2) {
-    left: 42%;
-    bottom: 8%;
-    animation-delay: 0.4s;
-    background: var(--color-maroon);
-  }
-
-  .particle:nth-child(3) {
-    left: 65%;
-    bottom: 16%;
-    animation-delay: 0.8s;
-  }
-
-  .particle:nth-child(4) {
-    left: 78%;
-    bottom: 10%;
-    animation-delay: 1.2s;
-    background: var(--color-maroon);
-  }
-
-  .particle:nth-child(5) {
-    left: 30%;
-    bottom: 20%;
-    animation-delay: 1.6s;
-  }
-}
-
-/* =========================================================
-   4. SHARED UTILITY CLASSES
-   ========================================================= */
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
   }
 
   .page-container {
     width: 100%;
     max-width: 1440px;
     margin-inline: auto;
-    padding-inline: var(--page-gutter);
+    padding-inline: 1.5rem;
   }
 
-  .delay-100 {
-    animation-delay: 0.1s;
-  }
-
-  .delay-200 {
-    animation-delay: 0.2s;
-  }
-
-  .delay-300 {
-    animation-delay: 0.3s;
-  }
-
-  .delay-400 {
-    animation-delay: 0.4s;
-  }
-
-  .delay-500 {
-    animation-delay: 0.5s;
+  @media (min-width: 768px) {
+    .page-container {
+      padding-inline: 4rem;
+    }
   }
 }
 
 /* =========================================================
-   5. KEYFRAMES
+   SHARED ANIMATIONS
    ========================================================= */
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes shimmer {
-  0%,
-  90%,
-  100% {
-    background-position: calc(-100% - var(--shimmer-width, 200%)) 0;
-  }
-  30%,
-  60% {
-    background-position: calc(100% + var(--shimmer-width, 200%)) 0;
-  }
-}
-
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(calc(-100% - var(--gap, 1rem)));
-  }
-}
-
-@keyframes marquee-vertical {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(calc(-100% - var(--gap, 1rem)));
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-}
-
-@keyframes shine {
-  0% {
-    transform: translateX(-120%) skewX(-15deg);
-  }
-  100% {
-    transform: translateX(200%) skewX(-15deg);
-  }
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    box-shadow: 0 8px 30px rgba(122, 31, 50, 0.08);
-  }
-  50% {
-    box-shadow: 0 12px 40px rgba(201, 162, 39, 0.25);
-  }
-}
-
-@keyframes particle-float {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.7;
-  }
-  100% {
-    transform: translateY(-80px) scale(0);
-    opacity: 0;
-  }
-}
-
-@keyframes gradient-shift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
 }
 
 @keyframes soft-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
-/* =========================================================
-   6. ANIMATION UTILITIES
-   ========================================================= */
-
-.animate-fade-in {
-  animation: fade-in 0.6s ease forwards;
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 .animate-fade-up {
   animation: fade-up 0.7s ease-out both;
 }
 
-.animate-shimmer {
-  animation: shimmer 8s infinite;
-}
-
-.animate-marquee {
-  animation: marquee var(--duration, 20s) infinite linear;
-}
-
-.animate-marquee-vertical {
-  animation: marquee-vertical var(--duration, 20s) infinite linear;
-}
-
 .animate-float {
   animation: float 5s ease-in-out infinite;
-}
-
-.animate-float:hover {
-  animation-play-state: paused;
-}
-
-.animate-glow {
-  animation: glow-pulse 3s ease-in-out infinite;
-}
-
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 6s ease infinite;
 }
 
 .animate-soft-pulse {
   animation: soft-pulse 2s ease-in-out infinite;
 }
 
-/* =========================================================
-   7. RESPONSIVE LAYOUT
-   ========================================================= */
-
-@media (max-width: 768px) {
-  :root {
-    --page-gutter: 1.5rem;
-  }
-}
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
