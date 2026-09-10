@@ -1,84 +1,163 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EyeIcon } from "@/components/ui/icons/EyeIcon";
 
-// Firebase Imports
 import { auth } from "@/lib/auth/firebase";
 import {
   signInWithEmailAndPassword,
+  signOut,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
 
+type FieldErrors = {
+  email?: string;
+  password?: string;
+};
+
+const inputBase =
+  "h-12 rounded-xl border px-3.5 font-inter text-sm font-medium text-[#161414] placeholder:text-gray-400 outline-none transition-colors";
+const inputOk =
+  "border-[#e8e7e3] bg-[#fbf8f0] focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]";
+const inputBad =
+  "border-red-400 bg-red-50/70 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-200";
+
 export function LoginForm() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
   const [error, setError] = useState("");
+  const [errorTitle, setErrorTitle] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [shake, setShake] = useState(false);
+
+  useEffect(() => {
+    if (!shake) return;
+    const t = setTimeout(() => setShake(false), 500);
+    return () => clearTimeout(t);
+  }, [shake]);
+
+  const attemptsLeft = useMemo(
+    () => Math.max(0, 5 - failedAttempts),
+    [failedAttempts]
+  );
+
+  const clearErrors = () => {
+    setError("");
+    setErrorTitle("");
+    setFieldErrors({});
+  };
+
+  const triggerError = (opts: {
+    title: string;
+    message: string;
+    fields?: FieldErrors;
+    bumpAttempts?: boolean;
+  }) => {
+    setErrorTitle(opts.title);
+    setError(opts.message);
+    setFieldErrors(opts.fields ?? {});
+    setShake(true);
+    if (opts.bumpAttempts) setFailedAttempts((n) => n + 1);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
+    clearErrors();
 
-    // 1. Local Validations
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter your CIT-U email and password.");
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      triggerError({
+        title: "Missing details",
+        message: "Please enter both your CIT-U email and password.",
+        fields: {
+          email: !trimmedEmail ? "Email is required." : undefined,
+          password: !trimmedPassword ? "Password is required." : undefined,
+        },
+      });
       return;
     }
 
-    if (!email.trim().toLowerCase().endsWith("@cit.edu")) {
-      setError("Please use an active @cit.edu email address.");
+    if (!trimmedEmail.endsWith("@cit.edu")) {
+      triggerError({
+        title: "Use your CIT-U email",
+        message: "Please use an active @cit.edu email address.",
+        fields: { email: "Email must end with @cit.edu" },
+      });
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      // 2. Handle "Remember Me" session persistence in Firebase
-      const persistence = rememberMe
-        ? browserLocalPersistence
-        : browserSessionPersistence;
-      await setPersistence(auth, persistence);
-
-      // 3. Authenticate directly with Firebase
-      const userCredential = await signInWithEmailAndPassword(
+      await setPersistence(
         auth,
-        email.trim(),
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+
+      const { user } = await signInWithEmailAndPassword(
+        auth,
+        trimmedEmail,
         password
       );
 
-      console.log("Firebase Auth Success:", userCredential.user);
-
-      // 4. Redirect to Dashboard on success
+      setFailedAttempts(0);
       router.push("/dashboard");
     } catch (err: any) {
-      console.error("Firebase Login Error Code:", err.code, err.message);
+      console.error("Firebase Login Error:", err?.code, err?.message);
 
-      // 5. Friendly Firebase error messages
       if (
-        err.code === "auth/invalid-credential" ||
-        err.code === "auth/user-not-found" ||
-        err.code === "auth/wrong-password"
+        err?.code === "auth/invalid-credential" ||
+        err?.code === "auth/user-not-found" ||
+        err?.code === "auth/wrong-password" ||
+        err?.code === "auth/invalid-email"
       ) {
-        setError("Invalid email or password.");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many failed attempts. Please try again later.");
-      } else if (err.code === "auth/network-request-failed") {
-        setError("Network error. Please check your internet connection.");
+        triggerError({
+          title: "Invalid email or password",
+          message:
+            "We couldn’t verify those credentials. Check your @cit.edu email and password, then try again.",
+          fields: {
+            email: "Check this email",
+            password: "Check this password",
+          },
+          bumpAttempts: true,
+        });
+      } else if (err?.code === "auth/too-many-requests") {
+        triggerError({
+          title: "Too many attempts",
+          message: "Please wait a few minutes, then try again.",
+          bumpAttempts: true,
+        });
+      } else if (err?.code === "auth/network-request-failed") {
+        triggerError({
+          title: "Network error",
+          message: "Check your internet connection and try again.",
+        });
       } else {
-        setError("Something went wrong. Please try again.");
+        triggerError({
+          title: "Login failed",
+          message: "Something went wrong. Please try again.",
+        });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const emailHasError = Boolean(fieldErrors.email);
+  const passwordHasError = Boolean(fieldErrors.password);
 
   return (
     <section
@@ -99,10 +178,34 @@ export function LoginForm() {
         </header>
 
         <form
-          className="flex flex-col gap-5 rounded-2xl border border-[#e5e0d9] bg-white p-5 shadow-[0_10px_24px_#00000012] sm:p-8"
+          className={`flex flex-col gap-5 rounded-2xl border border-[#e5e0d9] bg-white p-5 shadow-[0_10px_24px_#00000012] sm:p-8 ${
+            shake ? "animate-form-shake" : ""
+          }`}
           onSubmit={handleSubmit}
           noValidate
         >
+          {error ? (
+            <div
+              className="rounded-xl border border-red-200 bg-red-50 p-3.5"
+              role="alert"
+            >
+              <p className="font-inter text-sm font-bold text-maroon">
+                {errorTitle || "Login error"}
+              </p>
+              <p className="mt-1 font-inter text-[13px] leading-relaxed text-[#7a1f32]/90">
+                {error}
+              </p>
+              {failedAttempts > 0 ? (
+                <p className="mt-2 font-inter text-[12px] text-[#7a1f32]/80">
+                  Failed attempts: <strong>{failedAttempts}</strong>
+                  {failedAttempts < 5
+                    ? ` • ${attemptsLeft} tries left`
+                    : " • Consider resetting your password"}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label
@@ -118,11 +221,19 @@ export function LoginForm() {
                 autoComplete="email"
                 placeholder="studentname@cit.edu"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="h-12 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-inter text-sm outline-none focus:border-maroon focus:ring-2 focus:ring-[#7a1f3233]"
-                aria-describedby={error ? "login-error" : undefined}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error || fieldErrors.email) clearErrors();
+                }}
+                className={`${inputBase} ${emailHasError ? inputBad : inputOk}`}
+                aria-invalid={emailHasError}
                 required
               />
+              {fieldErrors.email ? (
+                <p className="font-inter text-[12px] font-medium text-red-600">
+                  {fieldErrors.email}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -132,7 +243,13 @@ export function LoginForm() {
               >
                 Password
               </label>
-              <div className="flex h-12 items-center rounded-xl border border-[#e8e7e3] bg-cream focus-within:border-maroon focus-within:ring-2 focus-within:ring-[#7a1f3233]">
+              <div
+                className={`flex h-12 items-center rounded-xl border transition-colors focus-within:bg-white focus-within:ring-2 ${
+                  passwordHasError
+                    ? "border-red-400 bg-red-50/70 focus-within:border-red-500 focus-within:ring-red-200"
+                    : "border-[#e8e7e3] bg-[#fbf8f0] focus-within:border-maroon focus-within:ring-[#7a1f3233]"
+                }`}
+              >
                 <input
                   id="password"
                   name="password"
@@ -140,15 +257,18 @@ export function LoginForm() {
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className="h-full min-w-0 flex-1 bg-transparent px-3.5 font-inter text-sm outline-none"
-                  aria-describedby={error ? "login-error" : undefined}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error || fieldErrors.password) clearErrors();
+                  }}
+                  className="h-full min-w-0 flex-1 bg-transparent px-3.5 font-inter text-sm font-medium text-[#161414] placeholder:text-gray-400 outline-none"
+                  aria-invalid={passwordHasError}
                   required
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((value) => !value)}
-                  className="mr-3.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e7e3] bg-white text-muted focus:outline-none focus:ring-2 focus:ring-[#7a1f3233]"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="mr-3.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e7e3] bg-white text-muted hover:text-dark focus:outline-none focus:ring-2 focus:ring-[#7a1f3233] transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
                 >
@@ -157,18 +277,13 @@ export function LoginForm() {
                   </span>
                 </button>
               </div>
+              {fieldErrors.password ? (
+                <p className="font-inter text-[12px] font-medium text-red-600">
+                  {fieldErrors.password}
+                </p>
+              ) : null}
             </div>
           </div>
-
-          {error ? (
-            <p
-              id="login-error"
-              className="font-inter text-[13px] text-maroon"
-              role="alert"
-            >
-              {error}
-            </p>
-          ) : null}
 
           <div className="flex items-center justify-between gap-4">
             <label className="inline-flex items-center gap-2 font-inter text-[13px] text-muted">
@@ -176,17 +291,17 @@ export function LoginForm() {
                 name="remember-me"
                 type="checkbox"
                 checked={rememberMe}
-                onChange={(event) => setRememberMe(event.target.checked)}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 accent-maroon"
               />
               Remember me
             </label>
-            <a
+            <Link
               href="/forgot-password"
-              className="font-inter text-[13px] font-semibold text-maroon focus:outline-none focus:underline"
+              className="font-inter text-[13px] font-semibold text-maroon hover:underline"
             >
               Forgot password?
-            </a>
+            </Link>
           </div>
 
           <button
@@ -201,7 +316,7 @@ export function LoginForm() {
             Don&apos;t have an account?{" "}
             <Link
               href="/register"
-              className="font-semibold text-maroon focus:outline-none focus:underline"
+              className="font-semibold text-maroon hover:underline"
             >
               Register
             </Link>
