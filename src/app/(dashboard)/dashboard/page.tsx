@@ -95,7 +95,6 @@ function QuestCard({
 }
 
 /* ───────────────── Hero ───────────────── */
-/* ───────────────── Hero ───────────────── */
 function DashboardHero() {
   return (
     <section className="bg-white">
@@ -130,16 +129,17 @@ function DashboardHero() {
             </div>
           </div>
 
-          {/* Right image — Official CIT-U Banner (.jpg) */}
+          {/* Right image — Formatted to align students like Picture 2 */}
           <div className="flex-1 w-full max-w-xl lg:max-w-none animate-fade-up delay-100">
-            <div className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden shadow-card border border-border">
+            <div className="relative w-full aspect-[16/9] sm:aspect-[20/10] rounded-2xl overflow-hidden shadow-card border border-border bg-[#161414]">
               <Image
                 src="/images/citu-banner.jpg"
                 alt="CIT-U Built Around You Banner"
                 fill
-                className="object-cover object-center"
+                className="object-cover object-right sm:object-[40%_center]"
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 priority
+                unoptimized
               />
             </div>
           </div>
