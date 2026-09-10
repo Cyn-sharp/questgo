@@ -49,7 +49,7 @@ const trustCards = [
   },
 ];
 
-export const TrustSection = (): JSX.Element => {
+export const TrustSection = () => {
   return (
     <section
       className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-[#fbf8f0]"

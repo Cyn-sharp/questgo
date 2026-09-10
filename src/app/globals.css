@@ -10,7 +10,7 @@
   --color-maroon: #7a1f32;
   --color-maroon-dark: #5f1727;
   --color-gold: #c9a227;
-  --color-gold-light: #d9aa28;
+  --color-gold-light: #8a6a1f;
   --color-parchment: #f6ecc8;
   --color-muted: #4a4340;
   --color-subtle: #d8d3cc;
@@ -18,6 +18,8 @@
   --color-white: #ffffff;
 
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
   --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
