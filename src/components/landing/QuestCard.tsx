@@ -1,4 +1,4 @@
-export const QuestCard = (): JSX.Element => {
+export const QuestCard = () => {
   return (
     <div className="relative animate-float animate-fade-up delay-300">
       {/* Soft gold glow behind card */}

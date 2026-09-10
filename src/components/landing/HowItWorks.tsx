@@ -27,7 +27,7 @@ const steps = [
   },
 ];
 
-export const HowItWorks = (): JSX.Element => {
+export const HowItWorks = () => {
   return (
     <section
       id="how-it-works"
