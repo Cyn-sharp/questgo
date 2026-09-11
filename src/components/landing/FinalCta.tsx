@@ -1,4 +1,4 @@
-export const FinalCta = (): JSX.Element => {
+export const FinalCta = () => {
   return (
     <section
       className="flex flex-col items-center gap-6 px-6 md:px-16 py-16 md:py-20 bg-[#fbf8f0] border-b border-solid border-[#e5e0d9] text-center"

@@ -10,7 +10,7 @@
   --color-maroon: #7a1f32;
   --color-maroon-dark: #5f1727;
   --color-gold: #c9a227;
-  --color-gold-light: #d9aa28;
+  --color-gold-light: #8a6a1f;
   --color-parchment: #f6ecc8;
   --color-muted: #4a4340;
   --color-subtle: #d8d3cc;
@@ -18,6 +18,8 @@
   --color-white: #ffffff;
 
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
   --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
@@ -265,3 +267,112 @@
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }
+
+/* ===== SLOWER HOVER + SHINE ===== */
+
+.shine-wrap {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.shine-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(201, 162, 39, 0.35) 50%,
+    transparent 70%
+  );
+  transform: translateX(-140%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* slower shine */
+.shine-wrap:hover::after {
+  animation: shine-sweep 1.45s ease forwards;
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+}
+
+/* reusable slow card hover motion */
+.card-interactive {
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.55s ease,
+    border-color 0.55s ease,
+    box-shadow 0.55s ease,
+    color 0.55s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-6px) scale(1.025);
+}
+
+/* scroll reveal base */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-scale.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@keyframes form-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.animate-form-shake {
+  animation: form-shake 0.45s ease-in-out;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fbf8f0 inset !important;
+  -webkit-text-fill-color: #161414 !important;
+  caret-color: #7a1f32 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+::selection {
+  background-color: #7a1f32;
+  color: #ffffff;
+}

@@ -13,7 +13,7 @@ const legalLinks = [
   { label: "Privacy Policy", href: "/privacy" },
 ];
 
-export const Footer = (): JSX.Element => {
+export const Footer = () => {
   return (
     <footer className="bg-[#161414] text-white">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12 px-6 md:px-16 py-12 md:py-16 max-w-screen-2xl mx-auto">
