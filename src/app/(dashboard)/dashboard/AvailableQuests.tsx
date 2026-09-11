@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import QuestCard from "@/components/quest/QuestCard";
+import QuestCard from "./QuestCard";
 
 const MOCK_QUESTS = [
   {
@@ -12,7 +12,7 @@ const MOCK_QUESTS = [
     location: "CIT-U Library",
     distance: "0.5 km away",
     time: "4:30 PM",
-    rating: "4.8"
+    rating: "4.8",
   },
   {
     id: 2,
@@ -23,7 +23,7 @@ const MOCK_QUESTS = [
     location: "Main Campus",
     distance: "0.3 km away",
     time: "5:00 PM",
-    rating: "4.5"
+    rating: "4.5",
   },
   {
     id: 3,
@@ -34,21 +34,30 @@ const MOCK_QUESTS = [
     location: "CIT-U Main Campus",
     distance: "0.7 km away",
     time: "6:00 PM",
-    rating: "4.9"
-  }
+    rating: "4.9",
+  },
 ];
 
 export default function AvailableQuests() {
   return (
-    <section className="bg-[#FAF9F5] py-12">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-end mb-8">
+    <section className="bg-[#fbf8f0] py-12">
+      <div className="page-container">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Available Quests Near You</h2>
-            <p className="text-gray-500 text-sm">Active quests on campus waiting for a runner</p>
+            <h2 className="text-2xl font-bold text-[#161414] mb-1">
+              Available Quests Near You
+            </h2>
+            <p className="text-sm text-[#4a4340]">
+              Active quests on campus waiting for a runner
+            </p>
           </div>
-          <Link href="/quests" className="text-[#791B32] font-semibold text-sm flex items-center gap-1 hover:underline">
-            See All Quests <ArrowRight className="w-4 h-4" />
+
+          <Link
+            href="/quests"
+            className="text-[#7a1f32] font-semibold text-sm inline-flex items-center gap-1 hover:underline shrink-0"
+          >
+            See All Quests
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 

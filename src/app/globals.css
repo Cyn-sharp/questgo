@@ -165,6 +165,103 @@
   animation: soft-pulse 2s ease-in-out infinite;
 }
 
+/* =========================================================
+   UX INTERACTIONS — shine, lift, scroll-reveal
+   ========================================================= */
+
+/* Soft gold shine */
+.shine-wrap {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shine-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(201, 162, 39, 0.35) 50%,
+    transparent 70%
+  );
+  transform: translateX(-140%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 2;
+}
+.shine-wrap:hover::after {
+  animation: shine-sweep 1.45s ease forwards;
+}
+@keyframes shine-sweep {
+  0% { transform: translateX(-140%) skewX(-18deg); }
+  100% { transform: translateX(280%) skewX(-18deg); }
+}
+
+/* Slow hover lift/zoom */
+.card-interactive {
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.55s ease,
+    border-color 0.55s ease,
+    box-shadow 0.55s ease,
+    color 0.55s ease;
+}
+.card-interactive:hover {
+  transform: translateY(-6px) scale(1.025);
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-scale {
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal-scale.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Button gentle lift helper */
+.btn-lift {
+  @apply transition-all duration-300;
+}
+.btn-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Accessibility — reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .shine-wrap::after,
+  .card-interactive,
+  .reveal,
+  .reveal-scale,
+  .btn-lift {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+
 .delay-100 { animation-delay: 0.1s; }
 .delay-200 { animation-delay: 0.2s; }
 .delay-300 { animation-delay: 0.3s; }

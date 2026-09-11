@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell, CheckCircle2 } from "lucide-react";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
@@ -76,14 +79,16 @@ export const HeaderContainer = (): JSX.Element => {
 
 // --- DASHBOARD NAVBAR (Logged-In User App Shell) ---
 const dashboardNavItems = [
-  { label: "Home", href: "/dashboard", isActive: true },
-  { label: "Find a Quest", href: "/quests", isActive: false },
-  { label: "Post a Quest", href: "/post-quest", isActive: false },
-  { label: "My Requests", href: "/requests", isActive: false },
-  { label: "Profile", href: "/profile", isActive: false },
+  { label: "Home", href: "/dashboard" },
+  { label: "Find a Quest", href: "/quests" },
+  { label: "Post a Quest", href: "/post-quest" },
+  { label: "My Requests", href: "/requests" },
+  { label: "Profile", href: "/profile" },
 ];
 
 export const Navbar = (): JSX.Element => {
+  const pathname = usePathname();
+
   return (
     <header className="flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
       <div className="flex items-center justify-between px-6 md:px-16 py-4 w-full max-w-screen-2xl mx-auto">
@@ -104,25 +109,35 @@ export const Navbar = (): JSX.Element => {
           </span>
         </Link>
 
+        {/* Dynamic Navigation Links */}
         <nav aria-label="Primary navigation" className="hidden lg:block">
           <ul className="inline-flex items-center gap-8">
-            {dashboardNavItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className={`text-[14px] font-medium transition-all pb-1 border-b-2 ${
-                    item.isActive
-                      ? "text-[#c9a227] border-[#c9a227]"
-                      : "text-white/90 border-transparent hover:text-[#c9a227]"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {dashboardNavItems.map((item) => {
+              // Determines active link based on current URL path
+              const isActive =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(item.href);
+
+              return (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className={`text-[14px] font-medium transition-all pb-1 border-b-2 ${
+                      isActive
+                        ? "text-[#c9a227] border-[#c9a227]"
+                        : "text-white/90 border-transparent hover:text-[#c9a227]"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
+        {/* User Badge, Notifications & Profile */}
         <div className="hidden md:inline-flex items-center gap-6">
           <div className="flex items-center gap-1.5 border border-[#3A3326] bg-[#221D15] px-3 py-1.5 rounded-full">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#c9a227]" />
@@ -143,8 +158,10 @@ export const Navbar = (): JSX.Element => {
               width={36}
               height={36}
               className="rounded-full bg-white shrink-0"
+              unoptimized
             />
-            <span className="text-white text-[14px] font-medium">Dave Alinson
+            <span className="text-white text-[14px] font-medium whitespace-nowrap">
+              Dave Alinson
             </span>
           </Link>
         </div>
