@@ -4,6 +4,9 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EyeIcon } from "@/components/ui/icons/EyeIcon";
+import { auth, storage } from "@/lib/auth/firebase";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type FormValues = {
   fullName: string;
@@ -71,8 +74,9 @@ export function RegisterForm() {
       setFormMessage("Please complete your name and CIT-U email.");
       return;
     }
-    if (!formValues.email.trim().toLowerCase().endsWith("@cit.edu")) {
-      setFormMessage("Please use your official CIT-U email ending in @cit.edu.");
+    const normalizedEmail = formValues.email.trim().toLowerCase();
+    if (!normalizedEmail.endsWith("@cit.edu") && !normalizedEmail.endsWith("@gmail.com")) {
+      setFormMessage("Please use a CIT-U or Gmail address for testing.");
       return;
     }
     if (formValues.password.length < 8) {
@@ -90,15 +94,31 @@ export function RegisterForm() {
 
     try {
       setIsSubmitting(true);
-      const payload = new FormData();
-      payload.append("fullName", formValues.fullName.trim());
-      payload.append("email", formValues.email.trim());
-      payload.append("password", formValues.password);
-      if (selectedPhoto) payload.append("profilePhoto", selectedPhoto);
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        formValues.email.trim().toLowerCase(),
+        formValues.password
+      );
+      const { user } = credential;
+      await sendEmailVerification(user);
+
+      let profilePhotoUrl: string | undefined;
+
+      if (selectedPhoto) {
+        const photoRef = ref(storage, `profilePhotos/${user.uid}/profile`);
+        await uploadBytes(photoRef, selectedPhoto, { contentType: selectedPhoto.type });
+        profilePhotoUrl = await getDownloadURL(photoRef);
+      }
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        body: payload,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken: await user.getIdToken(),
+          fullName: formValues.fullName.trim(),
+          email: formValues.email.trim().toLowerCase(),
+          profilePhotoUrl,
+        }),
       });
 
       if (!response.ok) {
@@ -112,9 +132,23 @@ export function RegisterForm() {
         return;
       }
 
-      router.push("/login");
-    } catch {
-      setFormMessage("Something went wrong. Please try again.");
+      router.push(`/verify-email?email=${encodeURIComponent(formValues.email.trim().toLowerCase())}`);
+    } catch (error: any) {
+      const message =
+        error?.code === "auth/email-already-in-use"
+          ? "An account already exists for this email. Try logging in."
+          : error?.code === "auth/weak-password"
+            ? "Choose a stronger password with at least 8 characters."
+            : error?.code === "auth/operation-not-allowed"
+              ? "Email/password registration is not enabled in Firebase Authentication."
+              : error?.code === "auth/too-many-requests"
+                ? "Firebase temporarily blocked requests. Please wait and try again."
+                : error?.code === "auth/network-request-failed"
+                  ? "Could not contact Firebase. Check your internet connection and try again."
+                  : error?.code === "storage/unauthorized"
+                    ? "Your account was created, but the profile photo could not be uploaded. Try registering without a photo."
+                    : "Something went wrong. Please try again.";
+      setFormMessage(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -136,8 +170,8 @@ export function RegisterForm() {
             </label>
 
             <label className="flex flex-col gap-1.5 font-inter text-sm font-semibold text-dark">
-              CIT-U Email
-              <input id="cit-u-email" name="email" type="email" autoComplete="email" placeholder="studentname@cit.edu" value={formValues.email} onChange={(event) => updateField("email", event.target.value)} className="h-11 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-normal outline-none focus:border-maroon focus:ring-2 focus:ring-[#7a1f3233]" required />
+              Email
+              <input id="cit-u-email" name="email" type="email" autoComplete="email" placeholder="studentname@cit.edu or Gmail" value={formValues.email} onChange={(event) => updateField("email", event.target.value)} className="h-11 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-normal outline-none focus:border-maroon focus:ring-2 focus:ring-[#7a1f3233]" required />
             </label>
 
             <PasswordField id="register-password" label="Password" value={formValues.password} visible={showPassword} onChange={(value) => updateField("password", value)} onToggle={() => setShowPassword((value) => !value)} />
@@ -156,7 +190,7 @@ export function RegisterForm() {
             </div>
           </div>
 
-          <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">Notice: QuestGo is exclusively for CIT-U students. Use your official CIT-U email ending in @cit.edu.</aside>
+          <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">Testing mode: CIT-U and Gmail addresses are currently accepted. Verification is sent to the address you enter.</aside>
 
           <label className="flex items-start gap-2 font-inter text-[13px] text-muted">
             <input type="checkbox" checked={hasAgreedToTerms} onChange={(event) => { setHasAgreedToTerms(event.target.checked); setFormMessage(""); }} className="mt-0.5 h-4 w-4 shrink-0 accent-maroon" />
