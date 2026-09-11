@@ -14,6 +14,7 @@ import {
   Bell,
   Settings,
   ChevronRight,
+  ChevronDown,
   Pencil,
   LogOut,
 } from "lucide-react";
@@ -78,6 +79,20 @@ const PROFILE = {
     earnings: "1,250",
   },
 };
+
+const COURSES = [
+  "BS Computer Engineering Student",
+  "BS Computer Science Student",
+  "BS Information Technology Student",
+  "BS Information Systems Student",
+  "BS Civil Engineering Student",
+  "BS Electrical Engineering Student",
+  "BS Mechanical Engineering Student",
+  "BS Architecture Student",
+  "BS Accountancy Student",
+  "BS Business Administration Student",
+  "BS Hospitality Management Student",
+];
 
 const MENU_ITEMS = [
   {
@@ -379,16 +394,24 @@ export default function ProfilePage() {
                   <label className="block text-sm font-semibold text-[#161414] mb-1.5">
                     Course / Program
                   </label>
-                  <input
-                    type="text"
-                    defaultValue={PROFILE.course}
-                    className="
-                      w-full rounded-xl border border-[#e5e0d8] bg-white
-                      px-4 py-3 text-sm text-[#161414]
-                      outline-none transition-all duration-300
-                      focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
-                    "
-                  />
+                  <div className="relative">
+                    <select
+                      defaultValue={PROFILE.course}
+                      className="
+                        w-full appearance-none rounded-xl border border-[#e5e0d8] bg-white
+                        px-4 py-3 pr-10 text-sm text-[#161414] cursor-pointer
+                        outline-none transition-all duration-300
+                        focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
+                      "
+                    >
+                      {COURSES.map((course) => (
+                        <option key={course} value={course}>
+                          {course}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#4a4340]/55" />
+                  </div>
                 </div>
               </div>
 
