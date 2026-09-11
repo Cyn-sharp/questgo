@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Star,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   Settings,
   ChevronRight,
   Pencil,
+  LogOut,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────
@@ -138,7 +140,13 @@ const MENU_ITEMS = [
    PAGE
 ───────────────────────────────────────────────────────── */
 export default function ProfilePage() {
+  const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+
+  function handleSignOut() {
+    // Navigates directly back to the public landing page (/)
+    router.push("/");
+  }
 
   return (
     <div className="bg-[#fbf8f0] min-h-full">
@@ -295,6 +303,34 @@ export default function ProfilePage() {
                   </li>
                 );
               })}
+
+              {/* ───── Sign Out Row ───── */}
+              <li>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="
+                    w-full text-left group flex items-center gap-4 px-5 py-4
+                    transition-all duration-300
+                    hover:bg-[#fdecec]/50
+                  "
+                >
+                  <div className="w-11 h-11 rounded-xl bg-[#fdecec] flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105">
+                    <LogOut className="w-5 h-5 text-[#b42318]" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm sm:text-base font-bold text-[#b42318] transition-colors duration-300">
+                      Sign Out
+                    </p>
+                    <p className="text-xs sm:text-sm text-[#4a4340] truncate">
+                      Log out of your QuestGo account
+                    </p>
+                  </div>
+
+                  <ChevronRight className="w-5 h-5 text-[#d8d3cc] shrink-0 transition-all duration-300 group-hover:text-[#b42318] group-hover:translate-x-0.5" />
+                </button>
+              </li>
             </ul>
           </section>
         </ScrollReveal>

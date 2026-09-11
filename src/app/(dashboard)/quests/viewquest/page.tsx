@@ -112,9 +112,15 @@ export default function ViewQuestPage() {
   async function handleAccept() {
     if (accepted || secondsLeft <= 0 || accepting) return;
     setAccepting(true);
+
+    // Simulated 800ms API delay
     await new Promise((r) => setTimeout(r, 800));
+
     setAccepting(false);
     setAccepted(true);
+
+    // 🚀 REDIRECT STRAIGHT TO THE ACTIVE QUEST PAGE:
+    router.push("/quests/active");
   }
 
   const expired = secondsLeft <= 0 && !accepted;

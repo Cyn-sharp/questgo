@@ -384,9 +384,10 @@ function RequestCard({
             </Link>
           )}
 
+          {/* UPDATED: Link directly to /requests/rate */}
           {request.state === "completed" && (
-            <button
-              type="button"
+            <Link
+              href="/requests/rate"
               className="
                 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
                 border border-[#7a1f32] text-[#7a1f32] bg-white
@@ -397,7 +398,7 @@ function RequestCard({
             >
               <Star className="w-4 h-4" />
               Rate Quest Runner
-            </button>
+            </Link>
           )}
 
           {(request.state === "expired" || request.state === "cancelled") && (
@@ -426,7 +427,6 @@ export default function RequestsPage() {
   const [requests, setRequests] = useState<QuestRequest[]>(MOCK_REQUESTS);
 
   const filtered = useMemo(() => {
-    // Active tab shows waiting + in_progress + recently completed (like Figma)
     if (activeTab === "active") {
       return requests.filter(
         (r) =>

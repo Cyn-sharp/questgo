@@ -102,7 +102,7 @@ const INITIAL_FORM: FormState = {
   reward: "30",
   pickupLocation: "CIT-U Library",
   meetupLocation: "CIT-U Main Entrance",
-  meetupTime: "16:30",
+  meetupTime: "4:30 PM", // Custom time format
   attachmentName: "",
 };
 
@@ -169,7 +169,7 @@ export default function PostQuestPage() {
       next.pickupLocation = "Pickup location is required.";
     if (!form.meetupLocation.trim())
       next.meetupLocation = "Meet-up location is required.";
-    if (!form.meetupTime) next.meetupTime = "Choose a preferred time.";
+    if (!form.meetupTime.trim()) next.meetupTime = "Enter a preferred meet-up time.";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -186,7 +186,6 @@ export default function PostQuestPage() {
     }
 
     setSubmitting(true);
-    // Mock submit — wire to API later
     await new Promise((r) => setTimeout(r, 900));
     setSubmitting(false);
     setSuccess(true);
@@ -194,14 +193,6 @@ export default function PostQuestPage() {
 
   function handleFileChange(file?: File | null) {
     update("attachmentName", file?.name ?? "");
-  }
-
-  function formatTimeDisplay(value: string) {
-    if (!value) return "";
-    const [h, m] = value.split(":").map(Number);
-    const suffix = h >= 12 ? "PM" : "AM";
-    const hour12 = ((h + 11) % 12) + 1;
-    return `${hour12}:${String(m).padStart(2, "0")} ${suffix}`;
   }
 
   return (
@@ -383,11 +374,6 @@ export default function PostQuestPage() {
                       </select>
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
                     </div>
-                    {errors.pickupLocation && (
-                      <p className="mt-1.5 text-xs text-red-600">
-                        {errors.pickupLocation}
-                      </p>
-                    )}
                   </div>
 
                   <div>
@@ -408,16 +394,11 @@ export default function PostQuestPage() {
                       </select>
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
                     </div>
-                    {errors.meetupLocation && (
-                      <p className="mt-1.5 text-xs text-red-600">
-                        {errors.meetupLocation}
-                      </p>
-                    )}
                   </div>
                 </div>
               </section>
 
-              {/* SCHEDULE */}
+              {/* ───────────────── SCHEDULE (CUSTOM USER INPUT) ───────────────── */}
               <section className="mb-8">
                 <SectionLabel>Schedule</SectionLabel>
                 <div>
@@ -426,9 +407,10 @@ export default function PostQuestPage() {
                     <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
                     <input
                       id="time"
-                      type="time"
+                      type="text"
                       value={form.meetupTime}
                       onChange={(e) => update("meetupTime", e.target.value)}
+                      placeholder="e.g. 4:30 PM, 10:15 AM, or ASAP"
                       className={`${inputClass} pl-10 ${
                         errors.meetupTime
                           ? "border-red-400 focus:border-red-400 focus:ring-red-200"
@@ -436,14 +418,6 @@ export default function PostQuestPage() {
                       }`}
                     />
                   </div>
-                  {form.meetupTime && (
-                    <p className="mt-1.5 text-xs text-[#4a4340]">
-                      Selected:{" "}
-                      <span className="font-semibold text-[#161414]">
-                        {formatTimeDisplay(form.meetupTime)}
-                      </span>
-                    </p>
-                  )}
                   {errors.meetupTime && (
                     <p className="mt-1.5 text-xs text-red-600">
                       {errors.meetupTime}
@@ -473,7 +447,7 @@ export default function PostQuestPage() {
                 </div>
               </section>
 
-              {/* Mobile-only submit (desktop uses sidebar button) */}
+              {/* Mobile-only submit */}
               <div className="mt-8 lg:hidden">
                 <button
                   type="submit"
@@ -529,10 +503,9 @@ export default function PostQuestPage() {
               {/* Desktop submit */}
               <button
                 type="submit"
-                form="n/a"
                 disabled={submitting}
                 onClick={handleSubmit}
-                className="btn-primary w-full justify-center text-[15px] py-3.5"
+                className="btn-primary w-full justify-center text-[15px] py-3.5 font-bold"
               >
                 {submitting ? "Posting..." : "Post Quest"}
               </button>
@@ -576,7 +549,7 @@ export default function PostQuestPage() {
                   <div className="flex justify-between gap-3">
                     <span className="text-[#4a4340]">Time</span>
                     <span className="font-semibold text-[#161414]">
-                      {formatTimeDisplay(form.meetupTime) || "—"}
+                      {form.meetupTime || "—"}
                     </span>
                   </div>
                 </div>
