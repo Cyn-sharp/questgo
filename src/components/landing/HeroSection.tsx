@@ -1,6 +1,6 @@
 import { QuestCard } from "./QuestCard";
 
-export const HeroSection = () => {
+export const HeroSection = (): JSX.Element => {
   return (
     <section
       id="home"
@@ -49,7 +49,7 @@ export const HeroSection = () => {
 
           <div className="animate-fade-up delay-300 flex flex-wrap items-center gap-4 mt-2">
             <a
-              href="/login"
+              href="#find-quest"
               className="btn-glow inline-flex items-center gap-2 bg-[#7a1f32] hover:bg-[#661a2a] text-white px-6 py-3 rounded-xl font-semibold text-[15px]"
             >
               Find a Quest
@@ -69,7 +69,7 @@ export const HeroSection = () => {
               </svg>
             </a>
             <a
-              href="/login"
+              href="#post-quest"
               className="inline-flex items-center border-[1.5px] border-solid border-[#7a1f32] text-[#7a1f32] px-6 py-3 rounded-xl hover:bg-[#fff0f0] hover:-translate-y-0.5 transition-all duration-200 font-semibold text-[15px]"
             >
               Post a Quest
