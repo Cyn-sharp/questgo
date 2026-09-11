@@ -8,6 +8,7 @@ import { EyeIcon } from "@/components/ui/icons/EyeIcon";
 import { auth } from "@/lib/auth/firebase";
 import {
   signInWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -40,6 +41,8 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [shake, setShake] = useState(false);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   useEffect(() => {
     if (!shake) return;
@@ -56,6 +59,40 @@ export function LoginForm() {
     setError("");
     setErrorTitle("");
     setFieldErrors({});
+    setVerificationRequired(false);
+  };
+
+  const handleResendVerification = async () => {
+    setIsResendingVerification(true);
+    setError("");
+    try {
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email.trim().toLowerCase(),
+        password
+      );
+      if (credential.user.emailVerified) {
+        setVerificationRequired(false);
+        await signOut(auth);
+        setErrorTitle("Email already verified");
+        setError("This account is already verified. Use Log In to continue.");
+        return;
+      }
+      await sendEmailVerification(credential.user);
+      await signOut(auth);
+      setErrorTitle("Verification email sent");
+      setError("Check your email Inbox, Junk, or Spam folder for the new verification link.");
+    } catch (err: any) {
+      if (err?.code === "auth/too-many-requests") {
+        setErrorTitle("Too many requests");
+        setError("Please wait a few minutes before requesting another verification email.");
+      } else {
+        setErrorTitle("Could not resend verification email");
+        setError("Check your email and password, then try again.");
+      }
+    } finally {
+      setIsResendingVerification(false);
+    }
   };
 
   const triggerError = (opts: {
@@ -81,7 +118,7 @@ export function LoginForm() {
     if (!trimmedEmail || !trimmedPassword) {
       triggerError({
         title: "Missing details",
-        message: "Please enter both your CIT-U email and password.",
+        message: "Please enter your email and password.",
         fields: {
           email: !trimmedEmail ? "Email is required." : undefined,
           password: !trimmedPassword ? "Password is required." : undefined,
@@ -90,11 +127,11 @@ export function LoginForm() {
       return;
     }
 
-    if (!trimmedEmail.endsWith("@cit.edu")) {
+    if (!trimmedEmail.endsWith("@cit.edu") && !trimmedEmail.endsWith("@gmail.com")) {
       triggerError({
-        title: "Use your CIT-U email",
-        message: "Please use an active @cit.edu email address.",
-        fields: { email: "Email must end with @cit.edu" },
+        title: "Unsupported email",
+        message: "Please use a CIT-U or Gmail address for testing.",
+        fields: { email: "Use @cit.edu or @gmail.com" },
       });
       return;
     }
@@ -113,6 +150,27 @@ export function LoginForm() {
         password
       );
 
+      if (!user.emailVerified) {
+        triggerError({
+          title: "Verify your email first",
+          message: "Check your CIT-U inbox for the verification link, then log in again.",
+        });
+        setVerificationRequired(true);
+        await signOut(auth);
+        return;
+      }
+
+      const sessionResponse = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: await user.getIdToken() }),
+      });
+
+      if (!sessionResponse.ok) {
+        await signOut(auth);
+        throw new Error("Session creation failed");
+      }
+
       setFailedAttempts(0);
       router.push("/dashboard");
     } catch (err: any) {
@@ -127,7 +185,7 @@ export function LoginForm() {
         triggerError({
           title: "Invalid email or password",
           message:
-            "We couldn’t verify those credentials. Check your @cit.edu email and password, then try again.",
+            "We couldn’t verify those credentials. Check your email and password, then try again.",
           fields: {
             email: "Check this email",
             password: "Check this password",
@@ -212,14 +270,14 @@ export function LoginForm() {
                 htmlFor="cit-email"
                 className="font-inter text-sm font-semibold text-dark"
               >
-                CIT-U Email
+                Email
               </label>
               <input
                 id="cit-email"
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="studentname@cit.edu"
+                placeholder="studentname@cit.edu or Gmail"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -311,6 +369,17 @@ export function LoginForm() {
           >
             {isSubmitting ? "LOGGING IN..." : "LOG IN"}
           </button>
+
+          {verificationRequired ? (
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResendingVerification}
+              className="h-10 rounded-xl border border-maroon px-4 font-inter text-[13px] font-semibold text-maroon transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isResendingVerification ? "SENDING VERIFICATION EMAIL..." : "RESEND VERIFICATION EMAIL"}
+            </button>
+          ) : null}
 
           <p className="text-center font-inter text-sm text-muted">
             Don&apos;t have an account?{" "}
