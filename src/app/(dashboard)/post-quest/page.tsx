@@ -14,6 +14,7 @@ import {
   FileText,
   ChevronDown,
 } from "lucide-react";
+import { createQuest } from "@/lib/db/quests";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -150,6 +151,7 @@ export default function PostQuestPage() {
   const [shake, setShake] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -178,6 +180,7 @@ export default function PostQuestPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSuccess(false);
+    setSubmissionError("");
 
     if (!validate()) {
       setShake(true);
@@ -186,9 +189,27 @@ export default function PostQuestPage() {
     }
 
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitting(false);
-    setSuccess(true);
+
+    try {
+      await createQuest({
+        title: form.title.trim(),
+        category: form.category,
+        description: form.description.trim(),
+        reward: Number(form.reward),
+        location: form.pickupLocation,
+        meetUpPoint: form.meetupLocation,
+        preferredTime: form.meetupTime.trim(),
+      });
+      setSuccess(true);
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error
+          ? error.message
+          : "Unable to post your quest. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleFileChange(file?: File | null) {
@@ -461,6 +482,11 @@ export default function PostQuestPage() {
                     Quest posted successfully! Runners can now see it.
                   </p>
                 )}
+                {submissionError && (
+                  <p className="mt-3 text-sm text-red-600 font-medium text-center" role="alert">
+                    {submissionError}
+                  </p>
+                )}
               </div>
             </form>
           </ScrollReveal>
@@ -520,6 +546,11 @@ export default function PostQuestPage() {
                   Quest posted successfully! Runners can now see it on the
                   marketplace.
                 </div>
+              )}
+              {submissionError && (
+                <p className="mt-4 text-sm text-red-600 font-medium text-center" role="alert">
+                  {submissionError}
+                </p>
               )}
 
               {/* Live preview chips */}

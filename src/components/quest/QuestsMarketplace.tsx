@@ -11,6 +11,8 @@ import {
   Star,
   CheckCircle2,
 } from "lucide-react";
+import { getAvailableQuests, getQuestExpirationMillis } from "@/lib/db/quests";
+import type { Quest as FirestoreQuest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL UTILITY
@@ -58,12 +60,13 @@ function ScrollReveal({
 }
 
 /* ─────────────────────────────────────────────────────────
-   TYPES & MOCK DATA
+  TYPES & DISPLAY DATA
 ───────────────────────────────────────────────────────── */
 type Category = "All" | "Printing" | "Pickup" | "Delivery" | "Shopping" | "Other";
 
 type Quest = {
-  id: number;
+  id: string;
+  expiresAt: number;
   category: Exclude<Category, "All">;
   timeLeft: string;
   title: string;
@@ -84,86 +87,39 @@ const CATEGORIES: Category[] = [
   "Other",
 ];
 
-const MOCK_QUESTS: Quest[] = [
-  {
-    id: 1,
-    category: "Printing",
-    timeLeft: "29:42",
-    title: "Print CPE Module",
-    description:
-      "Print a CPE module draft (black & white) and deliver it to the requester.",
-    price: "30",
-    location: "CIT-U Library",
-    distance: "0.5 km away",
-    time: "4:30 PM",
-    rating: "4.8",
-  },
-  {
-    id: 2,
-    category: "Pickup",
-    timeLeft: "18:15",
-    title: "Pick Up Document",
-    description:
-      "Pick up a document from the registrar and bring it to the requester.",
-    price: "50",
-    location: "Main Campus",
-    distance: "0.3 km away",
-    time: "5:00 PM",
-    rating: "4.5",
-  },
-  {
-    id: 3,
-    category: "Shopping",
-    timeLeft: "25:08",
-    title: "Buy School Supplies",
-    description:
-      "Buy notebooks, pens, and highlighters from the campus store.",
-    price: "40",
-    location: "CIT-U Main Campus",
-    distance: "0.7 km away",
-    time: "6:00 PM",
-    rating: "4.9",
-  },
-  {
-    id: 4,
-    category: "Delivery",
-    timeLeft: "12:30",
-    title: "Deliver Lunch",
-    description:
-      "Pick up lunch from the cafeteria and deliver it to the requester.",
-    price: "45",
-    location: "Science Building",
-    distance: "0.4 km away",
-    time: "12:15 PM",
-    rating: "4.6",
-  },
-  {
-    id: 5,
-    category: "Pickup",
-    timeLeft: "08:12",
-    title: "Return Library Book",
-    description:
-      "Return a borrowed book to the library before the deadline.",
-    price: "25",
-    location: "Main Library",
-    distance: "0.2 km away",
-    time: "3:00 PM",
-    rating: "4.7",
-  },
-  {
-    id: 6,
-    category: "Printing",
-    timeLeft: "28:50",
-    title: "Print Thesis Draft",
-    description:
-      "Print a thesis draft (black & white) and deliver it to the requester.",
-    price: "60",
-    location: "CPE Lab",
-    distance: "0.6 km away",
-    time: "1:30 PM",
-    rating: "5.0",
-  },
-];
+function formatTimeLeft(expiresAt: number): string {
+  const remainingSeconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatPreferredTime(value: string): string {
+  return value || "Not specified";
+}
+
+function toDisplayQuest(quest: FirestoreQuest): Quest | null {
+  const expiresAt = getQuestExpirationMillis(quest);
+  if (quest.status !== "available" || expiresAt === null || expiresAt <= Date.now()) {
+    return null;
+  }
+
+  return {
+    id: quest.id,
+    expiresAt,
+    category: CATEGORIES.includes(quest.category as Category)
+      ? (quest.category as Exclude<Category, "All">)
+      : "Other",
+    timeLeft: formatTimeLeft(expiresAt),
+    title: quest.title,
+    description: quest.description,
+    price: String(quest.reward),
+    location: quest.location,
+    distance: "On campus",
+    time: formatPreferredTime(quest.preferredTime),
+    rating: "New",
+  };
+}
 
 /* ─────────────────────────────────────────────────────────
    QUEST CARD COMPONENT
@@ -244,9 +200,8 @@ function QuestCard({ quest }: { quest: Quest }) {
             <CheckCircle2 className="w-3 h-3" />
             CIT-U VERIFIED
           </span>
-          {/* UPDATED: Link points to /quests/viewquest */}
           <Link
-            href="/quests/viewquest"
+            href={`/quests/viewquest?id=${encodeURIComponent(quest.id)}`}
             className="
               bg-[#7a1f32] text-white text-xs font-semibold px-4 py-2 rounded-lg
               transition-all duration-300
@@ -267,11 +222,55 @@ function QuestCard({ quest }: { quest: Quest }) {
 export function QuestsMarketplace() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category>("All");
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  async function loadQuests() {
+    setIsLoading(true);
+    setHasError(false);
+
+    try {
+      const nextQuests = (await getAvailableQuests())
+        .map(toDisplayQuest)
+        .filter((quest): quest is Quest => quest !== null);
+      setQuests(nextQuests);
+    } catch {
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void loadQuests(), 0);
+
+    const interval = window.setInterval(() => {
+      setQuests((currentQuests) =>
+        currentQuests
+          .filter((quest) => quest.expiresAt > Date.now())
+          .map((quest) => ({
+            ...quest,
+            timeLeft: formatTimeLeft(quest.expiresAt),
+          })),
+      );
+    }, 30_000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") void loadQuests();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const filteredQuests = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return MOCK_QUESTS.filter((quest) => {
+    return quests.filter((quest) => {
       const matchesCategory =
         activeCategory === "All" || quest.category === activeCategory;
 
@@ -284,7 +283,7 @@ export function QuestsMarketplace() {
 
       return matchesCategory && matchesQuery;
     });
-  }, [query, activeCategory]);
+  }, [query, activeCategory, quests]);
 
   return (
     <div className="bg-[#fbf8f0] min-h-full">
@@ -348,7 +347,21 @@ export function QuestsMarketplace() {
         </ScrollReveal>
 
         {/* Quest Grid */}
-        {filteredQuests.length > 0 ? (
+        {isLoading ? (
+          <div className="card-surface p-10 text-center">
+            <p className="text-lg font-bold text-[#161414]">Loading quests...</p>
+          </div>
+        ) : hasError ? (
+          <div className="card-surface p-10 text-center">
+            <p className="text-lg font-bold text-[#161414] mb-2">
+              Unable to load quests right now.
+            </p>
+            <p className="text-sm text-[#4a4340] mb-5">Please try again.</p>
+            <button type="button" onClick={() => void loadQuests()} className="btn-primary">
+              Try again
+            </button>
+          </div>
+        ) : filteredQuests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredQuests.map((quest, i) => (
               <ScrollReveal
@@ -365,10 +378,10 @@ export function QuestsMarketplace() {
           <ScrollReveal>
             <div className="card-surface p-10 text-center">
               <p className="text-lg font-bold text-[#161414] mb-2">
-                No quests found
+                No quests available right now.
               </p>
               <p className="text-sm text-[#4a4340] mb-5">
-                Try a different keyword or category.
+                Check back later for new opportunities.
               </p>
               <button
                 type="button"
