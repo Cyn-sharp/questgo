@@ -109,3 +109,61 @@ export async function getQuestById(
     ...snapshot.data(),
   } as Quest;
 }
+
+// Count of available (open) quests on the platform
+export async function getAvailableQuestsCount(): Promise<number> {
+  const quests = await getAvailableQuests();
+  return quests.length;
+}
+
+// Count of quests the logged-in user has POSTED and is still active
+export async function getMyActiveRequestsCount(userId: string): Promise<number> {
+  const q = query(
+    questsCollection,
+    where("requesterId", "==", userId),
+    where("status", "in", ["available", "accepted", "in_progress"]),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.size;
+}
+
+// Count of quests the logged-in user has COMPLETED (as a runner)
+export async function getCompletedQuestsCount(userId: string): Promise<number> {
+  const q = query(
+    questsCollection,
+    where("questRunnerId", "==", userId),
+    where("status", "==", "completed"),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.size;
+}
+
+// Total earnings from completed quests (as a runner)
+export async function getQuestEarnings(userId: string): Promise<number> {
+  const q = query(
+    questsCollection,
+    where("questRunnerId", "==", userId),
+    where("status", "==", "completed"),
+  );
+  const snapshot = await getDocs(q);
+
+  let total = 0;
+  snapshot.forEach((doc) => {
+    const data = doc.data() as Quest;
+    total += Number(data.reward) || 0;
+  });
+  return total;
+}
+
+// Fetch a limited number of recent available quests (for home preview)
+export async function getRecentAvailableQuests(count = 3): Promise<Quest[]> {
+  const all = await getAvailableQuests();
+  // Sort by createdAt desc (newest first) and slice
+  return all
+    .sort((a, b) => {
+      const aTime = getTimestampMillis(a.createdAt) ?? 0;
+      const bTime = getTimestampMillis(b.createdAt) ?? 0;
+      return bTime - aTime;
+    })
+    .slice(0, count);
+}

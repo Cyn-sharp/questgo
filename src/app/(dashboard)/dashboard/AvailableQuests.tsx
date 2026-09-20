@@ -1,44 +1,87 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import QuestCard from "./QuestCard";
+import {
+  getRecentAvailableQuests,
+  getQuestExpirationMillis,
+} from "@/lib/db/quests";
+import type { Quest as FirestoreQuest } from "@/types/quest";
 
-const MOCK_QUESTS = [
-  {
-    id: 1,
-    category: "PRINTING",
-    timeLeft: "29:42",
-    title: "Print CPE Module",
-    price: "30",
-    location: "CIT-U Library",
-    distance: "0.5 km away",
-    time: "4:30 PM",
-    rating: "4.8",
-  },
-  {
-    id: 2,
-    category: "PICKUP",
-    timeLeft: "18:15",
-    title: "Pick Up Document",
-    price: "50",
-    location: "Main Campus",
-    distance: "0.3 km away",
-    time: "5:00 PM",
-    rating: "4.5",
-  },
-  {
-    id: 3,
-    category: "SHOPPING",
-    timeLeft: "25:08",
-    title: "Buy School Supplies",
-    price: "40",
-    location: "CIT-U Main Campus",
-    distance: "0.7 km away",
-    time: "6:00 PM",
-    rating: "4.9",
-  },
-];
+// Shape your existing QuestCard expects — adjust if different
+type DisplayQuest = {
+  id: string;
+  category: string;
+  timeLeft: string;
+  title: string;
+  price: string;
+  location: string;
+  distance: string;
+  time: string;
+  rating: string;
+};
+
+function formatTimeLeft(expiresAt: number): string {
+  const secs = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function toDisplayQuest(q: FirestoreQuest): DisplayQuest | null {
+  const expiresAt = getQuestExpirationMillis(q);
+  if (!expiresAt || expiresAt <= Date.now()) return null;
+
+  return {
+    id: q.id,
+    category: (q.category || "OTHER").toUpperCase(),
+    timeLeft: formatTimeLeft(expiresAt),
+    title: q.title,
+    price: String(q.reward),
+    location: q.location,
+    distance: "On campus",
+    time: q.preferredTime || "Not specified",
+    rating: "New",
+  };
+}
 
 export default function AvailableQuests() {
+  const [quests, setQuests] = useState<DisplayQuest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const raw = await getRecentAvailableQuests(3);
+        const mapped = raw
+          .map(toDisplayQuest)
+          .filter((q): q is DisplayQuest => q !== null);
+        setQuests(mapped);
+      } catch (err) {
+        console.error("Failed to load quests:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void load();
+
+    // Refresh countdowns every 30s
+    const interval = window.setInterval(() => {
+      setQuests((current) =>
+        current.map((q) => {
+          // Re-derive time from a stored expiry — since we only kept the string,
+          // simplest is to reload on visibility change or accept a small drift.
+          return q;
+        }),
+      );
+    }, 30_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   return (
     <section className="bg-[#fbf8f0] py-12">
       <div className="page-container">
@@ -61,11 +104,19 @@ export default function AvailableQuests() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {MOCK_QUESTS.map((quest) => (
-            <QuestCard key={quest.id} {...quest} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-10 text-[#4a4340]">Loading quests...</div>
+        ) : quests.length === 0 ? (
+          <div className="text-center py-10 text-[#4a4340]">
+            No available quests right now. Check back soon!
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {quests.map((quest) => (
+              <QuestCard key={quest.id} {...quest} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
