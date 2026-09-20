@@ -123,8 +123,23 @@ export async function getMyActiveRequestsCount(userId: string): Promise<number> 
     where("requesterId", "==", userId),
     where("status", "in", ["available", "accepted", "in_progress"]),
   );
+  
   const snapshot = await getDocs(q);
-  return snapshot.size;
+  const now = Date.now();
+
+  let activeCount = 0;
+
+  snapshot.forEach((doc) => {
+    const quest = doc.data() as Quest;
+    const expiresAt = getTimestampMillis(quest.expiresAt);
+
+    // Only count the quest if it hasn't exceeded the 30-minute window
+    if (expiresAt !== null && expiresAt > now) {
+      activeCount++;
+    }
+  });
+
+  return activeCount;
 }
 
 // Count of quests the logged-in user has COMPLETED (as a runner)
