@@ -6,6 +6,9 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, CheckCircle2 } from "lucide-react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/auth/firebase";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
 const marketingNavItems = [
@@ -169,6 +172,34 @@ const dashboardNavItems = [
 
 export const Navbar = (): ReactElement => {
   const pathname = usePathname();
+  const { user: firebaseUser } = useAuth();
+  const [headerName, setHeaderName] = useState("QuestGo User");
+  const [headerAvatar, setHeaderAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      setHeaderName("QuestGo User");
+      setHeaderAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      return;
+    }
+
+    const userRef = doc(db, "users", firebaseUser.uid);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        const data = snapshot.data();
+        setHeaderName(data?.fullName ?? firebaseUser.displayName ?? "QuestGo User");
+        setHeaderAvatar(data?.profilePhotoUrl ?? firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      },
+      (error) => {
+        console.error("Header profile snapshot failed:", error);
+        setHeaderName(firebaseUser.displayName ?? "QuestGo User");
+        setHeaderAvatar(firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
 
   return (
     <header className="flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
@@ -234,15 +265,15 @@ export const Navbar = (): ReactElement => {
 
           <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition">
             <Image
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dave"
+              src={headerAvatar}
               alt="User avatar"
               width={36}
               height={36}
-              className="rounded-full bg-white shrink-0"
+              className="rounded-full bg-white shrink-0 object-cover"
               unoptimized
             />
             <span className="text-white text-[14px] font-medium whitespace-nowrap">
-              Dave Alinson
+              {headerName}
             </span>
           </Link>
         </div>

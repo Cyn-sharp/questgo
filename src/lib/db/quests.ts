@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   query,
+  updateDoc,
   where,
   serverTimestamp,
   Timestamp,
@@ -110,6 +111,93 @@ export async function getQuestById(
   } as Quest;
 }
 
+export async function acceptQuest(questId: string, userId: string) {
+  const questRef = doc(db, "quests", questId);
+  const snapshot = await getDoc(questRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Quest no longer exists.");
+  }
+
+  const quest = snapshot.data() as Quest;
+
+  if (quest.requesterId === userId) {
+    throw new Error("You cannot accept your own quest.");
+  }
+
+  if (quest.status !== "available") {
+    throw new Error("This quest is no longer available.");
+  }
+
+  await updateDoc(questRef, {
+    questRunnerId: userId,
+    status: "accepted",
+    acceptedAt: serverTimestamp(),
+  });
+}
+
+export async function cancelQuest(questId: string, userId: string) {
+  const questRef = doc(db, "quests", questId);
+  const snapshot = await getDoc(questRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Quest not found.");
+  }
+
+  const quest = snapshot.data() as Quest;
+
+  if (quest.requesterId !== userId) {
+    throw new Error("You can only cancel quests you posted.");
+  }
+
+  if (quest.status === "completed" || quest.status === "cancelled") {
+    throw new Error("This quest can no longer be cancelled.");
+  }
+
+  await updateDoc(questRef, {
+    status: "cancelled",
+    cancelledAt: serverTimestamp(),
+    questRunnerId: null,
+  });
+}
+
+export async function getMyRequests(userId: string): Promise<Quest[]> {
+  const q = query(questsCollection, where("requesterId", "==", userId));
+  const snapshot = await getDocs(q);
+  const quests = snapshot.docs.map((document) => ({
+    id: document.id,
+    ...document.data(),
+  })) as Quest[];
+
+  return quests
+    .sort((a, b) => {
+      const aTime = getTimestampMillis(a.createdAt) ?? 0;
+      const bTime = getTimestampMillis(b.createdAt) ?? 0;
+      return bTime - aTime;
+    });
+}
+
+export async function markQuestCompleted(questId: string, userId: string) {
+  const questRef = doc(db, "quests", questId);
+  const snapshot = await getDoc(questRef);
+
+  if (!snapshot.exists()) {
+    throw new Error("Quest not found.");
+  }
+
+  const quest = snapshot.data() as Quest;
+
+  if (quest.questRunnerId && quest.questRunnerId !== userId) {
+    throw new Error("You are not the assigned runner for this quest.");
+  }
+
+  await updateDoc(questRef, {
+    status: "completed",
+    completedAt: serverTimestamp(),
+    questRunnerId: userId,
+  });
+}
+
 // Count of available (open) quests on the platform
 export async function getAvailableQuestsCount(): Promise<number> {
   const quests = await getAvailableQuests();
@@ -122,6 +210,16 @@ export async function getMyActiveRequestsCount(userId: string): Promise<number> 
     questsCollection,
     where("requesterId", "==", userId),
     where("status", "in", ["available", "accepted", "in_progress"]),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.size;
+}
+
+// Count of all quests the logged-in user has posted
+export async function getMyPostedQuestsCount(userId: string): Promise<number> {
+  const q = query(
+    questsCollection,
+    where("requesterId", "==", userId),
   );
   const snapshot = await getDocs(q);
   return snapshot.size;

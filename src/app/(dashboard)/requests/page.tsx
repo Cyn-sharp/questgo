@@ -3,6 +3,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+import { cancelQuest, getMyRequests } from "@/lib/db/quests";
+import type { Quest as FirestoreQuest } from "@/types/quest";
 import {
   Clock,
   Navigation,
@@ -60,7 +63,7 @@ function ScrollReveal({
 }
 
 /* ─────────────────────────────────────────────────────────
-   TYPES & MOCK DATA
+  TYPES & DATA MAPPING
 ───────────────────────────────────────────────────────── */
 type RequestStatus = "active" | "completed" | "expired" | "cancelled";
 type RequestState =
@@ -71,7 +74,7 @@ type RequestState =
   | "cancelled";
 
 type QuestRequest = {
-  id: number;
+  id: string;
   title: string;
   price: string;
   pickup: string;
@@ -84,75 +87,70 @@ type QuestRequest = {
   completedAt?: string;
 };
 
+function normalizeRequestState(quest: FirestoreQuest): { tab: RequestStatus; state: RequestState } {
+  const expiresAt =
+    quest.expiresAt && typeof quest.expiresAt === "object" && "toDate" in quest.expiresAt
+      ? (quest.expiresAt as { toDate: () => Date }).toDate().getTime()
+      : null;
+
+  if (quest.status === "available" && expiresAt !== null && expiresAt <= Date.now()) {
+    return { tab: "expired", state: "expired" };
+  }
+
+  switch (quest.status) {
+    case "available":
+      return { tab: "active", state: "waiting" };
+    case "accepted":
+    case "in_progress":
+      return { tab: "active", state: "in_progress" };
+    case "completed":
+      return { tab: "completed", state: "completed" };
+    case "expired":
+      return { tab: "expired", state: "expired" };
+    case "cancelled":
+      return { tab: "cancelled", state: "cancelled" };
+    default:
+      return { tab: "active", state: "waiting" };
+  }
+}
+
+function mapFirestoreQuestToRequest(quest: FirestoreQuest): QuestRequest {
+  const { tab, state } = normalizeRequestState(quest);
+  const expiresAt =
+    quest.expiresAt && typeof quest.expiresAt === "object" && "toDate" in quest.expiresAt
+      ? new Date((quest.expiresAt as { toDate: () => Date }).toDate().getTime()).getTime()
+      : null;
+
+  let timeRemaining: string | undefined;
+  if (expiresAt && quest.status === "available") {
+    const totalSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    timeRemaining = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
+
+  return {
+    id: quest.id,
+    title: quest.title,
+    price: String(quest.reward),
+    pickup: quest.location,
+    payment: "COD",
+    tab,
+    state,
+    timeRemaining,
+    runnerName: quest.questRunnerId ? "Runner assigned" : undefined,
+    completedAt:
+      quest.completedAt && typeof quest.completedAt === "object" && "toDate" in quest.completedAt
+        ? new Date((quest.completedAt as { toDate: () => Date }).toDate().getTime()).toLocaleString()
+        : undefined,
+  };
+}
+
 const TABS: { key: RequestStatus; label: string }[] = [
   { key: "active", label: "Active" },
   { key: "completed", label: "Completed" },
   { key: "expired", label: "Expired" },
   { key: "cancelled", label: "Cancelled" },
-];
-
-const MOCK_REQUESTS: QuestRequest[] = [
-  {
-    id: 1,
-    title: "Print CPE Module",
-    price: "30",
-    pickup: "Library",
-    payment: "COD",
-    tab: "active",
-    state: "waiting",
-    timeRemaining: "24:31",
-  },
-  {
-    id: 2,
-    title: "Pick Up Document",
-    price: "50",
-    pickup: "Main Campus",
-    payment: "COD",
-    tab: "active",
-    state: "in_progress",
-    runnerName: "John Doe",
-    runnerAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-  },
-  {
-    id: 3,
-    title: "Deliver Lunch",
-    price: "45",
-    pickup: "Cafeteria",
-    payment: "COD",
-    tab: "active",
-    state: "completed",
-    runnerName: "Ana Reyes",
-    completedAt: "2 hours ago",
-  },
-  {
-    id: 4,
-    title: "Buy Notebooks",
-    price: "35",
-    pickup: "Campus Store",
-    payment: "COD",
-    tab: "completed",
-    state: "completed",
-    runnerName: "Mark Santos",
-    completedAt: "Yesterday",
-  },
-  {
-    id: 5,
-    title: "Print Lab Report",
-    price: "40",
-    pickup: "CPE Lab",
-    payment: "COD",
-    tab: "expired",
-    state: "expired",
-  },
-  {
-    id: 6,
-    title: "Return USB Drive",
-    price: "20",
-    pickup: "N-Building",
-    payment: "COD",
-    tab: "cancelled",
-    state: "cancelled",
-  },
 ];
 
 /* ─────────────────────────────────────────────────────────
@@ -251,7 +249,7 @@ function RequestCard({
   onCancel,
 }: {
   request: QuestRequest;
-  onCancel: (id: number) => void;
+  onCancel: (id: string) => void;
 }) {
   return (
     <article
@@ -423,16 +421,36 @@ function RequestCard({
    PAGE
 ───────────────────────────────────────────────────────── */
 export default function RequestsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<RequestStatus>("active");
-  const [requests, setRequests] = useState<QuestRequest[]>(MOCK_REQUESTS);
+  const [requests, setRequests] = useState<QuestRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadRequests() {
+      if (!user) {
+        setRequests([]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const quests = await getMyRequests(user.uid);
+        setRequests(quests.map(mapFirestoreQuestToRequest));
+      } catch (error) {
+        console.error("Failed to load my requests:", error);
+        setRequests([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    void loadRequests();
+  }, [user]);
 
   const filtered = useMemo(() => {
     if (activeTab === "active") {
-      return requests.filter(
-        (r) =>
-          r.tab === "active" ||
-          (r.state === "completed" && r.tab === "active")
-      );
+      return requests.filter((r) => r.tab === "active");
     }
     return requests.filter((r) => r.tab === activeTab);
   }, [activeTab, requests]);
@@ -446,14 +464,21 @@ export default function RequestsPage() {
     };
   }, [requests]);
 
-  function handleCancel(id: number) {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, tab: "cancelled", state: "cancelled", timeRemaining: undefined }
-          : r
-      )
-    );
+  async function handleCancel(id: string) {
+    if (!user) return;
+
+    try {
+      await cancelQuest(id, user.uid);
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, tab: "cancelled", state: "cancelled", timeRemaining: undefined }
+            : r
+        )
+      );
+    } catch (error) {
+      console.error("Failed to cancel quest:", error);
+    }
   }
 
   return (
@@ -505,7 +530,9 @@ export default function RequestsPage() {
         </ScrollReveal>
 
         {/* List */}
-        {filtered.length > 0 ? (
+        {isLoading ? (
+          <div className="card-surface p-6 text-[#4a4340]">Loading your requests...</div>
+        ) : filtered.length > 0 ? (
           <div className="flex flex-col gap-4">
             {filtered.map((request, i) => (
               <ScrollReveal

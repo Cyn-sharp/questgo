@@ -3,7 +3,8 @@ export type QuestStatus =
   | "accepted"
   | "in_progress"
   | "completed"
-  | "expired";
+  | "expired"
+  | "cancelled";
 
 export interface Quest {
   id: string;

@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/auth/firebase";
+import { useAuth } from "@/hooks/useAuth";
+import { getQuestById, markQuestCompleted } from "@/lib/db/quests";
+import type { Quest as FirestoreQuest } from "@/types/quest";
 import {
   CheckCircle2,
   Lock,
@@ -62,41 +67,86 @@ function ScrollReveal({
   );
 }
 
-/* ─────────────────────────────────────────────────────────
-   MOCK ACTIVE QUEST DATA
-───────────────────────────────────────────────────────── */
-const ACTIVE_QUEST = {
-  id: "Q1024",
-  category: "PRINTING",
-  status: "IN PROGRESS",
-  title: "Print CPE Module",
-  reward: "30",
-  pickupLocation: "CIT-U Library",
-  meetupLocation: "CIT-U Main Entrance",
-  meetupTime: "4:30 PM",
-  paymentMethod: "Cash on Delivery (COD)",
-  requester: {
-    name: "Maria Santos",
-    rating: "4.8",
-    completedQuests: 24,
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
-    verified: true,
-  },
+type QuestPoster = {
+  fullName: string;
+  profilePhotoUrl?: string | null;
+  isVerified?: boolean;
 };
 
-/* ─────────────────────────────────────────────────────────
-   PAGE
-───────────────────────────────────────────────────────── */
 export default function ActiveQuestPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const questId = searchParams.get("id");
+  const [quest, setQuest] = useState<FirestoreQuest | null>(null);
+  const [poster, setPoster] = useState<QuestPoster | null>(null);
+  const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
 
-  function handleMarkCompleted() {
+  useEffect(() => {
+    async function loadAcceptedQuest() {
+      if (!questId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const nextQuest = await getQuestById(questId);
+        if (!nextQuest) {
+          setQuest(null);
+          setLoading(false);
+          return;
+        }
+
+        setQuest(nextQuest);
+
+        const requesterRef = await getDoc(doc(db, "users", nextQuest.requesterId));
+        if (requesterRef.exists()) {
+          const requesterData = requesterRef.data() as { fullName?: string; profilePhotoUrl?: string | null; isVerified?: boolean };
+          setPoster({
+            fullName: requesterData.fullName ?? "QuestGo User",
+            profilePhotoUrl: requesterData.profilePhotoUrl ?? null,
+            isVerified: Boolean(requesterData.isVerified),
+          });
+        } else {
+          setPoster({ fullName: "QuestGo User" });
+        }
+      } catch (error) {
+        console.error("Failed to load accepted quest:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadAcceptedQuest();
+  }, [questId]);
+
+  async function handleMarkCompleted() {
+    if (!quest || !user) return;
+
     setCompleting(true);
-    setTimeout(() => {
-      router.push("/requests/completed");
-    }, 600);
+
+    try {
+      await markQuestCompleted(quest.id, user.uid);
+      router.push(`/requests/completed?id=${encodeURIComponent(quest.id)}`);
+    } catch (error) {
+      console.error("Failed to complete quest:", error);
+      alert(error instanceof Error ? error.message : "Unable to complete this quest yet.");
+    } finally {
+      setCompleting(false);
+    }
   }
+
+  if (loading) {
+    return <div className="page-container py-10 text-center text-[#161414]">Loading your accepted quest...</div>;
+  }
+
+  if (!quest) {
+    return <div className="page-container py-10 text-center text-[#161414]">Accepted quest not found.</div>;
+  }
+
+  const posterName = poster?.fullName ?? "QuestGo User";
+  const posterAvatar = poster?.profilePhotoUrl ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo";
 
   return (
     <div className="bg-[#fbf8f0] min-h-full">
@@ -122,10 +172,10 @@ export default function ActiveQuestPage() {
               {/* Status Badges */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="bg-[#fbf0d6] text-[#8a6a1f] text-[11px] font-bold px-2.5 py-1 rounded-md tracking-wider uppercase">
-                  {ACTIVE_QUEST.status}
+                  {quest.status.toUpperCase()}
                 </span>
                 <span className="bg-[#fdf0f2] text-[#7a1f32] text-[11px] font-bold px-2.5 py-1 rounded-md tracking-wider uppercase">
-                  {ACTIVE_QUEST.category}
+                  {quest.category}
                 </span>
               </div>
 
@@ -137,25 +187,25 @@ export default function ActiveQuestPage() {
 
               {/* Quest Title */}
               <h1 className="text-3xl sm:text-4xl font-extrabold text-[#161414] mb-6 leading-tight">
-                {ACTIVE_QUEST.title}
+                {quest.title}
               </h1>
 
               {/* Requester Identity */}
               <div className="flex items-center gap-3.5 pb-6 mb-6 border-b border-[#e5e0d8]">
                 <Image
-                  src={ACTIVE_QUEST.requester.avatar}
-                  alt={ACTIVE_QUEST.requester.name}
+                  src={posterAvatar}
+                  alt={posterName}
                   width={48}
                   height={48}
-                  className="rounded-full bg-[#f4f2ef] shrink-0"
+                  className="rounded-full bg-[#f4f2ef] shrink-0 object-cover"
                   unoptimized
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-base font-bold text-[#161414]">
-                      {ACTIVE_QUEST.requester.name}
+                      {posterName}
                     </p>
-                    {ACTIVE_QUEST.requester.verified && (
+                    {poster?.isVerified && (
                       <span className="inline-flex items-center gap-1 bg-[#fbf0d6] text-[#8a6a1f] text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                         <CheckCircle2 className="w-3 h-3" />
                         Verified
@@ -164,12 +214,8 @@ export default function ActiveQuestPage() {
                   </div>
                   <p className="text-xs text-[#4a4340] flex items-center gap-1.5">
                     <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
-                    <span className="font-semibold text-[#161414]">
-                      {ACTIVE_QUEST.requester.rating}
-                    </span>
-                    <span>
-                      ({ACTIVE_QUEST.requester.completedQuests} completed quests)
-                    </span>
+                    <span className="font-semibold text-[#161414]">4.8</span>
+                    <span>(0 completed quests)</span>
                     <span className="text-[#d8d3cc]">•</span>
                     <span className="font-medium text-[#4a4340]">Requester</span>
                   </p>
@@ -187,7 +233,7 @@ export default function ActiveQuestPage() {
                       Pickup Location
                     </p>
                     <p className="text-sm font-bold text-[#161414] inline-flex items-center gap-1.5 mt-0.5">
-                      {ACTIVE_QUEST.pickupLocation}
+                      {quest.location}
                       <Lock className="w-3 h-3 text-[#4a4340]/60" />
                     </p>
                   </div>
@@ -202,7 +248,7 @@ export default function ActiveQuestPage() {
                       Meet-up Location
                     </p>
                     <p className="text-sm font-bold text-[#161414] inline-flex items-center gap-1.5 mt-0.5">
-                      {ACTIVE_QUEST.meetupLocation}
+                      {quest.meetUpPoint}
                       <Lock className="w-3 h-3 text-[#4a4340]/60" />
                     </p>
                   </div>
@@ -217,7 +263,7 @@ export default function ActiveQuestPage() {
                       Preferred Meet-up Time
                     </p>
                     <p className="text-sm font-bold text-[#161414] mt-0.5">
-                      {ACTIVE_QUEST.meetupTime}
+                      {quest.preferredTime}
                     </p>
                   </div>
                 </div>
@@ -231,7 +277,7 @@ export default function ActiveQuestPage() {
                       Payment Method
                     </p>
                     <p className="text-sm font-bold text-[#161414] mt-0.5">
-                      {ACTIVE_QUEST.paymentMethod}
+                      Cash on Delivery (COD)
                     </p>
                   </div>
                 </div>
@@ -281,7 +327,7 @@ export default function ActiveQuestPage() {
 
               <div className="flex items-end gap-2 mb-6">
                 <span className="text-4xl font-extrabold text-[#c9a227] leading-none">
-                  ₱{ACTIVE_QUEST.reward}
+                  ₱{quest.reward}
                 </span>
                 <span className="text-sm text-[#4a4340] mb-1 font-medium inline-flex items-center gap-1">
                   Net Cash <Lock className="w-3 h-3 text-[#4a4340]/60" />

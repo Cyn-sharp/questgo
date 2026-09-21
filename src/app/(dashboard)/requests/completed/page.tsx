@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { Check, CheckCircle2, Flag } from "lucide-react";
+import { db } from "@/lib/auth/firebase";
+import { getQuestById } from "@/lib/db/quests";
+import type { Quest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -51,32 +56,100 @@ function ScrollReveal({
   );
 }
 
-/* ─────────────────────────────────────────────────────────
-   MOCK COMPLETION DATA
-───────────────────────────────────────────────────────── */
-const COMPLETION = {
-  questTitle: "Print CPE Module",
-  reward: "30",
-  payment: "Cash on Delivery",
-  completedAt: "4:52 PM",
-  requester: {
-    name: "Maria Santos",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
-  },
-  runner: {
-    name: "John Doe",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-  },
+type Profile = {
+  name: string;
+  avatar: string;
 };
+
+const FALLBACK_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo";
+
+function formatTimestamp(value: unknown): string {
+  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return (value as { toDate: () => Date }).toDate().toLocaleString();
+  }
+  return "Not available";
+}
+
+async function getProfile(userId: string): Promise<Profile> {
+  const snapshot = await getDoc(doc(db, "users", userId));
+  const data = snapshot.data() as { fullName?: string; profilePhotoUrl?: string } | undefined;
+
+  return {
+    name: data?.fullName ?? "QuestGo User",
+    avatar: data?.profilePhotoUrl ?? `${FALLBACK_AVATAR}&user=${encodeURIComponent(userId)}`,
+  };
+}
 
 /* ─────────────────────────────────────────────────────────
    PAGE
 ───────────────────────────────────────────────────────── */
 export default function QuestCompletedPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const questId = searchParams.get("id");
+  const [quest, setQuest] = useState<Quest | null>(null);
+  const [requester, setRequester] = useState<Profile | null>(null);
+  const [runner, setRunner] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+
+  useEffect(() => {
+    if (!questId) {
+      setLoadError("This completion record is missing its quest ID.");
+      setLoading(false);
+      return;
+    }
+
+    const completionQuestId = questId;
+
+    let active = true;
+    let unsubscribe = () => {};
+
+    async function loadCompletion() {
+      try {
+        const nextQuest = await getQuestById(completionQuestId);
+        if (!nextQuest) {
+          setLoadError("This quest could not be found.");
+          return;
+        }
+
+        const [nextRequester, nextRunner] = await Promise.all([
+          getProfile(nextQuest.requesterId),
+          nextQuest.questRunnerId ? getProfile(nextQuest.questRunnerId) : Promise.resolve(null),
+        ]);
+
+        if (!active) return;
+        setQuest(nextQuest);
+        setRequester(nextRequester);
+        setRunner(nextRunner);
+        setConfirmed(Boolean((nextQuest as Quest & { requesterConfirmedAt?: unknown }).requesterConfirmedAt));
+
+        unsubscribe = onSnapshot(doc(db, "quests", completionQuestId), async (snapshot) => {
+          if (!snapshot.exists()) return;
+          const liveQuest = { id: snapshot.id, ...snapshot.data() } as Quest;
+          setQuest(liveQuest);
+          setConfirmed(Boolean((liveQuest as Quest & { requesterConfirmedAt?: unknown }).requesterConfirmedAt));
+          if (liveQuest.questRunnerId && liveQuest.questRunnerId !== nextQuest.questRunnerId) {
+            setRunner(await getProfile(liveQuest.questRunnerId));
+          }
+        });
+      } catch (error) {
+        console.error("Failed to load completion:", error);
+        setLoadError("Unable to load this completion record.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    void loadCompletion();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [questId]);
 
   async function handleConfirm() {
     if (confirming || confirmed) return;
@@ -84,6 +157,14 @@ export default function QuestCompletedPage() {
     await new Promise((r) => setTimeout(r, 800));
     setConfirming(false);
     setConfirmed(true);
+  }
+
+  if (loading) {
+    return <div className="page-container py-10 text-center text-[#4a4340]">Loading completion details...</div>;
+  }
+
+  if (!quest || !requester || !runner || loadError) {
+    return <div className="page-container py-10 text-center text-[#b42318]">{loadError || "Completion details are unavailable."}</div>;
   }
 
   return (
@@ -115,7 +196,7 @@ export default function QuestCompletedPage() {
                 <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
                   <span className="text-sm text-[#4a4340]">Quest</span>
                   <span className="text-sm font-bold text-[#161414] text-right">
-                    {COMPLETION.questTitle}
+                    {quest.title}
                   </span>
                 </div>
 
@@ -124,15 +205,15 @@ export default function QuestCompletedPage() {
                   <span className="text-sm text-[#4a4340]">Requester</span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
-                      src={COMPLETION.requester.avatar}
-                      alt={COMPLETION.requester.name}
+                      src={requester.avatar}
+                      alt={requester.name}
                       width={28}
                       height={28}
                       className="rounded-full bg-white shrink-0"
                       unoptimized
                     />
                     <span className="text-sm font-semibold text-[#161414] truncate">
-                      {COMPLETION.requester.name}
+                      {requester.name}
                     </span>
                     <CheckCircle2 className="w-4 h-4 text-[#1f9d57] shrink-0" />
                   </div>
@@ -143,15 +224,15 @@ export default function QuestCompletedPage() {
                   <span className="text-sm text-[#4a4340]">Quest Runner</span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
-                      src={COMPLETION.runner.avatar}
-                      alt={COMPLETION.runner.name}
+                      src={runner.avatar}
+                      alt={runner.name}
                       width={28}
                       height={28}
                       className="rounded-full bg-white shrink-0"
                       unoptimized
                     />
                     <span className="text-sm font-semibold text-[#161414] truncate">
-                      {COMPLETION.runner.name}
+                      {runner.name}
                     </span>
                     <CheckCircle2 className="w-4 h-4 text-[#1f9d57] shrink-0" />
                   </div>
@@ -161,7 +242,7 @@ export default function QuestCompletedPage() {
                 <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
                   <span className="text-sm text-[#4a4340]">Reward</span>
                   <span className="text-sm font-bold text-[#c9a227] text-right">
-                    ₱{COMPLETION.reward} {COMPLETION.payment}
+                    ₱{quest.reward} Cash on Delivery
                   </span>
                 </div>
 
@@ -169,7 +250,7 @@ export default function QuestCompletedPage() {
                 <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                   <span className="text-sm text-[#4a4340]">Completed at</span>
                   <span className="text-sm font-semibold text-[#161414]">
-                    {COMPLETION.completedAt}
+                    {formatTimestamp(quest.completedAt)}
                   </span>
                 </div>
               </div>

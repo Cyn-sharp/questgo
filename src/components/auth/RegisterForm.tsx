@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EyeIcon } from "@/components/ui/icons/EyeIcon";
 import { auth, storage } from "@/lib/auth/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { db } from "@/lib/auth/firebase";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type FormValues = {
@@ -100,39 +102,60 @@ export function RegisterForm() {
         formValues.password
       );
       const { user } = credential;
+
+      const displayName = formValues.fullName.trim();
+      await updateProfile(user, { displayName });
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          id: user.uid,
+          email: normalizedEmail,
+          fullName: displayName,
+          isVerified: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
       await sendEmailVerification(user);
 
       let profilePhotoUrl: string | undefined;
 
       if (selectedPhoto) {
-        const photoRef = ref(storage, `profilePhotos/${user.uid}/profile`);
-        await uploadBytes(photoRef, selectedPhoto, { contentType: selectedPhoto.type });
-        profilePhotoUrl = await getDownloadURL(photoRef);
+        try {
+          const photoRef = ref(storage, `profilePhotos/${user.uid}/profile`);
+          await uploadBytes(photoRef, selectedPhoto, { contentType: selectedPhoto.type });
+          profilePhotoUrl = await getDownloadURL(photoRef);
+        } catch (error) {
+          console.error("Profile photo upload failed during registration:", error);
+        }
       }
 
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          idToken: await user.getIdToken(),
-          fullName: formValues.fullName.trim(),
-          email: formValues.email.trim().toLowerCase(),
-          profilePhotoUrl,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        setFormMessage(
-          data?.message ??
-            (response.status === 404
-              ? "Registration service is not configured yet."
-              : "Something went wrong creating your account.")
-        );
-        return;
+      if (profilePhotoUrl) {
+        await setDoc(doc(db, "users", user.uid), { profilePhotoUrl, updatedAt: serverTimestamp() }, { merge: true });
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(formValues.email.trim().toLowerCase())}`);
+      try {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+        await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            idToken: await user.getIdToken(),
+            fullName: displayName,
+            email: normalizedEmail,
+            profilePhotoUrl,
+          }),
+        });
+        window.clearTimeout(timeoutId);
+      } catch (error) {
+        console.error("Server profile sync failed during registration:", error);
+      }
+
+      router.replace(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
     } catch (error: any) {
       const message =
         error?.code === "auth/email-already-in-use"
