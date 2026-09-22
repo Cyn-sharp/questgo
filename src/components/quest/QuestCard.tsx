@@ -2,6 +2,7 @@ import { Clock, MapPin, Navigation, Calendar, Star, CheckCircle2 } from "lucide-
 import Link from "next/link";
 
 interface QuestCardProps {
+  id?: string | number;
   category: string;
   timeLeft: string;
   title: string;
@@ -13,6 +14,7 @@ interface QuestCardProps {
 }
 
 export default function QuestCard({ 
+  id,
   category, 
   timeLeft, 
   title, 
@@ -64,7 +66,7 @@ export default function QuestCard({
           <CheckCircle2 className="w-3 h-3" /> CIT-U VERIFIED
         </div>
         <Link 
-          href="/quests/1"
+          href={id ? `/quests/viewquest?id=${encodeURIComponent(id)}` : "/quests"}
           className="bg-[#791B32] hover:bg-[#5a1425] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
         >
           View Quest

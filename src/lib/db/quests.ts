@@ -212,7 +212,15 @@ export async function getMyActiveRequestsCount(userId: string): Promise<number> 
     where("status", "in", ["available", "accepted", "in_progress"]),
   );
   const snapshot = await getDocs(q);
-  return snapshot.size;
+  const now = Date.now();
+
+  return snapshot.docs.filter((document) => {
+    const quest = document.data() as Quest;
+    if (quest.status !== "available") return true;
+
+    const expiresAt = getTimestampMillis(quest.expiresAt);
+    return expiresAt !== null && expiresAt > now;
+  }).length;
 }
 
 // Count of all quests the logged-in user has posted

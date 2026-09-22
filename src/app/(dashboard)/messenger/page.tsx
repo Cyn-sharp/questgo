@@ -156,7 +156,7 @@ export default function MessengerPage() {
               </span>
 
               <Link
-                href="/quests/viewquest"
+                href={`/quests/viewquest?id=${encodeURIComponent(String(CONTACT.questId))}`}
                 className="
                   inline-flex items-center gap-1.5 rounded-full border border-[#e5e0d8]
                   bg-white px-3 py-1.5 text-xs font-semibold text-[#4a4340]
