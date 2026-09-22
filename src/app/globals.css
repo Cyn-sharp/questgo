@@ -23,7 +23,7 @@
   --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
   --shadow-red-glow: 0 18px 45px rgba(95, 23, 39, 0.45);
 }
@@ -38,12 +38,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Prevent horizontal bounce/scrolling on mobile */
+    overflow-x: hidden;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    /* Rich, multi-stop CIT-U Red/Maroon Gradient with ambient depth */
+    overflow-x: hidden;
     background: 
       radial-gradient(circle at 10% 15%, rgba(186, 45, 73, 0.35) 0%, transparent 45%),
       radial-gradient(circle at 90% 65%, rgba(201, 162, 39, 0.18) 0%, transparent 40%),
@@ -67,6 +69,8 @@
   a {
     color: inherit;
     text-decoration: none;
+    /* Clean touch highlighting on iOS */
+    -webkit-tap-highlight-color: transparent;
   }
 
   button, input, select, textarea {
@@ -76,6 +80,7 @@
 
   button {
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   button:disabled {
@@ -86,6 +91,7 @@
   img, svg {
     display: block;
     max-width: 100%;
+    height: auto;
   }
 
   ::selection {
@@ -100,27 +106,31 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
-      font-semibold text-[15px] text-white transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5
+      font-semibold text-[15px] text-white transition-all duration-200 min-h-[48px] active:scale-95;
     background-color: var(--color-maroon);
   }
 
-  .btn-primary:hover {
-    background-color: var(--color-maroon-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background-color: var(--color-maroon-dark);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-glow);
+    }
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
-      font-semibold text-[15px] transition-all duration-200 bg-white;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5
+      font-semibold text-[15px] transition-all duration-200 bg-white min-h-[48px] active:scale-95;
     color: var(--color-maroon);
     border: 1.5px solid var(--color-maroon);
   }
 
-  .btn-outline:hover {
-    background-color: var(--color-cream);
-    transform: translateY(-2px);
+  @media (hover: hover) {
+    .btn-outline:hover {
+      background-color: var(--color-cream);
+      transform: translateY(-2px);
+    }
   }
 
   .card-surface {
@@ -140,7 +150,7 @@
     width: 100%;
     max-width: 1440px;
     margin-inline: auto;
-    padding-inline: 1.5rem;
+    padding-inline: 1rem;
   }
 
   @media (min-width: 768px) {
@@ -155,13 +165,13 @@
    ========================================================= */
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(24px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+  50% { transform: translateY(-8px); }
 }
 
 @keyframes soft-pulse {
@@ -178,11 +188,11 @@
 }
 
 .animate-fade-up {
-  animation: fade-up 0.7s ease-out both;
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-float {
-  animation: float 5s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 .animate-soft-pulse {
@@ -201,7 +211,7 @@
    UX INTERACTIONS — shine, lift, scroll-reveal
    ========================================================= */
 
-/* Soft gold shine */
+/* Soft gold shine - desktop hover only */
 .shine-wrap {
   position: relative;
   overflow: hidden;
@@ -218,7 +228,7 @@
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(201, 162, 39, 0.35) 50%,
+    rgba(201, 162, 39, 0.25) 50%,
     transparent 70%
   );
   transform: translateX(-140%) skewX(-18deg);
@@ -226,8 +236,10 @@
   z-index: 2;
 }
 
-.shine-wrap:hover::after {
-  animation: shine-sweep 1.45s ease forwards;
+@media (hover: hover) {
+  .shine-wrap:hover::after {
+    animation: shine-sweep 1.45s ease forwards;
+  }
 }
 
 @keyframes shine-sweep {
@@ -235,27 +247,29 @@
   100% { transform: translateX(280%) skewX(-18deg); }
 }
 
-/* Card hover lift */
+/* Card hover lift - desktop hover only */
 .card-interactive {
   transition:
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.55s ease,
-    border-color 0.55s ease,
-    box-shadow 0.55s ease,
-    color 0.55s ease;
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    color 0.4s ease;
 }
 
-.card-interactive:hover {
-  transform: translateY(-6px) scale(1.025);
+@media (hover: hover) {
+  .card-interactive:hover {
+    transform: translateY(-4px) scale(1.015);
+  }
 }
 
 /* Scroll reveal classes */
 .reveal {
   opacity: 0;
-  transform: translateY(28px);
+  transform: translateY(20px);
   transition:
-    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
 
@@ -266,10 +280,10 @@
 
 .reveal-scale {
   opacity: 0;
-  transform: translateY(18px) scale(0.96);
+  transform: translateY(12px) scale(0.98);
   transition:
-    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
 
@@ -282,8 +296,10 @@
   @apply transition-all duration-300;
 }
 
-.btn-lift:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .btn-lift:hover {
+    transform: translateY(-2px);
+  }
 }
 
 /* Form autofill styling */

@@ -39,76 +39,78 @@ export const HowItWorks = () => {
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       id="how-it-works"
-      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-transparent border-b border-white/10"
+      className="flex flex-col items-start gap-8 px-4 sm:px-6 md:px-16 py-12 md:py-20 bg-transparent border-b border-white/10"
       aria-labelledby="how-it-works-heading"
     >
-      {/* Header reveal — static text, no parallax */}
+      {/* Header reveal — completely static text */}
       <ScrollReveal className="w-full">
         <header className="flex flex-col items-center gap-2 self-stretch w-full text-center">
           <h2
             id="how-it-works-heading"
-            className="font-bold text-3xl md:text-[32px] tracking-tight text-white"
+            className="font-bold text-2xl sm:text-3xl md:text-[32px] tracking-tight text-white animate-fade-up"
           >
             How It Works
           </h2>
-          <p className="font-normal text-base text-[#f6ecc8]/85 max-w-2xl">
+          <p className="font-normal text-sm sm:text-base text-[#f6ecc8]/85 max-w-2xl">
             Four simple steps to conquer your goals on campus
           </p>
         </header>
       </ScrollReveal>
 
-      {/* Steps reveal (staggered) — cards still drift */}
-      <ol className="flex flex-col md:flex-row items-stretch gap-6 self-stretch w-full list-none m-0 p-0">
+      {/* Steps layout: stacked first (mobile), horizontal row (desktop) */}
+      <ol className="flex flex-col md:flex-row items-stretch gap-4 sm:gap-6 self-stretch w-full list-none m-0 p-0">
         {steps.map((step, index) => (
           <ScrollReveal
             key={step.number}
-            delayMs={index * 120}
+            delayMs={index * 100}
             variant="scale"
             className="flex-1"
           >
             <li
               style={{
-                transform: `translate3d(${x * (index + 1) * 4}px, ${y * (index + 1) * 4}px, 0)`,
+                transform: `translate3d(${x * (index + 1) * 3}px, ${y * (index + 1) * 3}px, 0)`,
               }}
               className="
                 group shine-wrap card-interactive
-                flex h-full flex-col items-start gap-3 p-6
+                flex h-full flex-col items-start gap-2.5 p-5 sm:p-6
                 rounded-2xl border border-white/15 bg-white/95 backdrop-blur-md
-                shadow-[0_12px_32px_rgba(0,0,0,0.25)]
+                shadow-[0_8px_24px_rgba(0,0,0,0.2)]
                 hover:bg-[#5f1727] hover:border-[#c9a227]/50
-                hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)]
+                hover:shadow-[0_18px_44px_rgba(0,0,0,0.4)]
               "
             >
-              {/* Number — moves with the card only */}
+              {/* Number */}
               <span
                 className="
                   relative z-[1]
-                  font-extrabold text-[40px] leading-none tracking-tight text-[#c9a227]
-                  transition-all duration-500
+                  font-extrabold text-3xl sm:text-[40px] leading-none tracking-tight text-[#c9a227]
+                  transition-all duration-300
                   group-hover:text-[#f6ecc8]
-                  group-hover:scale-110
+                  group-hover:scale-105
                 "
                 aria-hidden="true"
               >
                 {step.number}
               </span>
 
+              {/* Title */}
               <h3
                 className="
                   relative z-[1]
-                  font-bold text-lg tracking-wide text-[#7a1f32]
-                  transition-colors duration-500
+                  font-bold text-base sm:text-lg tracking-wide text-[#7a1f32]
+                  transition-colors duration-300
                   group-hover:text-white
                 "
               >
                 {step.title}
               </h3>
 
+              {/* Description */}
               <p
                 className="
                   relative z-[1]
-                  self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
-                  transition-colors duration-500
+                  self-stretch font-normal text-xs sm:text-sm leading-relaxed text-[#4a4340]
+                  transition-colors duration-300
                   group-hover:text-white/90
                 "
               >
