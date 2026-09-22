@@ -71,6 +71,8 @@ type QuestPoster = {
   fullName: string;
   profilePhotoUrl?: string | null;
   isVerified?: boolean;
+  averageRating?: number | null;
+  ratingCount?: number;
 };
 
 export default function ActiveQuestPage() {
@@ -102,14 +104,22 @@ export default function ActiveQuestPage() {
 
         const requesterRef = await getDoc(doc(db, "users", nextQuest.requesterId));
         if (requesterRef.exists()) {
-          const requesterData = requesterRef.data() as { fullName?: string; profilePhotoUrl?: string | null; isVerified?: boolean };
+          const requesterData = requesterRef.data() as {
+            fullName?: string;
+            profilePhotoUrl?: string | null;
+            isVerified?: boolean;
+            averageRating?: number | null;
+            ratingCount?: number;
+          };
           setPoster({
             fullName: requesterData.fullName ?? "QuestGo User",
             profilePhotoUrl: requesterData.profilePhotoUrl ?? null,
             isVerified: Boolean(requesterData.isVerified),
+            averageRating: typeof requesterData.averageRating === "number" ? requesterData.averageRating : 0,
+            ratingCount: typeof requesterData.ratingCount === "number" ? requesterData.ratingCount : 0,
           });
         } else {
-          setPoster({ fullName: "QuestGo User" });
+          setPoster({ fullName: "QuestGo User", averageRating: 0, ratingCount: 0 });
         }
       } catch (error) {
         console.error("Failed to load accepted quest:", error);
@@ -147,6 +157,10 @@ export default function ActiveQuestPage() {
 
   const posterName = poster?.fullName ?? "QuestGo User";
   const posterAvatar = poster?.profilePhotoUrl ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo";
+  const posterAverageRating = poster && typeof poster.averageRating === "number" ? poster.averageRating : 0;
+  const posterRatingCount = poster && typeof poster.ratingCount === "number" ? poster.ratingCount : 0;
+  const posterRatingText = posterAverageRating > 0 ? posterAverageRating.toFixed(1) : "New";
+  const posterRatingMeta = posterAverageRating > 0 ? `(${posterRatingCount} rating${posterRatingCount === 1 ? "" : "s"})` : "(No ratings yet)";
 
   return (
     <div className="bg-[#fbf8f0] min-h-full">
@@ -214,8 +228,8 @@ export default function ActiveQuestPage() {
                   </div>
                   <p className="text-xs text-[#4a4340] flex items-center gap-1.5">
                     <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
-                    <span className="font-semibold text-[#161414]">4.8</span>
-                    <span>(0 completed quests)</span>
+                    <span className="font-semibold text-[#161414]">{posterRatingText}</span>
+                    <span>{posterRatingMeta}</span>
                     <span className="text-[#d8d3cc]">•</span>
                     <span className="font-medium text-[#4a4340]">Requester</span>
                   </p>

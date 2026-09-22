@@ -286,7 +286,7 @@ export default function QuestCompletedPage() {
                   {/* UPDATED: Navigates to /requests/rate */}
                   <button
                     type="button"
-                    onClick={() => router.push("/requests/rate")}
+                    onClick={() => router.push(`/requests/rate?id=${encodeURIComponent(quest.id)}`)}
                     className="btn-primary w-full justify-center py-3.5 text-[15px]"
                   >
                     Rate Quest Runner

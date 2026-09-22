@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
 import { Star, Info, CheckCircle2 } from "lucide-react";
+import { db } from "@/lib/auth/firebase";
+import { useAuth } from "@/hooks/useAuth";
+import { getQuestById } from "@/lib/db/quests";
+import { submitQuestRating } from "@/lib/db/ratings";
+import type { Quest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -54,27 +60,96 @@ function ScrollReveal({
 ───────────────────────────────────────────────────────── */
 export default function RateQuestPage() {
   const router = useRouter();
-  const [rating, setRating] = useState<number>(4); // Default 4 stars matching screenshot
+  const searchParams = useSearchParams();
+  const { user, isLoading: authLoading } = useAuth();
+  const questId = searchParams.get("id");
+
+  const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [quest, setQuest] = useState<Quest | null>(null);
+  const [revieweeName, setRevieweeName] = useState("QuestGo User");
+  const [revieweeId, setRevieweeId] = useState("");
+  const [pageError, setPageError] = useState("");
 
-  const runnerName = "Maria Santos";
+  useEffect(() => {
+    async function loadRatingContext() {
+      if (!questId) {
+        setPageError("This rating page is missing the quest ID.");
+        return;
+      }
+
+      if (!user) return;
+
+      try {
+        const nextQuest = await getQuestById(questId);
+        if (!nextQuest) {
+          setPageError("This quest could not be found.");
+          return;
+        }
+
+        if (nextQuest.status !== "completed") {
+          setPageError("You can only rate completed quests.");
+          return;
+        }
+
+        const isRequester = nextQuest.requesterId === user.uid;
+        const isRunner = nextQuest.questRunnerId === user.uid;
+
+        if (!isRequester && !isRunner) {
+          setPageError("You are not allowed to rate this quest.");
+          return;
+        }
+
+        const targetUserId = isRequester ? nextQuest.questRunnerId ?? "" : nextQuest.requesterId;
+        if (!targetUserId) {
+          setPageError("The other participant is not available for this review.");
+          return;
+        }
+
+        const userRef = await getDoc(doc(db, "users", targetUserId));
+        const userData = userRef.data() as { fullName?: string } | undefined;
+
+        setQuest(nextQuest);
+        setRevieweeId(targetUserId);
+        setRevieweeName(userData?.fullName ?? "QuestGo User");
+      } catch (error) {
+        console.error("Failed to load rating context:", error);
+        setPageError("Unable to load this rating request right now.");
+      }
+    }
+
+    void loadRatingContext();
+  }, [questId, user]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || !user || !quest || !revieweeId) return;
 
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    setSubmitted(true);
+    setPageError("");
 
-    // Redirect to requests after success
-    setTimeout(() => {
-      router.push("/requests");
-    }, 1200);
+    try {
+      await submitQuestRating({
+        questId: quest.id,
+        reviewerId: user.uid,
+        revieweeId,
+        rating,
+        comment,
+      });
+
+      setSubmitted(true);
+      setTimeout(() => {
+        router.push("/requests");
+      }, 1200);
+    } catch (error) {
+      console.error("Failed to submit rating:", error);
+      setPageError(error instanceof Error ? error.message : "Unable to submit your rating.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleSkip() {
@@ -93,7 +168,7 @@ export default function RateQuestPage() {
               </h1>
               <p className="text-sm text-[#4a4340] mb-8">
                 How was your experience with{" "}
-                <span className="font-bold text-[#161414]">{runnerName}</span>?
+                <span className="font-bold text-[#161414]">{revieweeName}</span>?
               </p>
 
               {/* Interactive Star Rating */}
@@ -147,12 +222,17 @@ export default function RateQuestPage() {
                   />
                 </div>
 
-                {/* Submit & Skip Buttons */}
+                {pageError && (
+                  <div className="rounded-xl border border-[#f1c0c0] bg-[#fff3f3] p-3 text-sm text-[#b42318]">
+                    {pageError}
+                  </div>
+                )}
+
                 {!submitted ? (
                   <div className="space-y-3 pt-2">
                     <button
                       type="submit"
-                      disabled={submitting}
+                      disabled={submitting || !quest || !revieweeId}
                       className="btn-primary w-full justify-center py-3.5 text-[15px] font-bold"
                     >
                       {submitting ? "Submitting..." : "Submit Rating"}

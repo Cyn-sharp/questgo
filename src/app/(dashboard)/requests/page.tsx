@@ -385,7 +385,7 @@ function RequestCard({
           {/* UPDATED: Link directly to /requests/rate */}
           {request.state === "completed" && (
             <Link
-              href="/requests/rate"
+              href={`/requests/rate?id=${encodeURIComponent(request.id)}`}
               className="
                 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
                 border border-[#7a1f32] text-[#7a1f32] bg-white

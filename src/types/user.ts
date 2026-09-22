@@ -7,4 +7,6 @@ export type User = {
   updatedAt?: string | number | null;
   profilePhotoUrl?: string | null;
   course?: string;
+  averageRating?: number | null;
+  ratingCount?: number;
 };

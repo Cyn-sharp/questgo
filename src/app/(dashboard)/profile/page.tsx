@@ -181,6 +181,8 @@ export default function ProfilePage() {
           updatedAt: userData.updatedAt ?? null,
           profilePhotoUrl: userData.profilePhotoUrl ?? firebaseUser.photoURL ?? FALLBACK_AVATAR,
           course: userData.course ?? DEFAULT_COURSE,
+          averageRating: typeof userData.averageRating === "number" ? userData.averageRating : 0,
+          ratingCount: typeof userData.ratingCount === "number" ? userData.ratingCount : 0,
         };
 
         setProfile(nextProfile);
@@ -229,6 +231,9 @@ export default function ProfilePage() {
   const displayCourse = profile?.course || DEFAULT_COURSE;
   const displayAvatar = profile?.profilePhotoUrl || firebaseUser?.photoURL || FALLBACK_AVATAR;
   const isVerified = Boolean(profile?.isVerified ?? firebaseUser?.emailVerified);
+  const userAverageRating = profile && typeof profile.averageRating === "number" ? profile.averageRating : 0;
+  const userRatingCount = profile && typeof profile.ratingCount === "number" ? profile.ratingCount : 0;
+  const ratingLabel = userAverageRating > 0 ? `${userAverageRating.toFixed(1)} Star Rating` : "No ratings yet";
 
   const stats = [
     { label: "Quests Completed", value: statsLoading ? "…" : profileStats.completed, valueClass: "text-[#7a1f32]" },
@@ -314,8 +319,14 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[#4a4340]">
                     <span className="inline-flex items-center gap-1 font-semibold text-[#161414]">
                       <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
-                      4.8 Star Rating
+                      {ratingLabel}
                     </span>
+                    {userRatingCount > 0 && (
+                      <>
+                        <span className="text-[#d8d3cc]">•</span>
+                        <span>{userRatingCount} rating{userRatingCount === 1 ? "" : "s"}</span>
+                      </>
+                    )}
                     <span className="text-[#d8d3cc]">•</span>
                     <span>{displayCourse}</span>
                   </div>
