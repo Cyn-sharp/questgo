@@ -36,21 +36,63 @@ export function ForgotPasswordForm() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-cream p-5">
-      <section className="w-full max-w-[360px] rounded-xl border border-[#e5e0d9] bg-white p-6 text-center shadow-[0_10px_24px_#0000000d] sm:p-7">
+    <main className="flex min-h-screen items-center justify-center bg-transparent p-4 sm:p-6">
+      <section className="w-full max-w-[400px] rounded-2xl border border-white/40 bg-white p-6 text-center shadow-[0_24px_70px_rgba(0,0,0,0.35)] sm:p-8">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#f0d98e] bg-[#fffaf0] text-[#c99a16]">
-          <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" aria-hidden="true"><rect x="7" y="14" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M11 14V10a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+          <svg viewBox="0 0 32 32" className="h-7 w-7" fill="none" aria-hidden="true">
+            <rect x="7" y="14" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M11 14V10a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
         </div>
-        <h1 className="mt-5 font-outfit text-[21px] font-extrabold text-maroon">Forgot Your Password?</h1>
-        <p className="mt-2 font-inter text-[11px] leading-4 text-muted">Enter your email and we&apos;ll send you a password reset link.</p>
+        <h1 className="mt-5 font-outfit text-xl font-extrabold text-maroon sm:text-[22px]">
+          Forgot Your Password?
+        </h1>
+        <p className="mt-2 font-inter text-[12px] leading-[16px] text-muted sm:text-[13px]">
+          Enter your email and we&apos;ll send you a password reset link.
+        </p>
         <form onSubmit={handleSubmit} className="mt-5 text-left">
-          <label htmlFor="reset-email" className="font-inter text-[11px] font-semibold text-dark">Email</label>
-          <input id="reset-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="studentname@cit.edu or Gmail" className="mt-1 h-10 w-full rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 font-inter text-[12px] outline-none focus:border-maroon focus:ring-2 focus:ring-[#7a1f3233]" required />
-          <button type="submit" disabled={isSending} className="mt-3 h-10 w-full rounded-lg bg-maroon font-inter text-[11px] font-semibold text-white disabled:opacity-60">{isSending ? "SENDING..." : "SEND RESET LINK"}</button>
+          <label htmlFor="reset-email" className="font-inter text-[12px] font-semibold text-dark">
+            Email
+          </label>
+          <input
+            id="reset-email"
+            type="email"
+            inputMode="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="studentname@cit.edu or Gmail"
+            className="mt-1 h-11 w-full rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 font-inter text-[13px] outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
+            required
+          />
+          <button
+            type="submit"
+            disabled={isSending}
+            className="mt-4 h-11 w-full rounded-lg bg-maroon font-inter text-[12px] font-semibold text-white shadow-[0_8px_18px_#7a1f3226] transition-all hover:opacity-95 hover:shadow-[0_12px_24px_#7a1f3240] active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
+          >
+            {isSending ? "SENDING..." : "SEND RESET LINK"}
+          </button>
         </form>
-        {message ? <p role="status" className={`mt-4 font-inter text-[11px] leading-4 ${sent ? "text-[#26734d]" : "text-maroon"}`}>{message}</p> : null}
-        <p className="mt-6 font-inter text-[11px] text-muted">Remember your password? <Link href="/login" className="font-semibold text-maroon hover:underline">Back to Login</Link></p>
-        <p className="mt-5 border-t border-[#eee9df] pt-4 font-inter text-[10px] text-muted">Secured Firebase credential gateway.</p>
+        {message ? (
+          <p
+            role="status"
+            className={`mt-4 rounded-lg border px-3 py-2 font-inter text-[12px] leading-4 ${
+              sent
+                ? "border-[#a8dcc0] bg-[#edfff6] text-[#26734d]"
+                : "border-red-200 bg-red-50 text-maroon"
+            }`}
+          >
+            {message}
+          </p>
+        ) : null}
+        <p className="mt-6 font-inter text-[12px] text-muted">
+          Remember your password?{" "}
+          <Link href="/login" className="font-semibold text-maroon hover:underline">
+            Back to Login
+          </Link>
+        </p>
+        <p className="mt-5 border-t border-[#eee9df] pt-4 font-inter text-[10px] text-muted">
+          Secured Firebase credential gateway.
+        </p>
       </section>
     </main>
   );

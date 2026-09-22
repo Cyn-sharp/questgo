@@ -161,8 +161,8 @@ const MOCK_REQUESTS: QuestRequest[] = [
 function StatusBadge({ state }: { state: RequestState }) {
   if (state === "waiting") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8c96a] bg-[#fbf6e4] px-3 py-1 text-xs font-semibold text-[#8a6a1f]">
-        <Clock className="w-3.5 h-3.5" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e8c96a] bg-[#fbf6e4] px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-[#8a6a1f]">
+        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         Waiting for Runner
       </span>
     );
@@ -170,8 +170,8 @@ function StatusBadge({ state }: { state: RequestState }) {
 
   if (state === "in_progress") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7a1f32] px-3 py-1 text-xs font-semibold text-white">
-        <Navigation className="w-3.5 h-3.5" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7a1f32] px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-white">
+        <Navigation className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         In Progress
       </span>
     );
@@ -179,8 +179,8 @@ function StatusBadge({ state }: { state: RequestState }) {
 
   if (state === "completed") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7f8ee] px-3 py-1 text-xs font-semibold text-[#1f9d57]">
-        <CheckCircle2 className="w-3.5 h-3.5" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7f8ee] px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-[#1f9d57]">
+        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         Completed
       </span>
     );
@@ -188,16 +188,16 @@ function StatusBadge({ state }: { state: RequestState }) {
 
   if (state === "expired") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f4f2ef] px-3 py-1 text-xs font-semibold text-[#4a4340]">
-        <Timer className="w-3.5 h-3.5" />
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f4f2ef] px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-[#4a4340]">
+        <Timer className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
         Expired
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fdecec] px-3 py-1 text-xs font-semibold text-[#b42318]">
-      <XCircle className="w-3.5 h-3.5" />
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fdecec] px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-[#b42318]">
+      <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
       Cancelled
     </span>
   );
@@ -206,39 +206,39 @@ function StatusBadge({ state }: { state: RequestState }) {
 function RequestIcon({ state }: { state: RequestState }) {
   if (state === "waiting") {
     return (
-      <div className="w-12 h-12 rounded-xl bg-[#f6f0e8] flex items-center justify-center shrink-0">
-        <Clock className="w-5 h-5 text-[#7a1f32]" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#f6f0e8] flex items-center justify-center shrink-0">
+        <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#7a1f32]" />
       </div>
     );
   }
 
   if (state === "in_progress") {
     return (
-      <div className="w-12 h-12 rounded-xl bg-[#fbf0d6] flex items-center justify-center shrink-0">
-        <Navigation className="w-5 h-5 text-[#c9a227]" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#fbf0d6] flex items-center justify-center shrink-0">
+        <Navigation className="w-4 h-4 sm:w-5 sm:h-5 text-[#c9a227]" />
       </div>
     );
   }
 
   if (state === "completed") {
     return (
-      <div className="w-12 h-12 rounded-xl bg-[#e7f8ee] flex items-center justify-center shrink-0">
-        <CheckCircle2 className="w-5 h-5 text-[#1f9d57]" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#e7f8ee] flex items-center justify-center shrink-0">
+        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#1f9d57]" />
       </div>
     );
   }
 
   if (state === "expired") {
     return (
-      <div className="w-12 h-12 rounded-xl bg-[#f4f2ef] flex items-center justify-center shrink-0">
-        <Timer className="w-5 h-5 text-[#4a4340]" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#f4f2ef] flex items-center justify-center shrink-0">
+        <Timer className="w-4 h-4 sm:w-5 sm:h-5 text-[#4a4340]" />
       </div>
     );
   }
 
   return (
-    <div className="w-12 h-12 rounded-xl bg-[#fdecec] flex items-center justify-center shrink-0">
-      <Ban className="w-5 h-5 text-[#b42318]" />
+    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#fdecec] flex items-center justify-center shrink-0">
+      <Ban className="w-4 h-4 sm:w-5 sm:h-5 text-[#b42318]" />
     </div>
   );
 }
@@ -256,9 +256,9 @@ function RequestCard({
   return (
     <article
       className="
-        group shine-wrap card-interactive card-surface
-        p-4 sm:p-5
-        hover:shadow-[0_14px_36px_rgba(122,31,50,0.12)]
+        group shine-wrap card-interactive rounded-2xl border border-white/15
+        bg-white/95 backdrop-blur-md p-4 sm:p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]
+        hover:shadow-[0_18px_44px_rgba(0,0,0,0.25)]
       "
     >
       <div className="relative z-[1] flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -266,12 +266,12 @@ function RequestCard({
         <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
           <RequestIcon state={request.state} />
 
-          <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-[#161414] truncate">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm sm:text-base lg:text-lg font-bold text-[#161414] truncate">
               {request.title}
             </h3>
 
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
               <span className="font-bold text-[#c9a227]">₱{request.price}</span>
 
               {request.state === "completed" && request.runnerName ? (
@@ -303,13 +303,42 @@ function RequestCard({
                 </>
               )}
             </div>
+
+            {/* Mobile: Status badge inline */}
+            <div className="mt-2 lg:hidden flex flex-wrap items-center gap-2">
+              <StatusBadge state={request.state} />
+              {request.state === "waiting" && request.timeRemaining && (
+                <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#c9a227]">
+                  <Timer className="w-3 h-3" />
+                  {request.timeRemaining}
+                </div>
+              )}
+              {request.state === "in_progress" && request.runnerName && (
+                <div className="inline-flex items-center gap-1.5">
+                  <Image
+                    src={
+                      request.runnerAvatar ||
+                      `https://api.dicebear.com/7.x/avataaars/svg?seed=${request.runnerName}`
+                    }
+                    alt={request.runnerName}
+                    width={20}
+                    height={20}
+                    className="rounded-full bg-[#f4f2ef] shrink-0"
+                    unoptimized
+                  />
+                  <span className="text-[11px] font-semibold text-[#161414]">
+                    {request.runnerName}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Middle: runner / timer / status */}
-        <div className="flex flex-wrap items-center gap-3 lg:justify-center lg:px-4">
+        {/* Desktop: Middle status column */}
+        <div className="hidden lg:flex flex-wrap items-center gap-3 lg:justify-center lg:px-4">
           {request.state === "waiting" && request.timeRemaining && (
-            <div className="flex flex-col items-start sm:items-center gap-1.5">
+            <div className="flex flex-col items-center gap-1.5">
               <StatusBadge state={request.state} />
               <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#c9a227]">
                 <Timer className="w-3.5 h-3.5" />
@@ -359,10 +388,10 @@ function RequestCard({
               type="button"
               onClick={() => onCancel(request.id)}
               className="
-                px-4 py-2.5 rounded-xl border border-[#e5e0d8] bg-white
-                text-sm font-semibold text-[#4a4340]
+                w-full lg:w-auto px-4 py-2.5 rounded-xl border border-[#e5e0d8] bg-white
+                text-xs sm:text-sm font-semibold text-[#4a4340]
                 hover:border-[#7a1f32] hover:text-[#7a1f32]
-                transition-all duration-300
+                active:scale-95 transition-all duration-300
               "
             >
               Cancel Quest
@@ -373,9 +402,9 @@ function RequestCard({
             <Link
               href="/messenger"
               className="
-                inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
-                bg-[#7a1f32] text-white text-sm font-semibold
-                hover:bg-[#5f1727] transition-all duration-300
+                w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                bg-[#7a1f32] text-white text-xs sm:text-sm font-semibold
+                hover:bg-[#5f1727] active:scale-95 transition-all duration-300
                 shadow-[0_8px_18px_rgba(122,31,50,0.22)]
               "
             >
@@ -384,20 +413,19 @@ function RequestCard({
             </Link>
           )}
 
-          {/* UPDATED: Link directly to /requests/rate */}
           {request.state === "completed" && (
             <Link
               href="/requests/rate"
               className="
-                inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
+                w-full lg:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
                 border border-[#7a1f32] text-[#7a1f32] bg-white
-                text-sm font-semibold
-                hover:bg-[#7a1f32] hover:text-white
+                text-xs sm:text-sm font-semibold
+                hover:bg-[#7a1f32] hover:text-white active:scale-95
                 transition-all duration-300
               "
             >
               <Star className="w-4 h-4" />
-              Rate Quest Runner
+              Rate Runner
             </Link>
           )}
 
@@ -405,8 +433,8 @@ function RequestCard({
             <Link
               href="/post-quest"
               className="
-                px-4 py-2.5 rounded-xl bg-[#7a1f32] text-white
-                text-sm font-semibold hover:bg-[#5f1727]
+                w-full lg:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-[#7a1f32] text-white
+                text-xs sm:text-sm font-semibold hover:bg-[#5f1727] active:scale-95
                 transition-all duration-300
               "
             >
@@ -430,8 +458,7 @@ export default function RequestsPage() {
     if (activeTab === "active") {
       return requests.filter(
         (r) =>
-          r.tab === "active" ||
-          (r.state === "completed" && r.tab === "active")
+          r.tab === "active"
       );
     }
     return requests.filter((r) => r.tab === activeTab);
@@ -457,23 +484,23 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="bg-[#fbf8f0] min-h-full">
-      <div className="page-container py-10 lg:py-12">
+    <div className="bg-transparent min-h-full">
+      <div className="page-container py-6 sm:py-10 lg:py-12">
         {/* Header */}
         <ScrollReveal>
           <div className="mb-6">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#161414] mb-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white mb-2">
               My Quest Requests
             </h1>
-            <p className="text-[#4a4340] text-base">
+            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
               Track, manage, and complete tasks that you have broadcasted
             </p>
           </div>
         </ScrollReveal>
 
-        {/* Tabs */}
+        {/* Tabs — horizontal scroll on mobile */}
         <ScrollReveal delayMs={80}>
-          <div className="flex flex-wrap items-center gap-2 mb-8">
+          <div className="flex items-center gap-2 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
@@ -482,18 +509,18 @@ export default function RequestsPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
                   className={`
-                    px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300
+                    shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 active:scale-95
                     ${
                       isActive
-                        ? "bg-[#7a1f32] text-white shadow-[0_8px_18px_rgba(122,31,50,0.25)]"
-                        : "bg-white text-[#4a4340] border border-[#e5e0d8] hover:border-[#7a1f32] hover:text-[#7a1f32]"
+                        ? "bg-[#c9a227] text-[#161414] shadow-[0_8px_18px_rgba(201,162,39,0.35)]"
+                        : "bg-white/95 backdrop-blur-md text-[#4a4340] border border-white/40 hover:bg-white"
                     }
                   `}
                 >
                   {tab.label}
                   <span
                     className={`ml-1.5 text-[11px] ${
-                      isActive ? "text-white/80" : "text-[#4a4340]/60"
+                      isActive ? "text-[#161414]/70" : "text-[#4a4340]/60"
                     }`}
                   >
                     ({counts[tab.key]})
@@ -506,11 +533,11 @@ export default function RequestsPage() {
 
         {/* List */}
         {filtered.length > 0 ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {filtered.map((request, i) => (
               <ScrollReveal
                 key={request.id}
-                delayMs={i * 70}
+                delayMs={i * 60}
                 variant="scale"
               >
                 <RequestCard request={request} onCancel={handleCancel} />
@@ -519,20 +546,23 @@ export default function RequestsPage() {
           </div>
         ) : (
           <ScrollReveal>
-            <div className="card-surface p-10 text-center">
+            <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-8 sm:p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
               <div className="mx-auto w-14 h-14 rounded-2xl bg-[#f6f0e8] flex items-center justify-center mb-4">
                 <Clock className="w-6 h-6 text-[#7a1f32]" />
               </div>
-              <p className="text-lg font-bold text-[#161414] mb-2">
+              <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">
                 No {activeTab} requests
               </p>
-              <p className="text-sm text-[#4a4340] mb-5 max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-[#4a4340] mb-5 max-w-md mx-auto">
                 {activeTab === "active"
-                  ? "You don’t have any active quests right now. Broadcast a task to get started."
-                  : `You don’t have any ${activeTab} quests yet.`}
+                  ? "You don't have any active quests right now. Broadcast a task to get started."
+                  : `You don't have any ${activeTab} quests yet.`}
               </p>
               {activeTab === "active" && (
-                <Link href="/post-quest" className="btn-primary">
+                <Link
+                  href="/post-quest"
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-95"
+                >
                   Post a Quest
                 </Link>
               )}

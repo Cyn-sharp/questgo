@@ -8,7 +8,9 @@
   --color-cream: #fbf8f0;
   --color-dark: #161414;
   --color-maroon: #7a1f32;
+  --color-maroon-light: #942940;
   --color-maroon-dark: #5f1727;
+  --color-maroon-deep: #380913;
   --color-gold: #c9a227;
   --color-gold-light: #8a6a1f;
   --color-parchment: #f6ecc8;
@@ -21,8 +23,9 @@
   --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-card: 0 2px 8px rgb(0 0 0 / 5%);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
+  --shadow-red-glow: 0 18px 45px rgba(95, 23, 39, 0.45);
 }
 
 /* =========================================================
@@ -35,12 +38,20 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Prevent horizontal bounce/scrolling on mobile */
+    overflow-x: hidden;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background-color: var(--color-cream);
+    overflow-x: hidden;
+    background: 
+      radial-gradient(circle at 10% 15%, rgba(186, 45, 73, 0.35) 0%, transparent 45%),
+      radial-gradient(circle at 90% 65%, rgba(201, 162, 39, 0.18) 0%, transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(122, 31, 50, 0.45) 0%, transparent 50%),
+      linear-gradient(160deg, #4f101d 0%, #7a1f32 35%, #5f1727 70%, #2f0710 100%);
+    background-attachment: fixed;
     color: var(--color-dark);
     @apply font-sans font-normal text-base leading-relaxed;
   }
@@ -58,6 +69,8 @@
   a {
     color: inherit;
     text-decoration: none;
+    /* Clean touch highlighting on iOS */
+    -webkit-tap-highlight-color: transparent;
   }
 
   button, input, select, textarea {
@@ -67,6 +80,7 @@
 
   button {
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
   button:disabled {
@@ -77,40 +91,50 @@
   img, svg {
     display: block;
     max-width: 100%;
+    height: auto;
+  }
+
+  ::selection {
+    background-color: var(--color-gold);
+    color: #161414;
   }
 }
 
 /* =========================================================
-   SHARED CLASS HELPERS (optional; ui/ components preferred)
+   SHARED CLASS HELPERS
    ========================================================= */
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
-      font-semibold text-[15px] text-white transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5
+      font-semibold text-[15px] text-white transition-all duration-200 min-h-[48px] active:scale-95;
     background-color: var(--color-maroon);
   }
 
-  .btn-primary:hover {
-    background-color: var(--color-maroon-dark);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-glow);
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background-color: var(--color-maroon-dark);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-glow);
+    }
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3
-      font-semibold text-[15px] transition-all duration-200 bg-white;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5
+      font-semibold text-[15px] transition-all duration-200 bg-white min-h-[48px] active:scale-95;
     color: var(--color-maroon);
     border: 1.5px solid var(--color-maroon);
   }
 
-  .btn-outline:hover {
-    background-color: var(--color-cream);
-    transform: translateY(-2px);
+  @media (hover: hover) {
+    .btn-outline:hover {
+      background-color: var(--color-cream);
+      transform: translateY(-2px);
+    }
   }
 
   .card-surface {
-    @apply rounded-2xl border bg-white;
+    @apply rounded-2xl border bg-white/95 backdrop-blur-sm;
     border-color: var(--color-border);
     box-shadow: var(--shadow-card);
   }
@@ -126,7 +150,7 @@
     width: 100%;
     max-width: 1440px;
     margin-inline: auto;
-    padding-inline: 1.5rem;
+    padding-inline: 1rem;
   }
 
   @media (min-width: 768px) {
@@ -141,13 +165,13 @@
    ========================================================= */
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(24px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+  50% { transform: translateY(-8px); }
 }
 
 @keyframes soft-pulse {
@@ -155,28 +179,45 @@
   50% { opacity: 0.55; }
 }
 
+@keyframes form-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
 .animate-fade-up {
-  animation: fade-up 0.7s ease-out both;
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-float {
-  animation: float 5s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
 
 .animate-soft-pulse {
   animation: soft-pulse 2s ease-in-out infinite;
 }
 
+.animate-form-shake {
+  animation: form-shake 0.45s ease-in-out;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+
 /* =========================================================
    UX INTERACTIONS — shine, lift, scroll-reveal
    ========================================================= */
 
-/* Soft gold shine */
+/* Soft gold shine - desktop hover only */
 .shine-wrap {
   position: relative;
   overflow: hidden;
   isolation: isolate;
 }
+
 .shine-wrap::after {
   content: "";
   position: absolute;
@@ -187,66 +228,89 @@
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(201, 162, 39, 0.35) 50%,
+    rgba(201, 162, 39, 0.25) 50%,
     transparent 70%
   );
   transform: translateX(-140%) skewX(-18deg);
   pointer-events: none;
   z-index: 2;
 }
-.shine-wrap:hover::after {
-  animation: shine-sweep 1.45s ease forwards;
+
+@media (hover: hover) {
+  .shine-wrap:hover::after {
+    animation: shine-sweep 1.45s ease forwards;
+  }
 }
+
 @keyframes shine-sweep {
   0% { transform: translateX(-140%) skewX(-18deg); }
   100% { transform: translateX(280%) skewX(-18deg); }
 }
 
-/* Slow hover lift/zoom */
+/* Card hover lift - desktop hover only */
 .card-interactive {
   transition:
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.55s ease,
-    border-color 0.55s ease,
-    box-shadow 0.55s ease,
-    color 0.55s ease;
-}
-.card-interactive:hover {
-  transform: translateY(-6px) scale(1.025);
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    color 0.4s ease;
 }
 
-/* Scroll reveal */
+@media (hover: hover) {
+  .card-interactive:hover {
+    transform: translateY(-4px) scale(1.015);
+  }
+}
+
+/* Scroll reveal classes */
 .reveal {
   opacity: 0;
-  transform: translateY(28px);
+  transform: translateY(20px);
   transition:
-    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
+
 .reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
 }
+
 .reveal-scale {
   opacity: 0;
-  transform: translateY(18px) scale(0.96);
+  transform: translateY(12px) scale(0.98);
   transition:
-    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   transition-delay: var(--reveal-delay, 0ms);
 }
+
 .reveal-scale.is-visible {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
 
-/* Button gentle lift helper */
 .btn-lift {
   @apply transition-all duration-300;
 }
-.btn-lift:hover {
-  transform: translateY(-2px);
+
+@media (hover: hover) {
+  .btn-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Form autofill styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fbf8f0 inset !important;
+  -webkit-text-fill-color: #161414 !important;
+  caret-color: #7a1f32 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Accessibility — reduced motion */
@@ -263,116 +327,58 @@
   }
 }
 
-
-.delay-100 { animation-delay: 0.1s; }
-.delay-200 { animation-delay: 0.2s; }
-.delay-300 { animation-delay: 0.3s; }
-
-/* ===== SLOWER HOVER + SHINE ===== */
-
-.shine-wrap {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
-.shine-wrap::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 45%;
-  height: 100%;
-  background: linear-gradient(
-    105deg,
-    transparent 30%,
-    rgba(201, 162, 39, 0.35) 50%,
-    transparent 70%
+@keyframes marquee-ltr {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-rtl {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.scroll-ltr {
+  display: flex;
+  width: max-content;
+  animation: marquee-ltr 35s linear infinite;
+}
+
+.scroll-rtl {
+  display: flex;
+  width: max-content;
+  animation: marquee-rtl 35s linear infinite;
+}
+
+/* Pause animations smoothly when hovering */
+@media (hover: hover) {
+  .marquee-wrapper:hover .scroll-ltr,
+  .marquee-wrapper:hover .scroll-rtl {
+    animation-play-state: paused;
+  }
+}
+
+/* Linear alpha mask to fade edges into the background gradients */
+.marquee-mask {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 12%,
+    black 88%,
+    transparent 100%
   );
-  transform: translateX(-140%) skewX(-18deg);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* slower shine */
-.shine-wrap:hover::after {
-  animation: shine-sweep 1.45s ease forwards;
-}
-
-@keyframes shine-sweep {
-  0% {
-    transform: translateX(-140%) skewX(-18deg);
-  }
-  100% {
-    transform: translateX(280%) skewX(-18deg);
-  }
-}
-
-/* reusable slow card hover motion */
-.card-interactive {
-  transition:
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 0.55s ease,
-    border-color 0.55s ease,
-    box-shadow 0.55s ease,
-    color 0.55s ease;
-}
-
-.card-interactive:hover {
-  transform: translateY(-6px) scale(1.025);
-}
-
-/* scroll reveal base */
-.reveal {
-  opacity: 0;
-  transform: translateY(28px);
-  transition:
-    opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.reveal-scale {
-  opacity: 0;
-  transform: translateY(18px) scale(0.96);
-  transition:
-    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-.reveal-scale.is-visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-@keyframes form-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
-}
-.animate-form-shake {
-  animation: form-shake 0.45s ease-in-out;
-}
-
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px #fbf8f0 inset !important;
-  -webkit-text-fill-color: #161414 !important;
-  caret-color: #7a1f32 !important;
-  transition: background-color 5000s ease-in-out 0s;
-}
-
-::selection {
-  background-color: #7a1f32;
-  color: #ffffff;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 12%,
+    black 88%,
+    transparent 100%
+  );
 }

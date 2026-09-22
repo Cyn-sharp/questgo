@@ -6,22 +6,26 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, CheckCircle2 } from "lucide-react";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
+import { db } from "@/lib/auth/firebase";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
+// Changed anchors to /#path so they function correctly across all subroutes
 const marketingNavItems = [
   {
     label: "Home",
-    href: "#home",
+    href: "/#home",
     className: "font-semibold text-[15px] text-[#c9a227] hover:text-[#e6b93d] transition",
   },
   {
     label: "How It Works",
-    href: "#how-it-works",
+    href: "/#how-it-works",
     className: "font-medium text-[15px] text-white/90 hover:text-[#c9a227] transition",
   },
   {
     label: "Safety",
-    href: "#safety",
+    href: "/#safety",
     className: "font-medium text-[15px] text-white/90 hover:text-[#c9a227] transition",
   },
 ];
@@ -56,9 +60,9 @@ export const HeaderContainer = (): ReactElement => {
   }, [isMenuOpen]);
 
   return (
-    <header className="relative z-50 flex min-h-[72px] w-full flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
+    <header className="relative z-50 flex min-h-[72px] w-full flex-col items-start bg-[#161414] border-b border-white/10">
       <div className="flex min-h-[72px] w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-16 md:py-4">
-        <Link href="/" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
+        <Link href="/#home" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
           <Image
             src="/logo.png"
             alt="QuestGo logo"
@@ -81,24 +85,24 @@ export const HeaderContainer = (): ReactElement => {
           <ul className="inline-flex items-center gap-8">
             {marketingNavItems.map((item) => (
               <li key={item.label}>
-                <a href={item.href} className={item.className}>
+                <Link href={item.href} className={item.className}>
                   {item.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
         </nav>
 
-  <div className="inline-flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="inline-flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
             href="/login"
-            className="hidden items-center justify-center rounded-xl border-[1.5px] border-[#7a1f32] px-3 py-2 font-semibold text-xs text-white transition hover:bg-white/5 sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
+            className="hidden items-center justify-center rounded-xl border-[1.5px] border-white/20 px-3 py-2 font-semibold text-xs text-white transition hover:bg-white/10 sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
           >
             Log In
           </Link>
           <Link
             href="/register"
-            className="hidden items-center justify-center rounded-xl bg-[#7a1f32] px-3 py-2 font-semibold text-xs text-white shadow-[0px_8px_18px_#7a1f3226] transition hover:bg-[#661a2a] sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
+            className="hidden items-center justify-center rounded-xl bg-[#c9a227] px-3 py-2 font-bold text-xs text-[#161414] shadow-[0px_4px_18px_rgba(201,162,39,0.25)] transition hover:bg-[#b08b1e] sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
           >
             Register
           </Link>
@@ -128,26 +132,36 @@ export const HeaderContainer = (): ReactElement => {
             exit={{ opacity: 0, height: 0, y: -8 }}
             transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
             className="w-full overflow-hidden border-t border-white/10 bg-[#161414] px-4 pb-4 pt-2 sm:px-6 md:hidden"
-            onWheel={() => setIsMenuOpen(false)}
-            onTouchMove={() => setIsMenuOpen(false)}
           >
             <ul className="flex flex-col gap-1">
               {marketingNavItems.map((item) => (
                 <li key={item.label}>
-                  <a
+                  <Link
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
                     className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-[#c9a227]"
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
               <li className="mt-1 border-t border-white/10 pt-1 sm:hidden">
-                <a href="/login" onClick={() => setIsMenuOpen(false)} className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 hover:bg-white/10">Log In</a>
+                <Link 
+                  href="/login" 
+                  onClick={() => setIsMenuOpen(false)} 
+                  className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 hover:bg-white/10"
+                >
+                  Log In
+                </Link>
               </li>
               <li className="sm:hidden">
-                <a href="/register" onClick={() => setIsMenuOpen(false)} className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 hover:bg-white/10">Register</a>
+                <Link 
+                  href="/register" 
+                  onClick={() => setIsMenuOpen(false)} 
+                  className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 hover:bg-white/10"
+                >
+                  Register
+                </Link>
               </li>
             </ul>
           </motion.nav>
@@ -169,9 +183,37 @@ const dashboardNavItems = [
 
 export const Navbar = (): ReactElement => {
   const pathname = usePathname();
+  const { user: firebaseUser } = useAuth();
+  const [headerName, setHeaderName] = useState("QuestGo User");
+  const [headerAvatar, setHeaderAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      setHeaderName("QuestGo User");
+      setHeaderAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      return;
+    }
+
+    const userRef = doc(db, "users", firebaseUser.uid);
+    const unsubscribe = onSnapshot(
+      userRef,
+      (snapshot) => {
+        const data = snapshot.data();
+        setHeaderName(data?.fullName ?? firebaseUser.displayName ?? "QuestGo User");
+        setHeaderAvatar(data?.profilePhotoUrl ?? firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      },
+      (error) => {
+        console.error("Header profile snapshot failed:", error);
+        setHeaderName(firebaseUser.displayName ?? "QuestGo User");
+        setHeaderAvatar(firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+      }
+    );
+
+    return () => unsubscribe();
+  }, [firebaseUser]);
 
   return (
-    <header className="flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
+    <header className="hidden md:flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
       <div className="flex items-center justify-between px-6 md:px-16 py-4 w-full max-w-screen-2xl mx-auto">
         <Link href="/dashboard" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
           <Image
@@ -184,7 +226,7 @@ export const Navbar = (): ReactElement => {
           />
           <span className="inline-flex flex-col items-start gap-0.5">
             <span className="font-bold text-white text-xl tracking-tight leading-none">QuestGo</span>
-            <span className="font-medium text-white/70 text-[11px] tracking-[0.12em] uppercase leading-none">
+            <span className="font-medium text-white/77 text-[11px] tracking-[0.12em] uppercase leading-none">
               CIT-U Campus
             </span>
           </span>
@@ -234,15 +276,15 @@ export const Navbar = (): ReactElement => {
 
           <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition">
             <Image
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Dave"
+              src={headerAvatar}
               alt="User avatar"
               width={36}
               height={36}
-              className="rounded-full bg-white shrink-0"
+              className="rounded-full bg-white shrink-0 object-cover"
               unoptimized
             />
             <span className="text-white text-[14px] font-medium whitespace-nowrap">
-              Dave Alinson
+              {headerName}
             </span>
           </Link>
         </div>

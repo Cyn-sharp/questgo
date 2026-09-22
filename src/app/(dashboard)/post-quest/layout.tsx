@@ -1,20 +1,23 @@
 import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import { DashboardBottomNav } from "@/components/layout/DashboardBottomNav";
 
-export default function DashboardLayout({
+export default function PostQuestLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-transparent">
+      {/* Top Navbar (Desktop only) */}
       <Navbar /> 
       
-      <main className="flex-grow">
+      {/* Main Content Area */}
+      <main className="flex-grow pb-24 md:pb-8">
         {children}
       </main>
 
-      <Footer />
+      {/* Bottom Tabbar (Mobile only) */}
+      <DashboardBottomNav />
     </div>
   );
 }

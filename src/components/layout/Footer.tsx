@@ -2,15 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 
 const exploreLinks = [
-  { label: "About QuestGo", href: "/about" },
-  { label: "How It Works", href: "/how-it-works" },
-  { label: "Safety Center", href: "/safety" },
-  { label: "Contact Support", href: "/contact" },
+  { label: "About QuestGo", href: "/#home" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Safety Center", href: "/#safety" },
+  { label: "Contact Support", href: "mailto:support@cit.edu" }, // Opens email client instead of 404
 ];
 
 const legalLinks = [
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/#how-it-works" }, // Routed to main anchors to avoid 404s
+  { label: "Privacy Policy", href: "/#safety" },
 ];
 
 export const Footer = () => {
@@ -18,7 +18,7 @@ export const Footer = () => {
     <footer className="bg-[#161414] text-white">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12 px-6 md:px-16 py-12 md:py-16 max-w-screen-2xl mx-auto">
         <div className="flex flex-col gap-4 max-w-sm">
-          <Link href="/dashboard" className="inline-flex items-center gap-3">
+          <Link href="/#home" className="inline-flex items-center gap-3">
             <Image
               src="/logo.png"
               alt="QuestGo logo"

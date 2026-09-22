@@ -1,11 +1,37 @@
-export type QuestStatus = "open" | "accepted" | "completed" | "expired";
+export type QuestStatus =
+  | "available"
+  | "accepted"
+  | "in_progress"
+  | "completed"
+  | "expired"
+  | "cancelled";
 
-export type Quest = {
+export interface Quest {
   id: string;
+
   title: string;
   category: string;
-  rewardPhp: number;
+  description: string;
+
+  reward: number;
+
   location: string;
+  meetUpPoint: string;
+
+  preferredTime: string;
+  estimatedCompletionTime?: string;
+  neededBy?: string;
+
+  attachmentUrl?: string;
+
+  requesterId: string;
+  questRunnerId?: string;
+
   status: QuestStatus;
-  expiresAt: string;
-};
+
+  createdAt: unknown;
+  expiresAt: unknown;
+
+  acceptedAt?: unknown;
+  completedAt?: unknown;
+}
