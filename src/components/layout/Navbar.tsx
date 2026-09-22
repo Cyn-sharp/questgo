@@ -182,7 +182,7 @@ export const Navbar = (): ReactElement => {
   const pathname = usePathname();
 
   return (
-    <header className="flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
+    <header className="hidden md:flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
       <div className="flex items-center justify-between px-6 md:px-16 py-4 w-full max-w-screen-2xl mx-auto">
         <Link href="/dashboard" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
           <Image

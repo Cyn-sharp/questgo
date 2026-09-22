@@ -41,7 +41,7 @@ function ScrollReveal({
           observer.unobserve(el);
         }
       },
-      { threshold: 0.18, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
     );
 
     observer.observe(el);
@@ -128,17 +128,18 @@ function QuestCard({ quest }: { quest: Quest }) {
   return (
     <article
       className="
-        group shine-wrap card-interactive card-surface h-full p-6 flex flex-col
-        hover:bg-[#7a1f32] hover:border-[#7a1f32]
-        hover:shadow-[0_18px_44px_rgba(122,31,50,0.22)]
+        group shine-wrap card-interactive h-full rounded-2xl border border-white/15
+        bg-white/95 backdrop-blur-md p-5 sm:p-6 shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col
+        hover:shadow-[0_18px_44px_rgba(0,0,0,0.35)]
+        hover:bg-[#5f1727] hover:border-[#c9a227]/50
       "
     >
       <div className="relative z-[1] flex flex-col h-full">
         {/* Header */}
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
           <span
             className="
-              bg-[#fdf0f2] text-[#7a1f32] text-[11px] font-bold px-2.5 py-1 rounded-md
+              bg-[#fdf0f2] text-[#7a1f32] text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-md
               tracking-wide uppercase transition-colors duration-500
               group-hover:bg-white/15 group-hover:text-[#c9a227]
             "
@@ -147,7 +148,7 @@ function QuestCard({ quest }: { quest: Quest }) {
           </span>
           <div
             className="
-              flex items-center text-[#7a1f32] text-sm font-semibold gap-1.5
+              flex items-center text-[#7a1f32] text-xs sm:text-sm font-semibold gap-1.5
               transition-colors duration-500 group-hover:text-[#c9a227]
             "
           >
@@ -157,26 +158,26 @@ function QuestCard({ quest }: { quest: Quest }) {
         </div>
 
         {/* Title & Description */}
-        <h3 className="text-lg font-bold text-[#161414] mb-1.5 transition-colors duration-500 group-hover:text-white">
+        <h3 className="text-base sm:text-lg font-bold text-[#161414] mb-1.5 transition-colors duration-500 group-hover:text-white">
           {quest.title}
         </h3>
-        <p className="text-sm text-[#4a4340] leading-relaxed mb-4 line-clamp-2 transition-colors duration-500 group-hover:text-white/75">
+        <p className="text-xs sm:text-sm text-[#4a4340] leading-relaxed mb-4 line-clamp-2 transition-colors duration-500 group-hover:text-white/75">
           {quest.description}
         </p>
 
         {/* Price */}
-        <div className="flex items-end gap-2 mb-5">
-          <span className="text-3xl font-extrabold text-[#c9a227]">₱{quest.price}</span>
-          <span className="text-xs text-[#4a4340] mb-1 font-medium transition-colors duration-500 group-hover:text-white/70">
+        <div className="flex items-end gap-2 mb-4 sm:mb-5">
+          <span className="text-2xl sm:text-3xl font-extrabold text-[#c9a227]">₱{quest.price}</span>
+          <span className="text-[11px] sm:text-xs text-[#4a4340] mb-1 font-medium transition-colors duration-500 group-hover:text-white/70">
             Cash on Delivery
           </span>
         </div>
 
         {/* Location & Details */}
-        <div className="flex flex-col gap-2 text-xs text-[#4a4340] mb-5 flex-grow transition-colors duration-500 group-hover:text-white/80">
+        <div className="flex flex-col gap-2 text-[11px] sm:text-xs text-[#4a4340] mb-4 sm:mb-5 flex-grow transition-colors duration-500 group-hover:text-white/80">
           <div className="flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 shrink-0 text-[#d8d3cc] group-hover:text-[#c9a227] transition-colors duration-500" />
-            {quest.location}
+            <span className="truncate">{quest.location}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5">
@@ -188,23 +189,23 @@ function QuestCard({ quest }: { quest: Quest }) {
               {quest.time}
             </div>
           </div>
-          <div className="flex items-center justify-end gap-1 text-[#161414] font-bold text-sm pt-1 transition-colors duration-500 group-hover:text-white">
+          <div className="flex items-center justify-end gap-1 text-[#161414] font-bold text-xs sm:text-sm pt-1 transition-colors duration-500 group-hover:text-white">
             <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
             {quest.rating}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#e5e0d8] transition-colors duration-500 group-hover:border-white/20">
-          <span className="badge-gold gap-1 transition-colors duration-500 group-hover:bg-white/15 group-hover:text-[#c9a227]">
+        <div className="flex items-center justify-between gap-2 mt-auto pt-3 sm:pt-4 border-t border-[#e5e0d8] transition-colors duration-500 group-hover:border-white/20">
+          <span className="badge-gold gap-1 text-[9px] sm:text-[10px] transition-colors duration-500 group-hover:bg-white/15 group-hover:text-[#c9a227]">
             <CheckCircle2 className="w-3 h-3" />
             CIT-U VERIFIED
           </span>
           <Link
             href={`/quests/viewquest?id=${encodeURIComponent(quest.id)}`}
             className="
-              bg-[#7a1f32] text-white text-xs font-semibold px-4 py-2 rounded-lg
-              transition-all duration-300
+              bg-[#7a1f32] text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-lg
+              transition-all duration-300 active:scale-95
               group-hover:bg-white group-hover:text-[#7a1f32]
             "
           >
@@ -286,15 +287,15 @@ export function QuestsMarketplace() {
   }, [query, activeCategory, quests]);
 
   return (
-    <div className="bg-[#fbf8f0] min-h-full">
-      <div className="page-container py-10 lg:py-12">
+    <div className="bg-transparent min-h-full">
+      <div className="page-container py-6 sm:py-10 lg:py-12">
         {/* Title Header */}
         <ScrollReveal>
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#161414] mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-2">
               Campus Quest Marketplace
             </h1>
-            <p className="text-[#4a4340] text-base">
+            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
               Browse and claim quick gigs posted by other Wildcat students
             </p>
           </div>
@@ -302,7 +303,7 @@ export function QuestsMarketplace() {
 
         {/* Search & Category Filter Card */}
         <ScrollReveal delayMs={80}>
-          <div className="card-surface p-4 sm:p-5 mb-8">
+          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-4 sm:p-5 mb-6 sm:mb-8 shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
             {/* Search Input */}
             <div className="relative mb-4">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4a4340]/60" />
@@ -330,7 +331,7 @@ export function QuestsMarketplace() {
                     type="button"
                     onClick={() => setActiveCategory(cat)}
                     className={`
-                      px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300
+                      px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 active:scale-95
                       ${
                         isActive
                           ? "bg-[#7a1f32] text-white shadow-[0_8px_18px_rgba(122,31,50,0.25)]"
@@ -348,25 +349,29 @@ export function QuestsMarketplace() {
 
         {/* Quest Grid */}
         {isLoading ? (
-          <div className="card-surface p-10 text-center">
-            <p className="text-lg font-bold text-[#161414]">Loading quests...</p>
+          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+            <p className="text-base sm:text-lg font-bold text-[#161414]">Loading quests...</p>
           </div>
         ) : hasError ? (
-          <div className="card-surface p-10 text-center">
-            <p className="text-lg font-bold text-[#161414] mb-2">
+          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+            <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">
               Unable to load quests right now.
             </p>
             <p className="text-sm text-[#4a4340] mb-5">Please try again.</p>
-            <button type="button" onClick={() => void loadQuests()} className="btn-primary">
+            <button
+              type="button"
+              onClick={() => void loadQuests()}
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
+            >
               Try again
             </button>
           </div>
         ) : filteredQuests.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredQuests.map((quest, i) => (
               <ScrollReveal
                 key={quest.id}
-                delayMs={i * 80}
+                delayMs={i * 65}
                 variant="scale"
                 className="h-full"
               >
@@ -376,8 +381,8 @@ export function QuestsMarketplace() {
           </div>
         ) : (
           <ScrollReveal>
-            <div className="card-surface p-10 text-center">
-              <p className="text-lg font-bold text-[#161414] mb-2">
+            <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+              <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">
                 No quests available right now.
               </p>
               <p className="text-sm text-[#4a4340] mb-5">
@@ -389,7 +394,7 @@ export function QuestsMarketplace() {
                   setQuery("");
                   setActiveCategory("All");
                 }}
-                className="btn-primary"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
               >
                 Clear filters
               </button>

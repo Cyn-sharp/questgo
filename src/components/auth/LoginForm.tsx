@@ -222,15 +222,15 @@ export function LoginForm() {
       className="flex w-full min-w-0 items-center justify-center bg-cream p-4 sm:p-8 lg:p-16"
       aria-labelledby="login-heading"
     >
-      <div className="flex w-full max-w-[480px] flex-col gap-8">
+      <div className="flex w-full max-w-[480px] flex-col gap-6 sm:gap-8">
         <header className="flex flex-col gap-2">
           <h1
             id="login-heading"
-            className="font-outfit text-2xl font-extrabold leading-tight text-maroon sm:text-[32px]"
+            className="font-outfit text-[26px] font-extrabold leading-tight text-maroon sm:text-[32px]"
           >
             Log in to QuestGo
           </h1>
-          <p className="font-inter text-[15px] text-muted">
+          <p className="font-inter text-sm text-muted sm:text-[15px]">
             Continue helping. Continue earning.
           </p>
         </header>
@@ -277,6 +277,7 @@ export function LoginForm() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                inputMode="email"
                 placeholder="studentname@cit.edu or Gmail"
                 value={email}
                 onChange={(e) => {
@@ -326,7 +327,7 @@ export function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="mr-3.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e7e3] bg-white text-muted hover:text-dark focus:outline-none focus:ring-2 focus:ring-[#7a1f3233] transition-colors"
+                  className="mr-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#e8e7e3] bg-white text-muted hover:text-dark active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#7a1f3233] transition-all"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   aria-pressed={showPassword}
                 >
@@ -343,14 +344,14 @@ export function LoginForm() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-4">
-            <label className="inline-flex items-center gap-2 font-inter text-[13px] text-muted">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 font-inter text-[13px] text-muted cursor-pointer">
               <input
                 name="remember-me"
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 accent-maroon"
+                className="h-4 w-4 accent-maroon cursor-pointer"
               />
               Remember me
             </label>
@@ -365,7 +366,7 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-12 rounded-xl bg-maroon px-6 py-3 font-inter text-[15px] font-semibold text-white shadow-[0_8px_18px_#7a1f3226] transition-opacity hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-maroon focus:ring-offset-2 disabled:opacity-60"
+            className="h-12 rounded-xl bg-maroon px-6 py-3 font-inter text-[15px] font-semibold text-white shadow-[0_8px_18px_#7a1f3226] transition-all hover:opacity-95 hover:shadow-[0_12px_24px_#7a1f3240] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-maroon focus:ring-offset-2 disabled:opacity-60 disabled:active:scale-100"
           >
             {isSubmitting ? "LOGGING IN..." : "LOG IN"}
           </button>
@@ -375,7 +376,7 @@ export function LoginForm() {
               type="button"
               onClick={handleResendVerification}
               disabled={isResendingVerification}
-              className="h-10 rounded-xl border border-maroon px-4 font-inter text-[13px] font-semibold text-maroon transition-colors hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-11 rounded-xl border border-maroon px-4 font-inter text-[13px] font-semibold text-maroon transition-colors hover:bg-cream active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isResendingVerification ? "SENDING VERIFICATION EMAIL..." : "RESEND VERIFICATION EMAIL"}
             </button>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import QuestCard from "./QuestCard";
 import {
   getRecentAvailableQuests,
@@ -10,7 +11,6 @@ import {
 } from "@/lib/db/quests";
 import type { Quest as FirestoreQuest } from "@/types/quest";
 
-// Shape your existing QuestCard expects — adjust if different
 type DisplayQuest = {
   id: string;
   category: string;
@@ -68,52 +68,60 @@ export default function AvailableQuests() {
 
     void load();
 
-    // Refresh countdowns every 30s
     const interval = window.setInterval(() => {
-      setQuests((current) =>
-        current.map((q) => {
-          // Re-derive time from a stored expiry — since we only kept the string,
-          // simplest is to reload on visibility change or accept a small drift.
-          return q;
-        }),
-      );
+      setQuests((current) => current.map((q) => q));
     }, 30_000);
 
     return () => window.clearInterval(interval);
   }, []);
 
   return (
-    <section className="bg-[#fbf8f0] py-12">
-      <div className="page-container">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-[#161414] mb-1">
-              Available Quests Near You
-            </h2>
-            <p className="text-sm text-[#4a4340]">
-              Active quests on campus waiting for a runner
-            </p>
-          </div>
+    <section className="bg-transparent">
+      <div className="page-container py-10 sm:py-12 lg:py-14">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 sm:mb-8">
+          <ScrollReveal>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
+                Available Quests Near You
+              </h2>
+              <p className="text-xs sm:text-sm text-[#f6ecc8]/85">
+                Active quests on campus waiting for a runner
+              </p>
+            </div>
+          </ScrollReveal>
 
-          <Link
-            href="/quests"
-            className="text-[#7a1f32] font-semibold text-sm inline-flex items-center gap-1 hover:underline shrink-0"
-          >
-            See All Quests
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <ScrollReveal delayMs={100}>
+            <Link
+              href="/quests"
+              className="text-[#c9a227] font-semibold text-sm inline-flex items-center gap-1 hover:underline shrink-0 transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
+            >
+              See All Quests
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </ScrollReveal>
         </div>
 
         {isLoading ? (
-          <div className="text-center py-10 text-[#4a4340]">Loading quests...</div>
+          <div className="text-center py-16 text-[#f6ecc8]/70">
+            Loading quests...
+          </div>
         ) : quests.length === 0 ? (
-          <div className="text-center py-10 text-[#4a4340]">
-            No available quests right now. Check back soon!
+          <div className="text-center py-16 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
+            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
+              No available quests right now. Check back soon!
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quests.map((quest) => (
-              <QuestCard key={quest.id} {...quest} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {quests.map((quest, i) => (
+              <ScrollReveal
+                key={quest.id}
+                delayMs={i * 100}
+                variant="scale"
+                className="h-full"
+              >
+                <QuestCard {...quest} />
+              </ScrollReveal>
             ))}
           </div>
         )}

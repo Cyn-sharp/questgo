@@ -339,7 +339,7 @@ export const HeroSection = () => {
                 </span>
               </div>
               <p className="mt-0.5 text-[11px] font-bold leading-tight text-[#161414]">
-                Grocery run — Talamban
+                Printing - GLE - BUILDING
               </p>
             </FloatingCard>
           </div>
