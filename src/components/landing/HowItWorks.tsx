@@ -31,7 +31,7 @@ const steps = [
 ];
 
 export const HowItWorks = () => {
-  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
+  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>(1.5);
 
   return (
     <section
@@ -39,22 +39,22 @@ export const HowItWorks = () => {
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       id="how-it-works"
-      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-white border-b border-solid border-[#e5e0d9]"
+      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-transparent border-b border-transparent"
       aria-labelledby="how-it-works-heading"
     >
       {/* Header reveal */}
       <ScrollReveal className="w-full">
-        <header 
+        <header
           className="flex flex-col items-center gap-2 self-stretch w-full text-center transition-transform duration-200 ease-out"
-          style={{ transform: `translate3d(${x * 4}px, ${y * 4}px, 0)` }}
+          style={{ transform: `translate3d(${x * 6}px, ${y * 6}px, 0)` }}
         >
           <h2
             id="how-it-works-heading"
-            className="font-bold text-3xl md:text-[32px] tracking-tight text-[#161414]"
+            className="font-bold text-3xl md:text-[32px] tracking-tight text-white"
           >
             How It Works
           </h2>
-          <p className="font-normal text-base text-[#4a4340] max-w-2xl">
+          <p className="font-normal text-base text-[#f6ecc8]/85 max-w-2xl">
             Four simple steps to conquer your goals on campus
           </p>
         </header>
@@ -71,16 +71,15 @@ export const HowItWorks = () => {
           >
             <li
               style={{
-                transform: `translate3d(${x * (index + 1) * 3}px, ${y * (index + 1) * 3}px, 0)`,
+                transform: `translate3d(${x * (index + 1) * 4}px, ${y * (index + 1) * 4}px, 0)`,
               }}
               className="
                 group shine-wrap card-interactive
-                flex h-full flex-col items-start gap-3 p-5
-                rounded-2xl border border-solid border-[#e5e0d9] bg-[#fbf8f0]
-                shadow-[0px_2px_8px_#0000000d]
-                transition-transform duration-200 ease-out
-                hover:bg-[#7a1f32] hover:border-[#7a1f32]
-                hover:shadow-[0_18px_44px_rgba(122,31,50,0.28)]
+                flex h-full flex-col items-start gap-3 p-6
+                rounded-2xl border border-white/15 bg-white/95 backdrop-blur-md
+                shadow-[0_12px_32px_rgba(0,0,0,0.25)]
+                hover:bg-[#5f1727] hover:border-[#c9a227]/50
+                hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)]
               "
             >
               {/* Number */}
@@ -92,9 +91,6 @@ export const HowItWorks = () => {
                   group-hover:text-[#f6ecc8]
                   group-hover:scale-110
                 "
-                style={{
-                  transform: `translate3d(${x * 6}px, ${y * 6}px, 0)`,
-                }}
                 aria-hidden="true"
               >
                 {step.number}
@@ -118,7 +114,7 @@ export const HowItWorks = () => {
                   relative z-[1]
                   self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
                   transition-colors duration-500
-                  group-hover:text-white/85
+                  group-hover:text-white/90
                 "
               >
                 {step.description}

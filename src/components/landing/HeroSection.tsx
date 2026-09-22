@@ -9,9 +9,7 @@ import { QuestCard } from "./QuestCard";
  * its resting spot (and resumes floating) on release.
  *
  * Each transform lives on its own layer so they never overwrite one
- * another (a single CSS `animation` replaces the whole `transform`
- * property while it runs, which is why a baked-in rotate would
- * otherwise disappear the moment the float animation kicked in):
+ * another:
  *   drag layer   → translate from pointer drag (JS, spring-back)
  *   tilt layer   → perspective + rotateX/rotateY from mouse position,
  *                  plus the card's resting rotate and a small parallax shift
@@ -107,13 +105,14 @@ const FloatingCard = ({
           position: relative;
           overflow: hidden;
           isolation: isolate;
-          background: rgba(255, 255, 255, 0.5);
+          /* Slightly increased opacity for pristine readability of card contents against the dark background */
+          background: rgba(255, 255, 255, 0.88);
           backdrop-filter: blur(14px) saturate(180%);
           -webkit-backdrop-filter: blur(14px) saturate(180%);
           border: 1px solid rgba(255, 255, 255, 0.7);
           box-shadow:
-            0 10px 26px -12px rgba(22, 20, 20, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            0 10px 26px -12px rgba(22, 20, 20, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
         .glass-shine::after {
           content: "";
@@ -125,7 +124,7 @@ const FloatingCard = ({
           background: linear-gradient(
             105deg,
             transparent 20%,
-            rgba(255, 255, 255, 0.85) 50%,
+            rgba(255, 255, 255, 0.95) 50%,
             transparent 80%
           );
           transform: translateX(-160%) skewX(-18deg);
@@ -186,7 +185,7 @@ export const HeroSection = () => {
       ref={sectionRef}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      className="relative w-full bg-white px-6 md:px-16 py-16 md:py-24 overflow-hidden"
+      className="relative w-full bg-transparent px-6 md:px-16 py-16 md:py-24 overflow-hidden"
     >
       {/* Floating particles */}
       <div className="particles hidden md:block" aria-hidden="true">
@@ -201,17 +200,18 @@ export const HeroSection = () => {
         <div
           className="flex flex-col items-start gap-6 max-w-xl"
           style={{
-            transform: `translate(${mouse.x * 8}px, ${mouse.y * 6}px)`,
+            transform: `translate3d(${mouse.x * 12}px, ${mouse.y * 10}px, 0)`,
             transition: "transform 0.25s ease-out",
           }}
         >
-          <div className="animate-fade-up inline-flex items-center gap-2 bg-[#faf4e6] px-4 py-1.5 rounded-full">
+          {/* Subtitle pill — Styled to integrate beautifully with the dark red background */}
+          <div className="animate-fade-up inline-flex items-center gap-2 bg-white/10 border border-white/10 px-4 py-1.5 rounded-full">
             <svg
               width="14"
               height="14"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#7a1f32"
+              stroke="#c9a227"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -219,26 +219,29 @@ export const HeroSection = () => {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            <span className="font-semibold text-[11px] tracking-[0.08em] uppercase text-[#7a1f32]">
+            <span className="font-semibold text-[11px] tracking-[0.08em] uppercase text-[#f6ecc8]">
               Exclusive to verified CIT-U students
             </span>
           </div>
 
-          <h1 className="animate-fade-up delay-100 font-extrabold text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight">
-            <span className="text-[#7a1f32]">Turn Tasks Into </span>
+          {/* Main Heading — White and Gold for maximum punch against deep maroon */}
+          <h1 className="animate-fade-up delay-100 font-extrabold text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight text-white">
+            <span>Turn Tasks Into </span>
             <span className="text-[#c9a227]">Opportunities</span>
           </h1>
 
-          <p className="animate-fade-up delay-200 font-normal text-base md:text-lg leading-relaxed text-[#4a4340] max-w-md">
+          {/* Description Paragraph — High contrast light parchment/cream */}
+          <p className="animate-fade-up delay-200 font-normal text-base md:text-lg leading-relaxed text-[#fbf8f0]/85 max-w-md">
             Need a quick favor? Post a Quest. Want to earn extra cash? Complete
             one. QuestGo connects CIT-U students who need help with everyday
             tasks with verified students who are ready to help.
           </p>
 
+          {/* Call-to-actions — Replaced dark maroon button with high contrast buttons */}
           <div className="animate-fade-up delay-300 flex flex-wrap items-center gap-4 mt-2">
             <a
               href="/login"
-              className="btn-glow inline-flex items-center gap-2 bg-[#7a1f32] hover:bg-[#661a2a] text-white px-6 py-3 rounded-xl font-semibold text-[15px]"
+              className="btn-glow inline-flex items-center gap-2 bg-[#c9a227] hover:bg-[#b08b1e] text-[#161414] px-6 py-3 rounded-xl font-bold text-[15px] shadow-[0_4px_20px_rgba(201,162,39,0.3)] hover:shadow-[0_6px_24px_rgba(201,162,39,0.55)] transition-all duration-200 hover:-translate-y-0.5"
             >
               Find a Quest
               <svg
@@ -258,16 +261,16 @@ export const HeroSection = () => {
             </a>
             <a
               href="/login"
-              className="inline-flex items-center border-[1.5px] border-solid border-[#7a1f32] text-[#7a1f32] px-6 py-3 rounded-xl hover:bg-[#fff0f0] hover:-translate-y-0.5 transition-all duration-200 font-semibold text-[15px]"
+              className="inline-flex items-center border-2 border-solid border-white/20 text-white px-6 py-3 rounded-xl hover:bg-white/10 hover:border-[#c9a227] hover:-translate-y-0.5 transition-all duration-200 font-semibold text-[15px]"
             >
               Post a Quest
             </a>
           </div>
         </div>
 
-        {/* Stage for the floating card cluster. Extra padding gives the
-            cards room to bob and be nudged around without clipping. */}
+        {/* Stage for floating cards cluster */}
         <div className="relative flex justify-center md:justify-end py-10 md:py-16 px-4 md:px-8">
+          
           {/* Reward payout — top-left */}
           <div className="animate-fade-up delay-200 absolute left-0 top-0 md:left-2 md:top-2 z-10">
             <FloatingCard
@@ -280,24 +283,21 @@ export const HeroSection = () => {
               depth={0.7}
             >
               <p
-                className="text-[10px] font-semibold tracking-[0.06em] uppercase"
-                style={{ color: "var(--color-gold-light)" }}
+                className="text-[10px] font-bold tracking-[0.06em] uppercase text-[#8a6a1f]"
               >
                 Quest reward
               </p>
               <p
-                className="mt-1 font-extrabold text-xl"
-                style={{ color: "var(--color-maroon)" }}
+                className="mt-1 font-extrabold text-xl text-[#7a1f32]"
               >
                 ₱250
                 <span
-                  className="text-sm font-semibold"
-                  style={{ color: "var(--color-muted)" }}
+                  className="text-sm font-semibold text-[#4a4340]"
                 >
                   .00
                 </span>
               </p>
-              <p className="mt-0.5 text-xs" style={{ color: "var(--color-muted)" }}>
+              <p className="mt-0.5 text-xs text-[#4a4340] font-medium">
                 Print &amp; deliver docs
               </p>
             </FloatingCard>
@@ -316,33 +316,27 @@ export const HeroSection = () => {
             >
               <div className="flex items-center gap-2">
                 <div
-                  className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold"
-                  style={{
-                    backgroundColor: "rgba(246, 236, 200, 0.75)",
-                    color: "var(--color-maroon)",
-                  }}
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold bg-[#7a1f32]/10 text-[#7a1f32]"
                 >
                   MJ
                 </div>
                 <div>
                   <p
-                    className="text-xs font-semibold"
-                    style={{ color: "var(--color-muted)" }}
+                    className="text-xs font-bold text-[#161414]"
                   >
                     Miguel J.
                   </p>
-                  <p className="text-[10px]" style={{ color: "var(--color-gold-light)" }}>
+                  <p className="text-[10px] font-semibold text-[#8a6a1f]">
                     BS Computer Sci.
                   </p>
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-1">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--color-gold)">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#c9a227">
                   <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 6.9L12 17.3 5.7 20.8l1.7-6.9L2 9.2l7.1-.6z" />
                 </svg>
                 <span
-                  className="text-[11px] font-semibold"
-                  style={{ color: "var(--color-muted)" }}
+                  className="text-[11px] font-bold text-[#4a4340]"
                 >
                   4.9 · 32 quests
                 </span>
@@ -376,13 +370,12 @@ export const HeroSection = () => {
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </div>
-                <span className="text-[10px] font-semibold tracking-[0.04em] uppercase text-[#1f7a4c]">
+                <span className="text-[10px] font-extrabold tracking-[0.04em] uppercase text-[#1f7a4c]">
                   Completed
                 </span>
               </div>
               <p
-                className="mt-1 text-xs font-semibold leading-snug"
-                style={{ color: "var(--color-muted)" }}
+                className="mt-1 text-xs font-bold leading-snug text-[#161414]"
               >
                 Grocery run — Talamban
               </p>
@@ -393,9 +386,9 @@ export const HeroSection = () => {
           <div
             className="relative z-20"
             style={{
-              transform: `perspective(900px) rotateX(${-mouse.y * 4}deg) rotateY(${
-                mouse.x * 4
-              }deg) translate(${mouse.x * 6}px, ${mouse.y * 6}px)`,
+              transform: `perspective(900px) rotateX(${-mouse.y * 6}deg) rotateY(${
+                mouse.x * 6
+              }deg) translate3d(${mouse.x * 12}px, ${mouse.y * 12}px, 0)`,
               transition: "transform 0.25s ease-out",
             }}
           >

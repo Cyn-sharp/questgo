@@ -41,7 +41,7 @@ const safetyChecks = [
 ];
 
 export const SafetyChecklist = () => {
-  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
+  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>(1.5);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const activeIndex = hoveredIndex ?? selectedIndex;
@@ -53,26 +53,26 @@ export const SafetyChecklist = () => {
       onMouseLeave={onMouseLeave}
       id="safety"
       aria-labelledby="safety-checklist-title"
-      className="relative flex flex-col items-start gap-8 border-b border-[#e5e0d9] bg-white px-6 py-16 md:px-16"
+      className="relative flex flex-col items-start gap-8 border-b border-transparent bg-transparent px-6 py-16 md:px-16"
     >
       {/* Header reveal */}
       <ScrollReveal className="w-full">
         <header
           className="relative flex w-full flex-col items-center gap-2 text-center transition-transform duration-200 ease-out"
-          style={{ transform: `translate3d(${x * 4}px, ${y * 4}px, 0)` }}
+          style={{ transform: `translate3d(${x * 6}px, ${y * 6}px, 0)` }}
         >
-          <h2 id="safety-checklist-title" className="font-bold text-3xl tracking-tight text-[#161414] md:text-[32px]">
+          <h2 id="safety-checklist-title" className="font-bold text-3xl tracking-tight text-white md:text-[32px]">
             Campus Safety First
           </h2>
-          <p className="font-normal text-base text-[#4a4340]">Multiple layers of verification and transparency</p>
+          <p className="font-normal text-base text-[#f6ecc8]/85">Multiple layers of verification and transparency</p>
         </header>
       </ScrollReveal>
 
-      {/* Checklist items reveal (staggered) */}
+      {/* Checklist items reveal */}
       <ul
         aria-label="Campus safety protections"
         className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 transition-transform duration-200 ease-out list-none m-0 p-0"
-        style={{ transform: `translate3d(${x * 2}px, ${y * 2}px, 0)` }}
+        style={{ transform: `translate3d(${x * 3}px, ${y * 3}px, 0)` }}
       >
         {safetyChecks.map((safetyCheck, index) => {
           const isActive = activeIndex === index;
@@ -105,7 +105,11 @@ export const SafetyChecklist = () => {
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.985 }}
-                  className={`group relative flex min-h-[78px] w-full items-center gap-3 overflow-hidden rounded-xl border bg-[#fdfcf8] px-4 py-3.5 text-left transition-[box-shadow,border-color,background-color] duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a1f32] ${isActive ? "border-[#7a1f32] bg-white shadow-[0_20px_38px_#7a1f3233]" : "border-[#e5e0d9] hover:border-[#8a6a1f] hover:bg-[#fbf8f0] hover:shadow-[0_10px_22px_#00000012]"}`}
+                  className={`group relative flex min-h-[78px] w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3.5 text-left transition-[box-shadow,border-color,background-color] duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] ${
+                    isActive
+                      ? "border-[#c9a227] bg-white shadow-[0_20px_38px_rgba(0,0,0,0.35)]"
+                      : "border-white/15 bg-white/95 backdrop-blur-md hover:border-[#c9a227] hover:bg-white hover:shadow-[0_10px_22px_rgba(0,0,0,0.2)]"
+                  }`}
                   onClick={() => setSelectedIndex(selectedIndex === index ? null : index)}
                   aria-expanded={isActive}
                   aria-pressed={selectedIndex === index}
@@ -121,10 +125,10 @@ export const SafetyChecklist = () => {
                     initial={false}
                     animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 8 }}
                     transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                    className={`pointer-events-none absolute inset-0 flex items-center gap-3 bg-white/90 px-4 py-3 text-[#4a4340] backdrop-blur-sm ${isActive ? "" : "invisible"}`}
+                    className={`pointer-events-none absolute inset-0 flex items-center gap-3 bg-[#5f1727] px-4 py-3 text-white ${isActive ? "" : "invisible"}`}
                   >
-                    <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#7a1f32] text-xs font-bold text-white">&#10003;</span>
-                    <span className="font-inter text-[13px] leading-relaxed">{safetyCheck.description}</span>
+                    <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#c9a227] text-xs font-bold text-[#161414]">&#10003;</span>
+                    <span className="font-inter text-[13px] leading-relaxed text-white/95">{safetyCheck.description}</span>
                   </motion.span>
                 </motion.button>
               </motion.li>

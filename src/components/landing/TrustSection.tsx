@@ -90,32 +90,31 @@ const trustCards = [
 ];
 
 export const TrustSection = () => {
-  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
+  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>(1.5);
 
   return (
     <section
       ref={ref}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-[#fbf8f0]"
+      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-transparent border-b border-transparent"
       aria-labelledby="trust-section-heading"
     >
       {/* Header reveal */}
       <ScrollReveal className="w-full">
         <header
-          className="flex flex-col items-center gap-2 self-stretch w-full text-center"
+          className="flex flex-col items-center gap-2 self-stretch w-full text-center transition-transform duration-200 ease-out"
           style={{
-            transform: `translate(${x * 6}px, ${y * 4}px)`,
-            transition: "transform 0.25s ease-out",
+            transform: `translate3d(${x * 6}px, ${y * 6}px, 0)`,
           }}
         >
           <h2
             id="trust-section-heading"
-            className="font-bold text-3xl md:text-[32px] tracking-tight text-[#161414]"
+            className="font-bold text-3xl md:text-[32px] tracking-tight text-white"
           >
             Built for the CIT-U Student Community
           </h2>
-          <p className="font-normal text-base text-[#4a4340] max-w-2xl">
+          <p className="font-normal text-base text-[#f6ecc8]/85 max-w-2xl">
             Safer, local peer-to-peer exchanges designed around university life
           </p>
         </header>
@@ -124,8 +123,6 @@ export const TrustSection = () => {
       {/* Cards reveal (staggered) */}
       <div className="flex flex-col md:flex-row items-stretch gap-6 self-stretch w-full">
         {trustCards.map((card, index) => {
-          // Each card drifts by a slightly different amount so the row
-          // reads as layered depth rather than moving as one flat slab.
           const depth = 0.7 + index * 0.15;
 
           return (
@@ -135,11 +132,9 @@ export const TrustSection = () => {
               variant="scale"
               className="flex-1"
             >
-              {/* Parallax layer: only handles the mouse-follow drift, so
-                  it never fights the card's own hover transform below. */}
               <div
                 style={{
-                  transform: `translate(${x * 10 * depth}px, ${y * 8 * depth}px)`,
+                  transform: `translate3d(${x * 12 * depth}px, ${y * 10 * depth}px, 0)`,
                   transition: "transform 0.25s ease-out",
                 }}
               >
@@ -147,10 +142,10 @@ export const TrustSection = () => {
                   className="
                     group shine-wrap card-interactive
                     flex h-full flex-col items-start gap-4 p-6
-                    rounded-2xl border border-[#e5e0d9] bg-white
-                    shadow-[0px_2px_8px_#0000000d]
-                    hover:bg-[#7a1f32] hover:border-[#7a1f32]
-                    hover:shadow-[0_18px_44px_rgba(122,31,50,0.28)]
+                    rounded-2xl border border-white/15 bg-white/95 backdrop-blur-md
+                    shadow-[0_12px_32px_rgba(0,0,0,0.25)]
+                    hover:bg-[#5f1727] hover:border-[#c9a227]/50
+                    hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)]
                   "
                 >
                   {/* Icon */}
@@ -158,7 +153,7 @@ export const TrustSection = () => {
                     className="
                       relative z-[1]
                       w-12 h-12 flex items-center justify-center rounded-xl
-                      bg-[#fbf8f0] text-[#7a1f32]
+                      bg-[#7a1f32]/10 text-[#7a1f32]
                       transition-all duration-500
                       group-hover:bg-white/10
                       group-hover:text-[#c9a227]
@@ -187,7 +182,7 @@ export const TrustSection = () => {
                       relative z-[1]
                       self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
                       transition-colors duration-500
-                      group-hover:text-white/85
+                      group-hover:text-white/90
                     "
                   >
                     {card.description}
