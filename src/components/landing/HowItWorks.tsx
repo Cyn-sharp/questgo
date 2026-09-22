@@ -1,4 +1,7 @@
+"use client";
+
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { useMouseParallax } from "@/hooks/useMouseParallax";
 
 const steps = [
   {
@@ -28,15 +31,23 @@ const steps = [
 ];
 
 export const HowItWorks = () => {
+  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
+
   return (
     <section
+      ref={ref}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
       id="how-it-works"
       className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-white border-b border-solid border-[#e5e0d9]"
       aria-labelledby="how-it-works-heading"
     >
       {/* Header reveal */}
       <ScrollReveal className="w-full">
-        <header className="flex flex-col items-center gap-2 self-stretch w-full text-center">
+        <header 
+          className="flex flex-col items-center gap-2 self-stretch w-full text-center transition-transform duration-200 ease-out"
+          style={{ transform: `translate3d(${x * 4}px, ${y * 4}px, 0)` }}
+        >
           <h2
             id="how-it-works-heading"
             className="font-bold text-3xl md:text-[32px] tracking-tight text-[#161414]"
@@ -59,11 +70,15 @@ export const HowItWorks = () => {
             className="flex-1"
           >
             <li
+              style={{
+                transform: `translate3d(${x * (index + 1) * 3}px, ${y * (index + 1) * 3}px, 0)`,
+              }}
               className="
                 group shine-wrap card-interactive
                 flex h-full flex-col items-start gap-3 p-5
                 rounded-2xl border border-solid border-[#e5e0d9] bg-[#fbf8f0]
                 shadow-[0px_2px_8px_#0000000d]
+                transition-transform duration-200 ease-out
                 hover:bg-[#7a1f32] hover:border-[#7a1f32]
                 hover:shadow-[0_18px_44px_rgba(122,31,50,0.28)]
               "
@@ -77,6 +92,9 @@ export const HowItWorks = () => {
                   group-hover:text-[#f6ecc8]
                   group-hover:scale-110
                 "
+                style={{
+                  transform: `translate3d(${x * 6}px, ${y * 6}px, 0)`,
+                }}
                 aria-hidden="true"
               >
                 {step.number}

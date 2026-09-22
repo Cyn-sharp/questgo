@@ -4,19 +4,19 @@ import { useRef, useState } from "react";
 
 /**
  * Tracks the pointer's position relative to a section, normalized to
- * -1..1 on each axis, throttled to one state update per animation
- * frame so listening sections don't re-render on every raw mousemove.
+ * (-intensity..intensity) on each axis, throttled to one state update per animation
+ * frame.
  *
  * Usage:
+ *   // Default magnitude (intensity = 1)
  *   const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
- *   <section ref={ref} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
- *     <div style={{ transform: `translate(${x * 10}px, ${y * 8}px)` }} />
- *   </section>
  *
- * Give farther-back or "heavier" elements a smaller multiplier and
- * foreground elements a larger one to fake depth.
+ *   // 2x or 3x stronger magnitude:
+ *   const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>(2.5);
  */
-export function useMouseParallax<T extends HTMLElement = HTMLElement>() {
+export function useMouseParallax<T extends HTMLElement = HTMLElement>(
+  intensity: number = 1.5 // Change this default or pass any number when calling the hook
+) {
   const ref = useRef<T>(null);
   const target = useRef({ x: 0, y: 0 });
   const rafId = useRef<number | null>(null);
@@ -30,11 +30,14 @@ export function useMouseParallax<T extends HTMLElement = HTMLElement>() {
   const onMouseMove = (e: React.MouseEvent<T>) => {
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+    
+    // Normalized to -1..1 then multiplied by intensity
+    const rawX = (((e.clientX - rect.left) / rect.width) * 2 - 1) * intensity;
+    const rawY = (((e.clientY - rect.top) / rect.height) * 2 - 1) * intensity;
+
     target.current = {
-      x: Math.max(-1, Math.min(1, x)),
-      y: Math.max(-1, Math.min(1, y)),
+      x: Math.max(-intensity, Math.min(intensity, rawX)),
+      y: Math.max(-intensity, Math.min(intensity, rawY)),
     };
     if (rafId.current == null) rafId.current = requestAnimationFrame(flush);
   };
