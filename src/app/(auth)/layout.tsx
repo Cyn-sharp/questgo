@@ -9,12 +9,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   return (
-    <main className="flex min-h-screen flex-col bg-cream">
-      <div className="flex items-start justify-center p-4 pb-8 sm:p-6 sm:pb-10 lg:flex-1 lg:items-center lg:overflow-visible lg:p-8">
+    <main className="flex min-h-screen flex-col bg-transparent">
+      <div className="flex items-start justify-center p-3 pb-6 sm:p-6 sm:pb-10 lg:flex-1 lg:items-center lg:overflow-visible lg:p-8">
         <div className="w-full max-w-[1180px]">
           <Link
             href="/"
-            className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 py-2 font-inter text-sm font-semibold text-maroon transition-colors hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maroon"
+            className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 font-inter text-sm font-semibold text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227]"
             aria-label="Back to QuestGo home"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -22,7 +22,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </svg>
             Back to home
           </Link>
-          <div className="flex h-[calc(100vh-2rem)] max-h-[760px] min-h-[620px] w-full overflow-hidden rounded-2xl border border-[#e5e0d9] bg-cream shadow-[0_16px_40px_#00000014] max-lg:h-auto max-lg:min-h-0 max-lg:flex-col max-lg:overflow-visible">
+
+          <div
+            className="relative flex h-[calc(100vh-2rem)] max-h-[760px] min-h-[620px] w-full overflow-hidden rounded-2xl border border-white/40 bg-cream shadow-[0_24px_70px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.08)] max-lg:h-auto max-lg:min-h-0 max-lg:rounded-xl max-lg:flex-col max-lg:overflow-visible"
+          >
             <AuthPromoPanel />
             <AnimatePresence mode="wait" initial={false}>
               <motion.div

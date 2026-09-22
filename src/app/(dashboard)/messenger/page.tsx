@@ -9,11 +9,9 @@ import {
   Flag,
   FileText,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 
-/* ─────────────────────────────────────────────────────────
-   TYPES & MOCK DATA
-───────────────────────────────────────────────────────── */
 type Message = {
   id: number;
   sender: "them" | "me";
@@ -30,30 +28,10 @@ const CONTACT = {
 };
 
 const INITIAL_MESSAGES: Message[] = [
-  {
-    id: 1,
-    sender: "them",
-    text: "Hi! Can you help me with this quest?",
-    time: "3:45 PM",
-  },
-  {
-    id: 2,
-    sender: "me",
-    text: "Yes, sure! I can do it.",
-    time: "3:46 PM",
-  },
-  {
-    id: 3,
-    sender: "them",
-    text: "Great. The module is saved on my USB. Let's meet at the CIT-U Main Entrance.",
-    time: "3:48 PM",
-  },
-  {
-    id: 4,
-    sender: "me",
-    text: "Got it! I'll head to the library now.",
-    time: "3:49 PM",
-  },
+  { id: 1, sender: "them", text: "Hi! Can you help me with this quest?", time: "3:45 PM" },
+  { id: 2, sender: "me", text: "Yes, sure! I can do it.", time: "3:46 PM" },
+  { id: 3, sender: "them", text: "Great. The module is saved on my USB. Let's meet at the CIT-U Main Entrance.", time: "3:48 PM" },
+  { id: 4, sender: "me", text: "Got it! I'll head to the library now.", time: "3:49 PM" },
 ];
 
 function formatNow() {
@@ -64,9 +42,6 @@ function formatNow() {
   });
 }
 
-/* ─────────────────────────────────────────────────────────
-   PAGE
-───────────────────────────────────────────────────────── */
 export default function MessengerPage() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [draft, setDraft] = useState("");
@@ -75,7 +50,6 @@ export default function MessengerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -96,7 +70,6 @@ export default function MessengerPage() {
     setDraft("");
     setSending(false);
 
-    // Keep focus on input for fast typing
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -112,130 +85,115 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className="bg-[#fbf8f0] min-h-full">
-      <div className="page-container py-6 lg:py-8">
-        {/* Chat shell */}
-        <div className="card-surface overflow-hidden flex flex-col min-h-[72vh] max-h-[calc(100vh-11rem)]">
-          {/* ───────────── HEADER ───────────── */}
-          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b border-[#e5e0d8] bg-white">
-            {/* Left: contact + quest meta */}
-            <div className="flex items-center gap-3 min-w-0">
-              <Image
-                src={CONTACT.avatar}
-                alt={CONTACT.name}
-                width={44}
-                height={44}
-                className="rounded-full bg-[#f4f2ef] shrink-0"
-                unoptimized
-              />
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-bold text-[#161414] truncate">
-                  {CONTACT.name}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                  <span className="text-xs text-[#4a4340]">
-                    Quest {CONTACT.questId}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-[#7a1f32] px-2 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
-                    <CheckCircle2 className="w-3 h-3 text-[#c9a227]" />
-                    {CONTACT.status}
-                  </span>
-                </div>
+    <div className="bg-transparent min-h-full">
+      <div className="page-container py-4 sm:py-6 lg:py-8">
+        {/* Chat shell — full height on mobile, contained on desktop */}
+        <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col min-h-[calc(100vh-11rem)] sm:min-h-[72vh] max-h-[calc(100vh-11rem)]">
+          {/* HEADER */}
+          <header className="flex items-center gap-3 px-3 sm:px-6 py-3 sm:py-4 border-b border-[#e5e0d8] bg-white">
+            {/* Back button (mobile only) */}
+            <Link
+              href="/requests"
+              className="lg:hidden w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#fbf8f0] active:scale-90 transition-all shrink-0"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#4a4340]" />
+            </Link>
+
+            <Image
+              src={CONTACT.avatar}
+              alt={CONTACT.name}
+              width={40}
+              height={40}
+              className="rounded-full bg-[#f4f2ef] shrink-0 sm:w-11 sm:h-11"
+              unoptimized
+            />
+
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm sm:text-lg font-bold text-[#161414] truncate">
+                {CONTACT.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] sm:text-xs text-[#4a4340]">
+                  Quest {CONTACT.questId}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#7a1f32] px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wide text-white uppercase">
+                  <CheckCircle2 className="w-3 h-3 text-[#c9a227]" />
+                  {CONTACT.status}
+                </span>
               </div>
             </div>
 
-            {/* Right: actions */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <span
-                className="
-                  inline-flex items-center rounded-full border border-[#f0e0a8]
-                  bg-[#fbf6e4] px-3 py-1.5 text-xs font-bold text-[#8a6a1f]
-                "
-              >
+            {/* Actions — condensed on mobile */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="hidden sm:inline-flex items-center rounded-full border border-[#f0e0a8] bg-[#fbf6e4] px-3 py-1.5 text-xs font-bold text-[#8a6a1f]">
                 ₱{CONTACT.reward} Reward
               </span>
 
               <Link
-                href={`/quests/viewquest?id=${encodeURIComponent(String(CONTACT.questId))}`}
-                className="
-                  inline-flex items-center gap-1.5 rounded-full border border-[#e5e0d8]
-                  bg-white px-3 py-1.5 text-xs font-semibold text-[#4a4340]
-                  hover:border-[#7a1f32] hover:text-[#7a1f32] transition-all duration-300
-                "
+                href="/quests/viewquest"
+                className="inline-flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:gap-1.5 sm:rounded-full sm:border sm:border-[#e5e0d8] sm:bg-white sm:px-3 sm:py-1.5 sm:text-xs sm:font-semibold text-[#4a4340] rounded-full hover:bg-[#fbf8f0] sm:hover:border-[#7a1f32] sm:hover:text-[#7a1f32] active:scale-90 transition-all"
+                aria-label="Quest details"
               >
-                <FileText className="w-3.5 h-3.5" />
-                Quest Details
+                <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">Quest Details</span>
               </Link>
 
               <button
                 type="button"
-                className="
-                  inline-flex items-center gap-1.5 rounded-full border border-[#e5e0d8]
-                  bg-white px-3 py-1.5 text-xs font-semibold text-[#4a4340]
-                  hover:border-red-400 hover:text-red-600 transition-all duration-300
-                "
+                className="inline-flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:gap-1.5 sm:rounded-full sm:border sm:border-[#e5e0d8] sm:bg-white sm:px-3 sm:py-1.5 sm:text-xs sm:font-semibold text-[#4a4340] rounded-full hover:bg-[#fbf8f0] sm:hover:border-red-400 sm:hover:text-red-600 active:scale-90 transition-all"
+                aria-label="Report"
               >
-                <Flag className="w-3.5 h-3.5" />
-                Report
+                <Flag className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">Report</span>
               </button>
             </div>
           </header>
 
-          {/* ───────────── MESSAGES ───────────── */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 bg-[#fbf8f0]/40">
+          {/* Mobile reward chip */}
+          <div className="sm:hidden px-3 py-2 border-b border-[#e5e0d8] bg-[#fbf6e4]/50">
+            <span className="inline-flex items-center rounded-full border border-[#f0e0a8] bg-[#fbf6e4] px-2.5 py-1 text-[11px] font-bold text-[#8a6a1f]">
+              ₱{CONTACT.reward} Reward
+            </span>
+          </div>
+
+          {/* MESSAGES */}
+          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5 bg-[#fbf8f0]/40">
             {messages.map((msg) => {
               const isMe = msg.sender === "me";
 
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-end gap-2 ${
-                    isMe ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
                 >
-                  {/* Their avatar (left only) */}
                   {!isMe && (
                     <Image
                       src={CONTACT.avatar}
                       alt={CONTACT.name}
-                      width={32}
-                      height={32}
-                      className="rounded-full bg-[#f4f2ef] shrink-0 mb-5"
+                      width={28}
+                      height={28}
+                      className="rounded-full bg-[#f4f2ef] shrink-0 mb-5 sm:w-8 sm:h-8"
                       unoptimized
                     />
                   )}
 
-                  <div
-                    className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${
-                      isMe ? "items-end" : "items-start"
-                    }`}
-                  >
+                  <div className={`flex flex-col max-w-[80%] sm:max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
                     <div
                       className={`
-                        px-4 py-2.5 text-sm leading-relaxed shadow-sm
-                        ${
-                          isMe
-                            ? "bg-[#7a1f32] text-white rounded-2xl rounded-br-md"
-                            : "bg-white text-[#161414] border border-[#e5e0d8] rounded-2xl rounded-bl-md"
+                        px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm leading-relaxed shadow-sm
+                        ${isMe
+                          ? "bg-[#7a1f32] text-white rounded-2xl rounded-br-md"
+                          : "bg-white text-[#161414] border border-[#e5e0d8] rounded-2xl rounded-bl-md"
                         }
                       `}
                     >
                       {msg.text}
                     </div>
 
-                    <div
-                      className={`mt-1.5 flex items-center gap-1.5 text-[11px] text-[#4a4340]/80 ${
-                        isMe ? "flex-row-reverse" : ""
-                      }`}
-                    >
-                      {!isMe && (
-                        <span className="font-medium text-[#4a4340]">
-                          {CONTACT.name.split(" ")[0]}
-                        </span>
-                      )}
-                      {isMe && (
-                        <span className="font-medium text-[#4a4340]">You</span>
-                      )}
+                    <div className={`mt-1 flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[#4a4340]/80 ${isMe ? "flex-row-reverse" : ""}`}>
+                      {!isMe && <span className="font-medium text-[#4a4340]">{CONTACT.name.split(" ")[0]}</span>}
+                      {isMe && <span className="font-medium text-[#4a4340]">You</span>}
                       <span>•</span>
                       <span>{msg.time}</span>
                     </div>
@@ -246,22 +204,13 @@ export default function MessengerPage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* ───────────── COMPOSER ───────────── */}
-          <form
-            onSubmit={handleSend}
-            className="border-t border-[#e5e0d8] bg-white px-3 sm:px-4 py-3"
-          >
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Attach */}
+          {/* COMPOSER */}
+          <form onSubmit={handleSend} className="border-t border-[#e5e0d8] bg-white px-2 sm:px-4 py-2.5 sm:py-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="
-                  w-10 h-10 rounded-full border border-[#e5e0d8] bg-[#fbf8f0]
-                  flex items-center justify-center shrink-0
-                  text-[#4a4340] hover:text-[#7a1f32] hover:border-[#7a1f32]
-                  transition-all duration-300
-                "
+                className="w-10 h-10 rounded-full border border-[#e5e0d8] bg-[#fbf8f0] flex items-center justify-center shrink-0 text-[#4a4340] hover:text-[#7a1f32] hover:border-[#7a1f32] active:scale-90 transition-all"
                 aria-label="Attach file"
               >
                 <Paperclip className="w-4 h-4" />
@@ -273,34 +222,19 @@ export default function MessengerPage() {
                 onChange={(e) => handleAttach(e.target.files?.[0])}
               />
 
-              {/* Input */}
               <input
                 ref={inputRef}
                 type="text"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Type a message..."
-                className="
-                  flex-1 rounded-full border border-[#e5e0d8] bg-[#fbf8f0]
-                  px-4 sm:px-5 py-3 text-sm text-[#161414]
-                  placeholder:text-[#4a4340]/55
-                  outline-none transition-all duration-300
-                  focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
-                "
+                className="flex-1 min-w-0 rounded-full border border-[#e5e0d8] bg-[#fbf8f0] px-4 sm:px-5 py-2.5 sm:py-3 text-sm text-[#161414] placeholder:text-[#4a4340]/55 outline-none transition-all focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20"
               />
 
-              {/* Send */}
               <button
                 type="submit"
                 disabled={!draft.trim() || sending}
-                className="
-                  w-11 h-11 rounded-full bg-[#7a1f32] text-white shrink-0
-                  flex items-center justify-center
-                  shadow-[0_8px_18px_rgba(122,31,50,0.28)]
-                  hover:bg-[#5f1727] transition-all duration-300
-                  disabled:opacity-50 disabled:hover:bg-[#7a1f32]
-                  hover:-translate-y-0.5
-                "
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#7a1f32] text-white shrink-0 flex items-center justify-center shadow-[0_8px_18px_rgba(122,31,50,0.28)] hover:bg-[#5f1727] active:scale-90 transition-all disabled:opacity-50 disabled:hover:bg-[#7a1f32]"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />

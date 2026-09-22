@@ -4,12 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { Check, CheckCircle2, Flag } from "lucide-react";
-import { db } from "@/lib/auth/firebase";
-import { getQuestById } from "@/lib/db/quests";
-import type { Quest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -56,100 +51,26 @@ function ScrollReveal({
   );
 }
 
-type Profile = {
-  name: string;
-  avatar: string;
+const COMPLETION = {
+  questTitle: "Print CPE Module",
+  reward: "30",
+  payment: "Cash on Delivery",
+  completedAt: "4:52 PM",
+  requester: {
+    name: "Maria Santos",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
+  },
+  runner: {
+    name: "John Doe",
+    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+  },
 };
 
-const FALLBACK_AVATAR = "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo";
-
-function formatTimestamp(value: unknown): string {
-  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
-    return (value as { toDate: () => Date }).toDate().toLocaleString();
-  }
-  return "Not available";
-}
-
-async function getProfile(userId: string): Promise<Profile> {
-  const snapshot = await getDoc(doc(db, "users", userId));
-  const data = snapshot.data() as { fullName?: string; profilePhotoUrl?: string } | undefined;
-
-  return {
-    name: data?.fullName ?? "QuestGo User",
-    avatar: data?.profilePhotoUrl ?? `${FALLBACK_AVATAR}&user=${encodeURIComponent(userId)}`,
-  };
-}
-
-/* ─────────────────────────────────────────────────────────
-   PAGE
-───────────────────────────────────────────────────────── */
 export default function QuestCompletedPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const questId = searchParams.get("id");
-  const [quest, setQuest] = useState<Quest | null>(null);
-  const [requester, setRequester] = useState<Profile | null>(null);
-  const [runner, setRunner] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-
-  useEffect(() => {
-    if (!questId) {
-      setLoadError("This completion record is missing its quest ID.");
-      setLoading(false);
-      return;
-    }
-
-    const completionQuestId = questId;
-
-    let active = true;
-    let unsubscribe = () => {};
-
-    async function loadCompletion() {
-      try {
-        const nextQuest = await getQuestById(completionQuestId);
-        if (!nextQuest) {
-          setLoadError("This quest could not be found.");
-          return;
-        }
-
-        const [nextRequester, nextRunner] = await Promise.all([
-          getProfile(nextQuest.requesterId),
-          nextQuest.questRunnerId ? getProfile(nextQuest.questRunnerId) : Promise.resolve(null),
-        ]);
-
-        if (!active) return;
-        setQuest(nextQuest);
-        setRequester(nextRequester);
-        setRunner(nextRunner);
-        setConfirmed(Boolean((nextQuest as Quest & { requesterConfirmedAt?: unknown }).requesterConfirmedAt));
-
-        unsubscribe = onSnapshot(doc(db, "quests", completionQuestId), async (snapshot) => {
-          if (!snapshot.exists()) return;
-          const liveQuest = { id: snapshot.id, ...snapshot.data() } as Quest;
-          setQuest(liveQuest);
-          setConfirmed(Boolean((liveQuest as Quest & { requesterConfirmedAt?: unknown }).requesterConfirmedAt));
-          if (liveQuest.questRunnerId && liveQuest.questRunnerId !== nextQuest.questRunnerId) {
-            setRunner(await getProfile(liveQuest.questRunnerId));
-          }
-        });
-      } catch (error) {
-        console.error("Failed to load completion:", error);
-        setLoadError("Unable to load this completion record.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
-
-    void loadCompletion();
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [questId]);
 
   async function handleConfirm() {
     if (confirming || confirmed) return;
@@ -159,20 +80,12 @@ export default function QuestCompletedPage() {
     setConfirmed(true);
   }
 
-  if (loading) {
-    return <div className="page-container py-10 text-center text-[#4a4340]">Loading completion details...</div>;
-  }
-
-  if (!quest || !requester || !runner || loadError) {
-    return <div className="page-container py-10 text-center text-[#b42318]">{loadError || "Completion details are unavailable."}</div>;
-  }
-
   return (
-    <div className="bg-[#fbf8f0] min-h-full">
-      <div className="page-container py-10 lg:py-14">
+    <div className="bg-transparent min-h-full">
+      <div className="page-container py-6 sm:py-10 lg:py-14">
         <div className="flex justify-center">
           <ScrollReveal variant="scale" className="w-full max-w-lg">
-            <section className="card-surface px-6 py-8 sm:px-8 sm:py-10 text-center">
+            <section className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 px-5 py-7 sm:px-8 sm:py-10 text-center shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
               {/* Success icon */}
               <div className="mx-auto mb-5 w-16 h-16 rounded-full bg-[#e7f8ee] flex items-center justify-center">
                 <div className="w-10 h-10 rounded-full bg-[#d8f3e3] flex items-center justify-center">
@@ -181,10 +94,10 @@ export default function QuestCompletedPage() {
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#161414] mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#161414] mb-2">
                 {confirmed ? "Completion Confirmed!" : "Quest Completed!"}
               </h1>
-              <p className="text-sm text-[#4a4340] mb-6 max-w-sm mx-auto leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#4a4340] mb-6 max-w-sm mx-auto leading-relaxed">
                 {confirmed
                   ? "Thanks! Your confirmation has been recorded. You can rate the runner next."
                   : "Task completed successfully by the runner. Please review the details below."}
@@ -192,65 +105,60 @@ export default function QuestCompletedPage() {
 
               {/* Details panel */}
               <div className="rounded-2xl bg-[#fbf8f0] border border-[#e5e0d8] overflow-hidden text-left mb-6">
-                {/* Quest */}
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
-                  <span className="text-sm text-[#4a4340]">Quest</span>
-                  <span className="text-sm font-bold text-[#161414] text-right">
-                    {quest.title}
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:py-3.5 border-b border-[#e5e0d8]">
+                  <span className="text-xs sm:text-sm text-[#4a4340]">Quest</span>
+                  <span className="text-xs sm:text-sm font-bold text-[#161414] text-right">
+                    {COMPLETION.questTitle}
                   </span>
                 </div>
 
-                {/* Requester */}
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
-                  <span className="text-sm text-[#4a4340]">Requester</span>
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:py-3.5 border-b border-[#e5e0d8]">
+                  <span className="text-xs sm:text-sm text-[#4a4340] shrink-0">Requester</span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
-                      src={requester.avatar}
-                      alt={requester.name}
-                      width={28}
-                      height={28}
+                      src={COMPLETION.requester.avatar}
+                      alt={COMPLETION.requester.name}
+                      width={26}
+                      height={26}
                       className="rounded-full bg-white shrink-0"
                       unoptimized
                     />
-                    <span className="text-sm font-semibold text-[#161414] truncate">
-                      {requester.name}
+                    <span className="text-xs sm:text-sm font-semibold text-[#161414] truncate">
+                      {COMPLETION.requester.name}
                     </span>
                     <CheckCircle2 className="w-4 h-4 text-[#1f9d57] shrink-0" />
                   </div>
                 </div>
 
-                {/* Quest Runner */}
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
-                  <span className="text-sm text-[#4a4340]">Quest Runner</span>
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:py-3.5 border-b border-[#e5e0d8]">
+                  <span className="text-xs sm:text-sm text-[#4a4340] shrink-0">Runner</span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
-                      src={runner.avatar}
-                      alt={runner.name}
-                      width={28}
-                      height={28}
+                      src={COMPLETION.runner.avatar}
+                      alt={COMPLETION.runner.name}
+                      width={26}
+                      height={26}
                       className="rounded-full bg-white shrink-0"
                       unoptimized
                     />
-                    <span className="text-sm font-semibold text-[#161414] truncate">
-                      {runner.name}
+                    <span className="text-xs sm:text-sm font-semibold text-[#161414] truncate">
+                      {COMPLETION.runner.name}
                     </span>
                     <CheckCircle2 className="w-4 h-4 text-[#1f9d57] shrink-0" />
                   </div>
                 </div>
 
-                {/* Reward */}
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-[#e5e0d8]">
-                  <span className="text-sm text-[#4a4340]">Reward</span>
-                  <span className="text-sm font-bold text-[#c9a227] text-right">
-                    ₱{quest.reward} Cash on Delivery
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:py-3.5 border-b border-[#e5e0d8]">
+                  <span className="text-xs sm:text-sm text-[#4a4340]">Reward</span>
+                  <span className="text-xs sm:text-sm font-bold text-[#c9a227] text-right">
+                    ₱{COMPLETION.reward} {COMPLETION.payment}
                   </span>
                 </div>
 
-                {/* Completed at */}
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                  <span className="text-sm text-[#4a4340]">Completed at</span>
-                  <span className="text-sm font-semibold text-[#161414]">
-                    {formatTimestamp(quest.completedAt)}
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:py-3.5">
+                  <span className="text-xs sm:text-sm text-[#4a4340]">Completed at</span>
+                  <span className="text-xs sm:text-sm font-semibold text-[#161414]">
+                    {COMPLETION.completedAt}
                   </span>
                 </div>
               </div>
@@ -262,7 +170,7 @@ export default function QuestCompletedPage() {
                     type="button"
                     onClick={handleConfirm}
                     disabled={confirming}
-                    className="btn-primary w-full justify-center py-3.5 text-[15px]"
+                    className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
                   >
                     {confirming ? "Confirming..." : "Confirm Completion"}
                   </button>
@@ -270,12 +178,7 @@ export default function QuestCompletedPage() {
                   <button
                     type="button"
                     onClick={() => setReportOpen(true)}
-                    className="
-                      w-full inline-flex items-center justify-center gap-2
-                      rounded-xl border-[1.5px] border-[#7a1f32] bg-white
-                      px-6 py-3.5 font-semibold text-[15px] text-[#7a1f32]
-                      hover:bg-[#fdf0f2] transition-all duration-300
-                    "
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#7a1f32] bg-white px-6 py-3.5 font-semibold text-[15px] text-[#7a1f32] hover:bg-[#fdf0f2] active:scale-[0.98] transition-all"
                   >
                     <Flag className="w-4 h-4" />
                     Report an Issue
@@ -283,30 +186,23 @@ export default function QuestCompletedPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* UPDATED: Navigates to /requests/rate */}
                   <button
                     type="button"
-                    onClick={() => router.push(`/requests/rate?id=${encodeURIComponent(quest.id)}`)}
-                    className="btn-primary w-full justify-center py-3.5 text-[15px]"
+                    onClick={() => router.push("/requests/rate")}
+                    className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98]"
                   >
                     Rate Quest Runner
                   </button>
                   <Link
                     href="/requests"
-                    className="
-                      w-full inline-flex items-center justify-center
-                      rounded-xl border border-[#e5e0d8] bg-white
-                      px-6 py-3.5 font-semibold text-[15px] text-[#4a4340]
-                      hover:border-[#7a1f32] hover:text-[#7a1f32]
-                      transition-all duration-300
-                    "
+                    className="w-full inline-flex items-center justify-center rounded-xl border border-[#e5e0d8] bg-white px-6 py-3.5 font-semibold text-[15px] text-[#4a4340] hover:border-[#7a1f32] hover:text-[#7a1f32] active:scale-[0.98] transition-all"
                   >
                     Back to My Requests
                   </Link>
                 </div>
               )}
 
-              <p className="mt-4 text-xs text-[#4a4340] leading-relaxed">
+              <p className="mt-4 text-[11px] sm:text-xs text-[#4a4340] leading-relaxed">
                 Both parties must confirm completion to finalize this quest.
               </p>
             </section>
@@ -314,14 +210,14 @@ export default function QuestCompletedPage() {
         </div>
       </div>
 
-      {/* Report modal (UI only) */}
+      {/* Report modal */}
       {reportOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-[3px]"
           onClick={() => setReportOpen(false)}
         >
           <div
-            className="card-surface w-full max-w-md p-6 animate-fade-up text-left"
+            className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 w-full max-w-md p-5 sm:p-6 animate-fade-up text-left shadow-[0_24px_70px_rgba(0,0,0,0.4)]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -329,43 +225,32 @@ export default function QuestCompletedPage() {
           >
             <h2
               id="report-title"
-              className="text-xl font-extrabold text-[#161414] mb-1"
+              className="text-lg sm:text-xl font-extrabold text-[#161414] mb-1"
             >
               Report an Issue
             </h2>
-            <p className="text-sm text-[#4a4340] mb-5">
+            <p className="text-xs sm:text-sm text-[#4a4340] mb-5">
               Tell us what went wrong with this quest. Our safety team will review it.
             </p>
 
             <textarea
               rows={4}
               placeholder="Describe the issue..."
-              className="
-                w-full rounded-xl border border-[#e5e0d8] bg-white
-                px-4 py-3 text-sm text-[#161414] placeholder:text-[#4a4340]/50
-                outline-none transition-all duration-300 mb-5
-                focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
-                resize-y
-              "
+              className="w-full rounded-xl border border-[#e5e0d8] bg-white px-4 py-3 text-sm text-[#161414] placeholder:text-[#4a4340]/50 outline-none transition-all duration-300 mb-5 focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20 resize-y"
             />
 
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setReportOpen(false)}
-                className="
-                  px-4 py-2.5 rounded-xl border border-[#e5e0d8] bg-white
-                  text-sm font-semibold text-[#4a4340]
-                  hover:border-[#7a1f32] hover:text-[#7a1f32]
-                  transition-all duration-300
-                "
+                className="px-4 py-2.5 rounded-xl border border-[#e5e0d8] bg-white text-sm font-semibold text-[#4a4340] hover:border-[#7a1f32] hover:text-[#7a1f32] active:scale-95 transition-all"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => setReportOpen(false)}
-                className="btn-primary !py-2.5 !px-5 !text-sm"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold shadow-[0_4px_12px_rgba(122,31,50,0.2)] active:scale-95 transition-all"
               >
                 Submit Report
               </button>
