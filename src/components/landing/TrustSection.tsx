@@ -1,4 +1,7 @@
+"use client";
+
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { useMouseParallax } from "@/hooks/useMouseParallax";
 
 const trustCards = [
   {
@@ -87,14 +90,25 @@ const trustCards = [
 ];
 
 export const TrustSection = () => {
+  const { ref, x, y, onMouseMove, onMouseLeave } = useMouseParallax<HTMLElement>();
+
   return (
     <section
+      ref={ref}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
       className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-[#fbf8f0]"
       aria-labelledby="trust-section-heading"
     >
       {/* Header reveal */}
       <ScrollReveal className="w-full">
-        <header className="flex flex-col items-center gap-2 self-stretch w-full text-center">
+        <header
+          className="flex flex-col items-center gap-2 self-stretch w-full text-center"
+          style={{
+            transform: `translate(${x * 6}px, ${y * 4}px)`,
+            transition: "transform 0.25s ease-out",
+          }}
+        >
           <h2
             id="trust-section-heading"
             className="font-bold text-3xl md:text-[32px] tracking-tight text-[#161414]"
@@ -109,65 +123,80 @@ export const TrustSection = () => {
 
       {/* Cards reveal (staggered) */}
       <div className="flex flex-col md:flex-row items-stretch gap-6 self-stretch w-full">
-        {trustCards.map((card, index) => (
-          <ScrollReveal
-            key={card.title}
-            delayMs={index * 120}
-            variant="scale"
-            className="flex-1"
-          >
-            <article
-              className="
-                group shine-wrap card-interactive
-                flex h-full flex-col items-start gap-4 p-6
-                rounded-2xl border border-[#e5e0d9] bg-white
-                shadow-[0px_2px_8px_#0000000d]
-                hover:bg-[#7a1f32] hover:border-[#7a1f32]
-                hover:shadow-[0_18px_44px_rgba(122,31,50,0.28)]
-              "
+        {trustCards.map((card, index) => {
+          // Each card drifts by a slightly different amount so the row
+          // reads as layered depth rather than moving as one flat slab.
+          const depth = 0.7 + index * 0.15;
+
+          return (
+            <ScrollReveal
+              key={card.title}
+              delayMs={index * 120}
+              variant="scale"
+              className="flex-1"
             >
-              {/* Icon */}
+              {/* Parallax layer: only handles the mouse-follow drift, so
+                  it never fights the card's own hover transform below. */}
               <div
-                className="
-                  relative z-[1]
-                  w-12 h-12 flex items-center justify-center rounded-xl
-                  bg-[#fbf8f0] text-[#7a1f32]
-                  transition-all duration-500
-                  group-hover:bg-white/10
-                  group-hover:text-[#c9a227]
-                  group-hover:scale-110
-                "
-                aria-hidden="true"
+                style={{
+                  transform: `translate(${x * 10 * depth}px, ${y * 8 * depth}px)`,
+                  transition: "transform 0.25s ease-out",
+                }}
               >
-                {card.icon}
+                <article
+                  className="
+                    group shine-wrap card-interactive
+                    flex h-full flex-col items-start gap-4 p-6
+                    rounded-2xl border border-[#e5e0d9] bg-white
+                    shadow-[0px_2px_8px_#0000000d]
+                    hover:bg-[#7a1f32] hover:border-[#7a1f32]
+                    hover:shadow-[0_18px_44px_rgba(122,31,50,0.28)]
+                  "
+                >
+                  {/* Icon */}
+                  <div
+                    className="
+                      relative z-[1]
+                      w-12 h-12 flex items-center justify-center rounded-xl
+                      bg-[#fbf8f0] text-[#7a1f32]
+                      transition-all duration-500
+                      group-hover:bg-white/10
+                      group-hover:text-[#c9a227]
+                      group-hover:scale-110
+                    "
+                    aria-hidden="true"
+                  >
+                    {card.icon}
+                  </div>
+
+                  {/* Title */}
+                  <h3
+                    className="
+                      relative z-[1]
+                      font-bold text-xl tracking-tight text-[#161414]
+                      transition-colors duration-500
+                      group-hover:text-white
+                    "
+                  >
+                    {card.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p
+                    className="
+                      relative z-[1]
+                      self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
+                      transition-colors duration-500
+                      group-hover:text-white/85
+                    "
+                  >
+                    {card.description}
+                  </p>
+                </article>
               </div>
-
-              {/* Title */}
-              <h3
-                className="
-                  relative z-[1]
-                  font-bold text-xl tracking-tight text-[#161414]
-                  transition-colors duration-500
-                  group-hover:text-white
-                "
-              >
-                {card.title}
-              </h3>
-
-              {/* Description */}
-              <p
-                className="
-                  relative z-[1]
-                  self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
-                  transition-colors duration-500
-                  group-hover:text-white/85
-                "
-              >
-                {card.description}
-              </p>
-            </article>
-          </ScrollReveal>
-        ))}
+            </ScrollReveal>
+          );
+        })}
       </div>
     </section>
   );
