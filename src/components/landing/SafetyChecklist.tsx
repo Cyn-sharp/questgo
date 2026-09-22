@@ -53,14 +53,11 @@ export const SafetyChecklist = () => {
       onMouseLeave={onMouseLeave}
       id="safety"
       aria-labelledby="safety-checklist-title"
-      className="relative flex flex-col items-start gap-8 border-b border-transparent bg-transparent px-6 py-16 md:px-16"
+      className="relative flex flex-col items-start gap-8 border-b border-white/10 bg-transparent px-6 py-16 md:px-16"
     >
-      {/* Header reveal */}
+      {/* Header reveal — static text, no parallax */}
       <ScrollReveal className="w-full">
-        <header
-          className="relative flex w-full flex-col items-center gap-2 text-center transition-transform duration-200 ease-out"
-          style={{ transform: `translate3d(${x * 6}px, ${y * 6}px, 0)` }}
-        >
+        <header className="relative flex w-full flex-col items-center gap-2 text-center">
           <h2 id="safety-checklist-title" className="font-bold text-3xl tracking-tight text-white md:text-[32px]">
             Campus Safety First
           </h2>
@@ -68,7 +65,7 @@ export const SafetyChecklist = () => {
         </header>
       </ScrollReveal>
 
-      {/* Checklist items reveal */}
+      {/* Checklist grid — cards still drift */}
       <ul
         aria-label="Campus safety protections"
         className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 transition-transform duration-200 ease-out list-none m-0 p-0"

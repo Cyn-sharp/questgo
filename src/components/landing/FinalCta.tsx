@@ -15,10 +15,8 @@ export const FinalCta = () => {
       aria-labelledby="final-cta-heading"
     >
       <ScrollReveal>
-        <div
-          className="flex flex-col items-center gap-4 transition-transform duration-200 ease-out"
-          style={{ transform: `translate3d(${x * 8}px, ${y * 8}px, 0)` }}
-        >
+        {/* Heading + paragraph — static, no parallax */}
+        <div className="flex flex-col items-center gap-4">
           <h2
             id="final-cta-heading"
             className="font-extrabold text-3xl md:text-5xl tracking-tight text-white max-w-2xl [text-shadow:0_4px_20px_rgba(0,0,0,0.3)]"
@@ -31,7 +29,11 @@ export const FinalCta = () => {
             opportunities.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
+          {/* Buttons only — still drift with the mouse */}
+          <div
+            className="flex flex-wrap items-center justify-center gap-4 mt-4 transition-transform duration-200 ease-out"
+            style={{ transform: `translate3d(${x * 8}px, ${y * 8}px, 0)` }}
+          >
             <a
               href="/register"
               className="inline-flex items-center justify-center px-6 py-3 bg-[#c9a227] hover:bg-[#b08b1e] rounded-xl font-bold text-[15px] text-[#161414] shadow-[0_4px_20px_rgba(201,162,39,0.3)] hover:shadow-[0_6px_24px_rgba(201,162,39,0.55)] transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c9a227]"

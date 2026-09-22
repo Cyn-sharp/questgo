@@ -39,15 +39,12 @@ export const HowItWorks = () => {
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       id="how-it-works"
-      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-transparent border-b border-transparent"
+      className="flex flex-col items-start gap-8 px-6 md:px-16 py-16 bg-transparent border-b border-white/10"
       aria-labelledby="how-it-works-heading"
     >
-      {/* Header reveal */}
+      {/* Header reveal — static text, no parallax */}
       <ScrollReveal className="w-full">
-        <header
-          className="flex flex-col items-center gap-2 self-stretch w-full text-center transition-transform duration-200 ease-out"
-          style={{ transform: `translate3d(${x * 6}px, ${y * 6}px, 0)` }}
-        >
+        <header className="flex flex-col items-center gap-2 self-stretch w-full text-center">
           <h2
             id="how-it-works-heading"
             className="font-bold text-3xl md:text-[32px] tracking-tight text-white"
@@ -60,7 +57,7 @@ export const HowItWorks = () => {
         </header>
       </ScrollReveal>
 
-      {/* Steps reveal (staggered) */}
+      {/* Steps reveal (staggered) — cards still drift */}
       <ol className="flex flex-col md:flex-row items-stretch gap-6 self-stretch w-full list-none m-0 p-0">
         {steps.map((step, index) => (
           <ScrollReveal
@@ -82,7 +79,7 @@ export const HowItWorks = () => {
                 hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)]
               "
             >
-              {/* Number */}
+              {/* Number — moves with the card only */}
               <span
                 className="
                   relative z-[1]
@@ -96,7 +93,6 @@ export const HowItWorks = () => {
                 {step.number}
               </span>
 
-              {/* Title */}
               <h3
                 className="
                   relative z-[1]
@@ -108,7 +104,6 @@ export const HowItWorks = () => {
                 {step.title}
               </h3>
 
-              {/* Description */}
               <p
                 className="
                   relative z-[1]
