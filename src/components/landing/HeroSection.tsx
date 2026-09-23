@@ -295,8 +295,8 @@ export const HeroSection = () => {
                   MJ
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-[#161414] leading-tight">Miguel J.</p>
-                  <p className="text-[9px] font-semibold text-[#8a6a1f] leading-tight">BS CS</p>
+                  <p className="text-[11px] font-bold text-[#161414] leading-tight">Abejo C.</p>
+                  <p className="text-[9px] font-semibold text-[#8a6a1f] leading-tight">BS CpE</p>
                 </div>
               </div>
               <div className="mt-1.5 flex items-center gap-1">
