@@ -26,6 +26,9 @@ export interface Quest {
 
   requesterId: string;
   questRunnerId?: string;
+  requesterName?: string;
+  runnerName?: string;
+  completionRequestedAt?: unknown;
 
   status: QuestStatus;
 

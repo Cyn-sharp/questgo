@@ -6,6 +6,9 @@ function getAdminApp() {
   if (getApps().length) return getApps()[0];
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
+  if (projectId?.startsWith("demo-") && process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    return initializeApp({ projectId });
+  }
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 

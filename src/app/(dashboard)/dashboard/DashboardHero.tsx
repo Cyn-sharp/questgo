@@ -5,10 +5,11 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { useAuth } from "@/hooks/useAuth";
+import { getProfileName } from "@/lib/auth/profile-name";
 
 export default function DashboardHero() {
   const { user } = useAuth();
-  const firstName = user?.displayName?.split(" ")[0] || "Wildcat";
+  const firstName = user ? getProfileName(user.displayName).split(/\s+/)[0] : "Wildcat";
 
   return (
     <section className="bg-transparent py-6 sm:py-8 md:py-10">

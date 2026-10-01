@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMyQuests, useQuestClock } from "@/hooks/useQuests";
+import { getQuestExpirationMillis } from "@/lib/db/quests";
 import {
   AlertCircle,
   ShieldCheck,
   MapPin,
   Navigation,
   Banknote,
-  Paperclip,
   Tag,
   Type,
   FileText,
@@ -60,7 +62,7 @@ function ScrollReveal({
 }
 
 const CATEGORIES = ["Printing", "Pickup", "Delivery", "Shopping", "Other"] as const;
-const ATTACHMENT_REQUIRED_CATEGORIES = ["Printing"];
+
 
 const CAMPUS_LOCATIONS = [
   "CIT-U Library",
@@ -88,8 +90,6 @@ type FormState = {
   meetupHour: string;
   meetupMinute: string;
   meetupPeriod: "AM" | "PM";
-  attachmentFile: File | null;
-  attachmentName: string;
 };
 
 const INITIAL_FORM: FormState = {
@@ -102,8 +102,6 @@ const INITIAL_FORM: FormState = {
   meetupHour: "4",
   meetupMinute: "30",
   meetupPeriod: "PM",
-  attachmentFile: null,
-  attachmentName: "",
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -137,7 +135,10 @@ export default function PostQuestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const { posted, loading: requestsLoading, error: requestsError } = useMyQuests();
+  const now = useQuestClock();
+  const activeQuest = posted.find((quest) => ["accepted", "in_progress"].includes(quest.status) || (quest.status === "available" && (getQuestExpirationMillis(quest) ?? Infinity) > now));
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -149,13 +150,13 @@ export default function PostQuestPage() {
     if (!form.title.trim()) next.title = "Quest title is required.";
     if (!form.category) next.category = "Select a category.";
     if (!form.description.trim()) next.description = "Add a short description.";
-    if (!form.reward.trim() || Number(form.reward) <= 0) next.reward = "Enter a valid reward amount.";
+    const reward = Number(form.reward);
+    if (!form.reward.trim() || !Number.isFinite(reward) || reward <= 0 || reward > 10000 || Math.abs(Math.round(reward * 100) - reward * 100) > 0.00001) {
+      next.reward = "Enter ₱0.01–₱10,000, with up to two decimal places.";
+    }
     if (!form.pickupLocation.trim()) next.pickupLocation = "Pickup location is required.";
     if (!form.meetupLocation.trim()) next.meetupLocation = "Meet-up location is required.";
     if (!form.meetupHour || !form.meetupMinute) next.meetupHour = "Please select a valid time.";
-    if (ATTACHMENT_REQUIRED_CATEGORIES.includes(form.category) && !form.attachmentFile) {
-      next.attachmentFile = `An attachment file is required for ${form.category} tasks.`;
-    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -170,6 +171,8 @@ export default function PostQuestPage() {
       return;
     }
 
+    if (submitting || requestsLoading || requestsError || activeQuest) return;
+
     if (!validate()) {
       setShake(true);
       setTimeout(() => setShake(false), 500);
@@ -180,7 +183,7 @@ export default function PostQuestPage() {
 
     try {
       const formattedTime = `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`;
-      await createQuest(
+      const questId = await createQuest(
         {
           title: form.title.trim(),
           category: form.category,
@@ -193,8 +196,7 @@ export default function PostQuestPage() {
       );
 
       setSuccess(true);
-      setForm(INITIAL_FORM);
-      if (fileRef.current) fileRef.current.value = "";
+      router.replace(`/quests/active?id=${encodeURIComponent(questId)}`);
     } catch (error) {
       setSubmissionError(
         error instanceof Error ? error.message : "Unable to post your quest. Please try again."
@@ -204,23 +206,17 @@ export default function PostQuestPage() {
     }
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] || null;
-    setForm((prev) => ({
-      ...prev,
-      attachmentFile: file,
-      attachmentName: file?.name ?? "",
-    }));
-    setErrors((prev) => ({ ...prev, attachmentFile: undefined }));
-  }
 
-  if (authLoading) {
+  if (authLoading || requestsLoading) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
         <p className="text-lg font-semibold text-white">Checking account status...</p>
       </div>
     );
   }
+
+  if (requestsError) return <div className="page-container py-10 text-white" role="alert">{requestsError} Posting is unavailable until your existing quests can be checked.</div>;
+  if (activeQuest) return <div className="page-container py-10"><div className="rounded-2xl bg-white p-6 space-y-4"><h1 className="text-2xl font-bold text-maroon">You already have an active quest</h1><p>{activeQuest.title}</p><p>Complete or cancel your current quest before posting another. Unaccepted quests expire after 30 minutes.</p><Link className="btn-primary" href={`/quests/active?id=${encodeURIComponent(activeQuest.id)}`}>Manage My Quest</Link></div></div>;
 
   if (!user) {
     return (
@@ -345,9 +341,10 @@ export default function PostQuestPage() {
                     <input
                       id="reward"
                       type="number"
-                      inputMode="numeric"
-                      min={1}
-                      step={1}
+                      inputMode="decimal"
+                      min={0.01}
+                      max={10000}
+                      step={0.01}
                       value={form.reward}
                       onChange={(e) => update("reward", e.target.value)}
                       className={`${inputClass} pl-9 ${errors.reward ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
@@ -357,50 +354,7 @@ export default function PostQuestPage() {
                 </div>
               </section>
 
-              {/* ATTACHMENT */}
-              <section className="mb-6 sm:mb-8">
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  <SectionLabel>Attachment File</SectionLabel>
-                  {ATTACHMENT_REQUIRED_CATEGORIES.includes(form.category) && (
-                    <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full uppercase tracking-wide">
-                      Required for {form.category}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className={`
-                    w-full rounded-xl border border-dashed bg-[#fbf8f0]/60
-                    px-4 py-5 text-sm text-[#4a4340]
-                    transition-all duration-300 flex items-center justify-center gap-2
-                    active:scale-[0.99]
-                    ${errors.attachmentFile
-                      ? "border-red-400 bg-red-50/50 text-red-600"
-                      : "border-[#d8d3cc] hover:border-[#c9a227] hover:bg-[#fbf8f0]"
-                    }
-                  `}
-                >
-                  <Paperclip className={`w-4 h-4 shrink-0 ${errors.attachmentFile ? "text-red-500" : "text-[#7a1f32]"}`} />
-                  {form.attachmentName ? (
-                    <span className="font-medium text-[#161414] truncate max-w-[80%]">
-                      {form.attachmentName}
-                    </span>
-                  ) : (
-                    <span className="text-center">Click to attach a file (PDF, image, doc)</span>
-                  )}
-                </button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                  onChange={handleFileChange}
-                />
-                {errors.attachmentFile && (
-                  <p className="mt-1.5 text-xs text-red-600">{errors.attachmentFile}</p>
-                )}
-              </section>
+              <p className="mb-6 text-sm text-muted">File uploads are not available yet. Include task instructions in the description and coordinate details in Messenger after acceptance.</p>
 
               {/* LOCATION */}
               <section className="mb-6 sm:mb-8">
@@ -594,14 +548,6 @@ export default function PostQuestPage() {
                     <span className="text-[#4a4340]">Time</span>
                     <span className="font-semibold text-[#161414]">{previewTime}</span>
                   </div>
-                  {ATTACHMENT_REQUIRED_CATEGORIES.includes(form.category) && (
-                    <div className="flex justify-between gap-3 pt-2 border-t border-[#e5e0d8]">
-                      <span className="text-[#4a4340]">File</span>
-                      <span className={`font-semibold truncate max-w-[120px] ${form.attachmentFile ? "text-green-600" : "text-red-500"}`}>
-                        {form.attachmentFile ? "✓ Attached" : "✗ Missing"}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </aside>

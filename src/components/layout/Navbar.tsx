@@ -9,6 +9,7 @@ import { Bell, CheckCircle2 } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/auth/firebase";
+import { getProfileName } from "@/lib/auth/profile-name";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
 // Changed anchors to /#path so they function correctly across all subroutes
@@ -184,13 +185,16 @@ const dashboardNavItems = [
 export const Navbar = (): ReactElement => {
   const pathname = usePathname();
   const { user: firebaseUser } = useAuth();
-  const [headerName, setHeaderName] = useState("QuestGo User");
-  const [headerAvatar, setHeaderAvatar] = useState("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+  const [savedProfile, setSavedProfile] = useState<{
+    uid: string; fullName?: string; profilePhotoUrl?: string;
+  } | null>(null);
+  const currentProfile = savedProfile?.uid === firebaseUser?.uid ? savedProfile : null;
+  const headerName = getProfileName(firebaseUser?.displayName, currentProfile?.fullName);
+  const headerAvatar = currentProfile?.profilePhotoUrl || firebaseUser?.photoURL ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(headerName)}`;
 
   useEffect(() => {
     if (!firebaseUser) {
-      setHeaderName("QuestGo User");
-      setHeaderAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
       return;
     }
 
@@ -199,13 +203,11 @@ export const Navbar = (): ReactElement => {
       userRef,
       (snapshot) => {
         const data = snapshot.data();
-        setHeaderName(data?.fullName ?? firebaseUser.displayName ?? "QuestGo User");
-        setHeaderAvatar(data?.profilePhotoUrl ?? firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+        setSavedProfile({ uid: firebaseUser.uid, fullName: data?.fullName, profilePhotoUrl: data?.profilePhotoUrl });
       },
       (error) => {
         console.error("Header profile snapshot failed:", error);
-        setHeaderName(firebaseUser.displayName ?? "QuestGo User");
-        setHeaderAvatar(firebaseUser.photoURL ?? "https://api.dicebear.com/7.x/avataaars/svg?seed=QuestGo");
+        setSavedProfile(null);
       }
     );
 

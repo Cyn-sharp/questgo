@@ -11,7 +11,8 @@ import {
   Star,
   CheckCircle2,
 } from "lucide-react";
-import { getAvailableQuests, getQuestExpirationMillis } from "@/lib/db/quests";
+import { getQuestExpirationMillis } from "@/lib/db/quests";
+import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
 import type { Quest as FirestoreQuest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
@@ -223,50 +224,9 @@ function QuestCard({ quest }: { quest: Quest }) {
 export function QuestsMarketplace() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category>("All");
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  async function loadQuests() {
-    setIsLoading(true);
-    setHasError(false);
-
-    try {
-      const nextQuests = (await getAvailableQuests())
-        .map(toDisplayQuest)
-        .filter((quest): quest is Quest => quest !== null);
-      setQuests(nextQuests);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => void loadQuests(), 0);
-
-    const interval = window.setInterval(() => {
-      setQuests((currentQuests) =>
-        currentQuests
-          .filter((quest) => quest.expiresAt > Date.now())
-          .map((quest) => ({
-            ...quest,
-            timeLeft: formatTimeLeft(quest.expiresAt),
-          })),
-      );
-    }, 30_000);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void loadQuests();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+  const { records, isLoading, hasError, retry: loadQuests } = useAvailableQuests();
+  const now = useQuestClock();
+  const quests = useMemo(() => records.filter((quest) => (getQuestExpirationMillis(quest) ?? 0) > now).map(toDisplayQuest).filter((quest): quest is Quest => quest !== null), [records, now]);
 
   const filteredQuests = useMemo(() => {
     const q = query.trim().toLowerCase();

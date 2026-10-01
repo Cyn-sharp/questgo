@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import {
   Star,
   CheckCircle2,
@@ -21,6 +23,16 @@ import {
   Send,
   Coins,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { auth, db } from "@/lib/auth/firebase";
+import { endSession } from "@/lib/auth/logout";
+import { getProfileName } from "@/lib/auth/profile-name";
+import {
+  getCompletedQuestsCount,
+  getMyPostedQuestsCount,
+  getQuestEarnings,
+} from "@/lib/db/quests";
+import type { User as UserProfile } from "@/types/user";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -66,22 +78,6 @@ function ScrollReveal({
     </div>
   );
 }
-
-/* ─────────────────────────────────────────────────────────
-   MOCK PROFILE DATA
-───────────────────────────────────────────────────────── */
-const PROFILE = {
-  name: "Dave Alinson",
-  course: "BS Computer Engineering Student",
-  rating: "4.8",
-  avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Dave",
-  verified: true,
-  stats: {
-    completed: 47,
-    posted: 12,
-    earnings: "1,250",
-  },
-};
 
 const COURSES = [
   "BS Computer Engineering Student",
@@ -159,11 +155,134 @@ const MENU_ITEMS = [
 ───────────────────────────────────────────────────────── */
 export default function ProfilePage() {
   const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState({ completed: 0, posted: 0, earnings: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editCourse, setEditCourse] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
-  function handleSignOut() {
-    router.push("/");
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    const authenticatedUser = user;
+    let active = true;
+
+    async function loadProfile() {
+      try {
+        setIsLoading(true);
+        setLoadError("");
+
+        const [profileSnapshot, completed, posted, earnings] = await Promise.all([
+          getDoc(doc(db, "users", authenticatedUser.uid)),
+          getCompletedQuestsCount(authenticatedUser.uid),
+          getMyPostedQuestsCount(authenticatedUser.uid),
+          getQuestEarnings(authenticatedUser.uid),
+        ]);
+
+        if (!active) return;
+
+        const savedProfile = profileSnapshot.exists()
+          ? (profileSnapshot.data() as Partial<UserProfile>)
+          : {};
+
+        setProfile({
+          id: authenticatedUser.uid,
+          email: savedProfile.email ?? authenticatedUser.email ?? "",
+          fullName: getProfileName(authenticatedUser.displayName, savedProfile.fullName),
+          isVerified: authenticatedUser.emailVerified,
+          profilePhotoUrl: savedProfile.profilePhotoUrl ?? authenticatedUser.photoURL,
+          course: savedProfile.course,
+          averageRating: savedProfile.averageRating,
+          ratingCount: savedProfile.ratingCount,
+        });
+        setStats({ completed, posted, earnings });
+      } catch (error) {
+        console.error("Profile data loading failed:", error);
+        if (active) setLoadError("Could not load your profile data. Please try again.");
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    void loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [isAuthLoading, router, user]);
+
+  async function handleSignOut() {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setSignOutError("");
+    try {
+      await endSession(() => auth.signOut());
+      // A full navigation also discards cached authenticated route content.
+      window.location.replace("/");
+    } catch {
+      setSignOutError("Could not finish signing out. Please try again.");
+      setIsSigningOut(false);
+    }
   }
+
+  async function handleSaveProfile() {
+    if (!user || !profile || isSaving) return;
+    const fullName = editName.trim();
+    if (!fullName) {
+      setSaveError("Please enter your name.");
+      return;
+    }
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      // Auth owns the displayed name; write it before notifying Firestore
+      // subscribers so the header and profile resolve the same identity.
+      await updateProfile(user, { displayName: fullName });
+      setProfile((current) => current ? { ...current, fullName } : current);
+      await updateDoc(doc(db, "users", user.uid), {
+        fullName,
+        course: editCourse,
+        updatedAt: serverTimestamp(),
+      });
+      setProfile((current) => current ? { ...current, fullName, course: editCourse } : current);
+      setEditOpen(false);
+    } catch {
+      setSaveError("Could not save all profile changes. Please retry to finish syncing them.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (isAuthLoading || isLoading) {
+    return <div className="page-container py-12 text-center text-white">Loading profile...</div>;
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="page-container py-12 text-center text-white">
+        {loadError || "Profile data is unavailable."}
+      </div>
+    );
+  }
+
+  const profileName = profile.fullName;
+  const profileCourse = profile.course || "CIT-U Student";
+  const profileRating = profile.averageRating?.toFixed(1) ?? "No ratings";
+  const profileAvatar =
+    profile.profilePhotoUrl ||
+    user.photoURL ||
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileName)}`;
 
   return (
     <div className="bg-transparent min-h-full">
@@ -186,14 +305,14 @@ export default function ProfilePage() {
                     {/* Avatar circle */}
                     <div className="relative shrink-0">
                       <Image
-                        src={PROFILE.avatar}
-                        alt={PROFILE.name}
+                        src={profileAvatar}
+                        alt={profileName}
                         width={96}
                         height={96}
                         className="rounded-full bg-white border-4 border-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] w-20 h-20 sm:w-24 sm:h-24"
                         unoptimized
                       />
-                      {PROFILE.verified && (
+                      {profile.isVerified && (
                         <span className="absolute bottom-0 right-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#c9a227] border-[3px] border-white flex items-center justify-center shadow-md">
                           <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                         </span>
@@ -204,10 +323,10 @@ export default function ProfilePage() {
                     <div className="min-w-0 sm:pb-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h1 className="text-xl sm:text-2xl md:text-[28px] font-extrabold text-[#161414] leading-tight">
-                          {PROFILE.name}
+                          {profileName}
                         </h1>
 
-                        {PROFILE.verified && (
+                        {profile.isVerified && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-[#f6ecc8] text-[#7a1f32] px-2 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wide uppercase shrink-0">
                             <CheckCircle2 className="w-3 h-3" />
                             Verified
@@ -218,11 +337,11 @@ export default function ProfilePage() {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
                         <span className="inline-flex items-center gap-1 font-bold text-[#161414]">
                           <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
-                          {PROFILE.rating}
+                          {profileRating}
                           <span className="text-[#4a4340] font-normal ml-0.5">rating</span>
                         </span>
                         <span className="text-[#d8d3cc]">•</span>
-                        <span className="text-[#4a4340]">{PROFILE.course}</span>
+                        <span className="text-[#4a4340]">{profileCourse}</span>
                       </div>
                     </div>
                   </div>
@@ -230,7 +349,12 @@ export default function ProfilePage() {
                   {/* Edit button */}
                   <button
                     type="button"
-                    onClick={() => setEditOpen(true)}
+                    onClick={() => {
+                      setEditName(profileName);
+                      setEditCourse(profile.course || "");
+                      setSaveError("");
+                      setEditOpen(true);
+                    }}
                     className="
                       inline-flex items-center justify-center gap-2
                       rounded-xl bg-[#7a1f32] hover:bg-[#5f1727]
@@ -255,7 +379,7 @@ export default function ProfilePage() {
           {[
             {
               label: "Completed",
-              value: PROFILE.stats.completed,
+              value: stats.completed,
               icon: Trophy,
               accentClass: "from-[#7a1f32] to-[#5f1727]",
               valueClass: "text-[#7a1f32]",
@@ -263,7 +387,7 @@ export default function ProfilePage() {
             },
             {
               label: "Posted",
-              value: PROFILE.stats.posted,
+              value: stats.posted,
               icon: Send,
               accentClass: "from-[#161414] to-[#4a4340]",
               valueClass: "text-[#161414]",
@@ -271,7 +395,7 @@ export default function ProfilePage() {
             },
             {
               label: "Earnings",
-              value: `₱${PROFILE.stats.earnings}`,
+              value: `₱${stats.earnings.toLocaleString()}`,
               icon: Coins,
               accentClass: "from-[#c9a227] to-[#b08b1e]",
               valueClass: "text-[#c9a227]",
@@ -360,6 +484,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={handleSignOut}
+                  disabled={isSigningOut}
                   className="
                     w-full text-left group flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4
                     transition-all duration-300
@@ -372,7 +497,7 @@ export default function ProfilePage() {
 
                   <div className="min-w-0 flex-1">
                     <p className="text-sm sm:text-base font-bold text-[#b42318]">
-                      Sign Out
+                      {isSigningOut ? "Signing out..." : "Sign Out"}
                     </p>
                     <p className="text-[11px] sm:text-sm text-[#4a4340] truncate">
                       Log out of your QuestGo account
@@ -381,6 +506,11 @@ export default function ProfilePage() {
 
                   <ChevronRight className="w-5 h-5 text-[#d8d3cc] shrink-0 transition-all duration-300 group-hover:text-[#b42318] group-hover:translate-x-0.5" />
                 </button>
+                {signOutError && (
+                  <p role="alert" className="px-5 pb-4 text-sm text-red-700">
+                    {signOutError}
+                  </p>
+                )}
               </li>
             </ul>
           </section>
@@ -394,7 +524,7 @@ export default function ProfilePage() {
         {editOpen && (
           <div
             className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-[3px]"
-            onClick={() => setEditOpen(false)}
+            onClick={() => { if (!isSaving) setEditOpen(false); }}
           >
             <div
               className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 w-full max-w-md p-5 sm:p-6 animate-fade-up shadow-[0_24px_70px_rgba(0,0,0,0.4)]"
@@ -415,12 +545,15 @@ export default function ProfilePage() {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-[#161414] mb-1.5">
+                  <label htmlFor="profile-name" className="block text-xs sm:text-sm font-semibold text-[#161414] mb-1.5">
                     Display Name
                   </label>
                   <input
                     type="text"
-                    defaultValue={PROFILE.name}
+                    id="profile-name"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    disabled={isSaving}
                     className="
                       w-full rounded-xl border border-[#e5e0d8] bg-white
                       px-4 py-3 text-sm text-[#161414]
@@ -431,12 +564,15 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-[#161414] mb-1.5">
+                  <label htmlFor="profile-course" className="block text-xs sm:text-sm font-semibold text-[#161414] mb-1.5">
                     Course / Program
                   </label>
                   <div className="relative">
                     <select
-                      defaultValue={PROFILE.course}
+                      id="profile-course"
+                      value={editCourse}
+                      onChange={(event) => setEditCourse(event.target.value)}
+                      disabled={isSaving}
                       className="
                         w-full appearance-none rounded-xl border border-[#e5e0d8] bg-white
                         px-4 py-3 pr-10 text-sm text-[#161414] cursor-pointer
@@ -444,6 +580,10 @@ export default function ProfilePage() {
                         focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
                       "
                     >
+                      <option value="">Select your course / program</option>
+                      {editCourse && !COURSES.includes(editCourse) && (
+                        <option value={editCourse}>{editCourse}</option>
+                      )}
                       {COURSES.map((course) => (
                         <option key={course} value={course}>
                           {course}
@@ -455,10 +595,12 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {saveError && <p role="alert" className="mb-4 text-sm text-red-700">{saveError}</p>}
               <div className="flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setEditOpen(false)}
+                  disabled={isSaving}
                   className="
                     px-4 py-2.5 rounded-xl border border-[#e5e0d8] bg-white
                     text-sm font-semibold text-[#4a4340]
@@ -470,10 +612,11 @@ export default function ProfilePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setEditOpen(false)}
+                  onClick={handleSaveProfile}
+                  disabled={isSaving}
                   className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold shadow-[0_4px_12px_rgba(122,31,50,0.2)] active:scale-95 transition-all"
                 >
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>

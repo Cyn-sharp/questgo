@@ -2,34 +2,51 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
 
     match /users/{userId} {
       allow read: if request.auth != null
         && request.auth.uid == userId;
 
       allow create: if request.auth != null
-        && request.auth.uid == userId;
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'id', 'email', 'fullName', 'isVerified', 'createdAt',
+          'updatedAt', 'profilePhotoUrl', 'course'
+        ])
+        && request.resource.data.id == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.isVerified == request.auth.token.email_verified;
 
       allow update: if request.auth != null
-        && request.auth.uid == userId;
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'fullName', 'profilePhotoUrl', 'course', 'updatedAt'
+        ]);
     }
 
     match /quests/{questId} {
 
-      allow read: if request.auth != null;
+      allow read: if verified();
 
-      allow create: if request.auth != null
-        && request.resource.data.requesterId == request.auth.uid
-        && request.resource.data.status == "available";
+      // All mutations go through authenticated server transactions.
+      allow create, update, delete: if false;
 
-      allow update: if request.auth != null
-        && (
-          resource.data.requesterId == request.auth.uid
-          || resource.data.questRunnerId == request.auth.uid
-        );
-
-      allow delete: if request.auth != null
-        && resource.data.requesterId == request.auth.uid;
+      match /messages/{messageId} {
+        function participant() {
+          let quest = get(/databases/$(database)/documents/quests/$(questId)).data;
+          return verified()
+            && quest.status in ['accepted', 'in_progress', 'completed']
+            && (quest.requesterId == request.auth.uid
+              || quest.get('questRunnerId', '') == request.auth.uid);
+        }
+        allow read: if participant();
+        allow write: if false;
+      }
     }
+    // Locks and message rate limits are server-only; unmatched paths are denied.
   }
 }
