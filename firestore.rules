@@ -8,6 +8,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      match /questInbox/{questId} {
+        allow read: if verified() && request.auth.uid == userId;
+        allow write: if false;
+      }
       allow read: if request.auth != null
         && request.auth.uid == userId;
 
@@ -39,7 +43,7 @@ service cloud.firestore {
         function participant() {
           let quest = get(/databases/$(database)/documents/quests/$(questId)).data;
           return verified()
-            && quest.status in ['accepted', 'in_progress', 'completed']
+            && quest.status in ['accepted', 'in_progress', 'completed', 'cancelled']
             && (quest.requesterId == request.auth.uid
               || quest.get('questRunnerId', '') == request.auth.uid);
         }

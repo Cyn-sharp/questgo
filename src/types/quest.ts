@@ -23,12 +23,16 @@ export interface Quest {
   neededBy?: string;
 
   attachmentUrl?: string;
+  attachment?: { path: string; name: string; size: number; contentType: string };
+  requirements?: Record<string, string>;
 
   requesterId: string;
   questRunnerId?: string;
   requesterName?: string;
   runnerName?: string;
   completionRequestedAt?: unknown;
+  cancellationRequestedBy?: string;
+  cancellationRequestedAt?: unknown;
 
   status: QuestStatus;
 
@@ -37,4 +41,6 @@ export interface Quest {
 
   acceptedAt?: unknown;
   completedAt?: unknown;
+  cancelledAt?: unknown;
+  updatedAt?: unknown;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/auth/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { Quest } from "@/types/quest";
@@ -62,4 +62,22 @@ export function useAvailableQuests() {
   const current = state?.uid === user?.uid ? state : undefined;
   return { records: current?.records ?? [], isLoading: authLoading || Boolean(user && !current),
     hasError: current?.error ?? false, retry: () => setAttempt((value) => value + 1) };
+}
+
+// Notifications need ongoing work and recent closures, not the entire quest history.
+export function useNotificationQuests() {
+  const { user, isLoading } = useAuth();
+  const [state, setState] = useState<{ uid: string; groups: Record<string, Quest[]>; error?: string }>();
+  useEffect(() => {
+    if (!user) return;
+    const uid = user.uid;
+    const stops = ["requesterId", "questRunnerId"].flatMap((field) => [false, true].map((closed) => {
+      const key = field + closed;
+      const source = query(collection(db, "quests"), where(field, "==", uid), where("status", "in", closed ? ["completed", "cancelled"] : ["accepted", "in_progress"]), ...(closed ? [orderBy("updatedAt", "desc"), limit(3)] : []));
+      return onSnapshot(source, (snapshot) => setState((current) => ({ uid, groups: { ...(current?.uid === uid ? current.groups : {}), [key]: snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Quest) } })), () => setState((current) => ({ uid, groups: current?.uid === uid ? current.groups : {}, error: "Unable to load quest updates." })));
+    }));
+    return () => stops.forEach((stop) => stop());
+  }, [user]);
+  const current = state?.uid === user?.uid ? state : undefined;
+  return { posted: [...(current?.groups.requesterIdfalse || []), ...(current?.groups.requesterIdtrue || [])], running: [...(current?.groups.questRunnerIdfalse || []), ...(current?.groups.questRunnerIdtrue || [])], loading: isLoading || !current || Object.keys(current.groups).length < 4, error: current?.error };
 }

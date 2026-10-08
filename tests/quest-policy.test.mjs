@@ -2,9 +2,35 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canMessage, isActiveQuest, transitionQuest, validateQuest } from "../src/lib/quests/policy.ts";
 
-const input = { title: "Print module", category: "Printing", description: "Print pages 1–5", reward: 30,
-  location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
+const input = { title: "Print module", category: "Pickup", description: "Collect the printed pages from the library", reward: 30,
+  requirements: { items: "Printed module", collection: "Collect from the library desk" }, location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
 const available = { requesterId: "requester", status: "available", expiresAt: { toMillis: () => 2000 } };
+
+test("cancellation needs agreement from the other participant and pauses progress", () => {
+  for (const status of ["accepted", "in_progress"]) {
+    const quest = { ...available, status, questRunnerId: "runner", completionRequestedAt: true };
+    for (const initiator of ["requester", "runner"]) {
+      const other = initiator === "requester" ? "runner" : "requester";
+      assert.equal(transitionQuest(quest, initiator, "request-cancellation", 1000), status);
+      const pending = { ...quest, cancellationRequestedBy: initiator };
+      assert.throws(() => transitionQuest(pending, initiator, "approve-cancellation", 1000));
+      assert.throws(() => transitionQuest(pending, "outsider", "approve-cancellation", 1000));
+      assert.throws(() => transitionQuest(pending, other, "withdraw-cancellation", 1000));
+      assert.throws(() => transitionQuest(pending, "requester", "complete", 1000));
+      assert.throws(() => transitionQuest(pending, "runner", "start", 1000));
+      assert.equal(transitionQuest(pending, other, "approve-cancellation", 1000), "cancelled");
+      assert.equal(transitionQuest(pending, other, "decline-cancellation", 1000), status);
+      assert.equal(transitionQuest(pending, initiator, "withdraw-cancellation", 1000), status);
+      assert.equal(canMessage(pending, other), true);
+      assert.equal(isActiveQuest(pending, 1000), true);
+    }
+    assert.throws(() => transitionQuest(quest, "outsider", "request-cancellation", 1000));
+    assert.throws(() => transitionQuest(quest, "requester", "approve-cancellation", 1000));
+  }
+  for (const status of ["completed", "cancelled", "available"]) {
+    assert.throws(() => transitionQuest({ ...available, status }, "requester", "request-cancellation", 1000));
+  }
+});
 
 test("quest input rejects malformed rewards and ignores client ownership/status", () => {
   for (const reward of [NaN, Infinity, -1, 0, "30", 10001, 0.001]) assert.throws(() => validateQuest({ ...input, reward }));

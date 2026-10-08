@@ -3,8 +3,8 @@ import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest
 
 export function questService(db: Firestore) {
   return {
-    async create(uid: string, name: string, input: unknown) {
-      const data = validateQuest(input);
+    async create(uid: string, name: string, input: unknown, attachment?: { path: string; name: string; size: number; contentType: string }) {
+      const data = validateQuest(input, Boolean(attachment));
       const questRef = db.collection("quests").doc();
       const lockRef = db.collection("requesterLocks").doc(uid);
       await db.runTransaction(async (tx) => {
@@ -16,7 +16,7 @@ export function questService(db: Firestore) {
         if (existing.docs.some((record) => isActiveQuest(record.data() as WorkflowQuest, now.toMillis()))) {
           throw new QuestError("You already have an active quest. Open My Requests to manage it before posting another.", 409);
         }
-        tx.create(questRef, { ...data, requesterId: uid, requesterName: name, status: "available",
+        tx.create(questRef, { ...data, ...(attachment ? { attachment } : {}), requesterId: uid, requesterName: name, status: "available",
           createdAt: now, expiresAt: Timestamp.fromMillis(now.toMillis() + QUEST_WINDOW_MS) });
         tx.set(lockRef, { questId: questRef.id, updatedAt: now });
       });
@@ -30,6 +30,9 @@ export function questService(db: Firestore) {
         const quest = snapshot.data() as WorkflowQuest;
         const status = transitionQuest(quest, uid, action, Date.now());
         const changes: Record<string, unknown> = { status, updatedAt: FieldValue.serverTimestamp() };
+        if (action === "request-cancellation") Object.assign(changes, { cancellationRequestedBy: uid, cancellationRequestedAt: FieldValue.serverTimestamp() });
+        if (["decline-cancellation", "withdraw-cancellation"].includes(action)) Object.assign(changes, { cancellationRequestedBy: FieldValue.delete(), cancellationRequestedAt: FieldValue.delete() });
+        if (action === "approve-cancellation") Object.assign(changes, { cancelledAt: FieldValue.serverTimestamp(), cancellationApprovedBy: uid });
         if (action === "accept") Object.assign(changes, { questRunnerId: uid, runnerName: name, acceptedAt: FieldValue.serverTimestamp() });
         if (action === "start") changes.startedAt = FieldValue.serverTimestamp();
         if (action === "request-completion") changes.completionRequestedAt = FieldValue.serverTimestamp();
@@ -52,6 +55,11 @@ export function questService(db: Firestore) {
         if (lastSent && now.toMillis() - lastSent.toMillis() < 1000) throw new QuestError("Please wait a moment before sending another message.", 429);
         tx.create(messageRef, { senderId: uid, text: input.trim(), createdAt: now });
         tx.set(limitRef, { sentAt: now });
+        const quest = snapshot.data() as WorkflowQuest & { title: string };
+        const recipient = quest.requesterId === uid ? quest.questRunnerId : quest.requesterId;
+        if (recipient) tx.set(db.doc(`users/${recipient}/questInbox/${id}`), {
+          questId: id, title: quest.title, messageId: messageRef.id, sentAt: now,
+        });
       });
       return messageRef.id;
     },

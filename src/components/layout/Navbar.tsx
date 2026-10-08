@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/auth/firebase";
@@ -178,7 +178,7 @@ const dashboardNavItems = [
   { label: "Home", href: "/dashboard" },
   { label: "Find a Quest", href: "/quests" },
   { label: "Post a Quest", href: "/post-quest" },
-  { label: "My Requests", href: "/requests" },
+  { label: "My Quests", href: "/requests" },
   { label: "Profile", href: "/profile" },
 ];
 
@@ -271,10 +271,6 @@ export const Navbar = (): ReactElement => {
             </span>
           </div>
 
-          <button className="relative text-gray-400 hover:text-white transition">
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#161414]"></span>
-          </button>
 
           <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition">
             <Image

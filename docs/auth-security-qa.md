@@ -1,5 +1,60 @@
 # Authentication and quest security QA
 
+## Message priority, archive and query improvements
+
+- Messages puts In Progress ahead of Accepted, followed by up to three recent
+  closed conversations with gray styling and explicit status. Ongoing quests
+  are listed even before either participant sends a message. Toasts prioritize
+  ongoing quests too.
+- Profile links to `/profile/archive`, with requester/runner views and cursor
+  pagination of 10 transactions, ordered by posting date. Messages are retained;
+  this feature does not delete or move records.
+- Dashboard notifications fetch active work plus at most three recent closures
+  per role instead of subscribing to the entire quest history. Recent closures
+  require `updatedAt` (written by the current quest API). Legacy records without
+  it remain available through the archive, which orders by `createdAt`.
+- Profile stats use two aggregate queries rather than three full-record reads.
+  Other My Quests lists and inbox summary reads still grow with account history;
+  further pagination there remains a scaling task.
+- Deploy `firestore.indexes.json` and wait for indexes to build before releasing
+  these queries. Emulator tests do not verify production index availability.
+- Browser/mobile QA and live latency measurements are still pending. No claim
+  of a measured production speedup or live deployment is made.
+
+## October 1 in-app alerts update
+
+- Dashboard-wide Messages button lists incoming conversations with a red unread
+  indicator. Read markers are stored per account in this browser and shared
+  between its tabs, not across devices. Opening a visible, focused chat clears
+  its marker. New alerts begin with messages sent after this update.
+- Accepted, started, ready, completed, and cancellation changes show queued
+  three-second notices while the dashboard is open. Initial quest snapshots do
+  not replay old status notices. This is not background phone push delivery.
+- Message sends atomically update a private recipient inbox. Deploy the matching
+  Firestore rules with the app. The archive update also requires the indexes
+  described above.
+- Production build, 13 unit tests, changed-file lint and the emulator integration
+  suite passed, including recipient inbox access and forged-write rejection.
+- Manual QA: use two accounts to send/reply, navigate between dashboard pages,
+  check the red dot clears in the open chat, reload, switch accounts, and exercise
+  each status change. Check the floating button on mobile and scroll older chat
+  messages while new ones arrive. Rendered browser/mobile QA remains pending.
+
+## October 1 cancellation and completion update
+
+- Added a browser confirmation before receipt/payment completion and before
+  requesting or approving cancellation.
+- Either participant may request cancellation after acceptance. Only the other
+  participant may approve or decline; the initiator may withdraw. Server
+  transactions pause progress until the request is resolved.
+- Cancelled chat history stays private and read-only. Pending cancellation keeps
+  chat open and still counts as an active quest.
+- Production build, 11 unit tests, changed-file ESLint, and the expanded isolated
+  emulator suite passed. Integration checks cover approval permissions,
+  decline/withdrawal, blocked completion, posting again, and cancelled chat access.
+- Browser/mobile confirmation checks remain manual. No deployment performed.
+- Admin review for unresponsive participants is not implemented.
+
 ## Local implementation
 
 Quest creation, acceptance, status changes and message sends use authenticated

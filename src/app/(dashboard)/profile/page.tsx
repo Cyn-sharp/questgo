@@ -28,9 +28,7 @@ import { auth, db } from "@/lib/auth/firebase";
 import { endSession } from "@/lib/auth/logout";
 import { getProfileName } from "@/lib/auth/profile-name";
 import {
-  getCompletedQuestsCount,
-  getMyPostedQuestsCount,
-  getQuestEarnings,
+  getProfileQuestStats,
 } from "@/lib/db/quests";
 import type { User as UserProfile } from "@/types/user";
 
@@ -105,9 +103,9 @@ const MENU_ITEMS = [
   },
   {
     id: "history",
-    title: "Quest History",
-    description: "View your completed and active logs",
-    href: "/history",
+    title: "Message Archive",
+    description: "Read past completed and cancelled conversations",
+    href: "/profile/archive",
     icon: History,
     iconBg: "bg-[#fbf0d6]",
     iconColor: "text-[#c9a227]",
@@ -184,11 +182,9 @@ export default function ProfilePage() {
         setIsLoading(true);
         setLoadError("");
 
-        const [profileSnapshot, completed, posted, earnings] = await Promise.all([
+        const [profileSnapshot, questStats] = await Promise.all([
           getDoc(doc(db, "users", authenticatedUser.uid)),
-          getCompletedQuestsCount(authenticatedUser.uid),
-          getMyPostedQuestsCount(authenticatedUser.uid),
-          getQuestEarnings(authenticatedUser.uid),
+          getProfileQuestStats(authenticatedUser.uid),
         ]);
 
         if (!active) return;
@@ -207,7 +203,7 @@ export default function ProfilePage() {
           averageRating: savedProfile.averageRating,
           ratingCount: savedProfile.ratingCount,
         });
-        setStats({ completed, posted, earnings });
+        setStats(questStats);
       } catch (error) {
         console.error("Profile data loading failed:", error);
         if (active) setLoadError("Could not load your profile data. Please try again.");

@@ -16,6 +16,9 @@ import {
   FileText,
   ChevronDown,
 } from "lucide-react";
+import { CATEGORY_FIELDS } from "@/lib/quests/requirements";
+import { validateQuest } from "@/lib/quests/policy";
+import { MAX_PRINT_FILE_BYTES } from "@/lib/quests/files";
 import { createQuest } from "@/lib/db/quests";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -129,6 +132,12 @@ const inputClass = `
 
 export default function PostQuestPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const [requirements, setRequirements] = useState<Record<string, string>>({});
+  const [file, setFile] = useState<File | undefined>();
+  const [review, setReview] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const posting = useRef(false);
+  useEffect(() => { if (review) dialog.current?.showModal(); else dialog.current?.close(); }, [review]);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [shake, setShake] = useState(false);
@@ -141,6 +150,8 @@ export default function PostQuestPage() {
   const activeQuest = posted.find((quest) => ["accepted", "in_progress"].includes(quest.status) || (quest.status === "available" && (getQuestExpirationMillis(quest) ?? Infinity) > now));
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setReview(false);
+    if (key === "category") { setRequirements({}); setFile(undefined); }
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
@@ -179,21 +190,22 @@ export default function PostQuestPage() {
       return;
     }
 
+    const payload = {
+      title: form.title.trim(), category: form.category, description: form.description.trim(),
+      reward: Number(form.reward), location: form.pickupLocation, meetUpPoint: form.meetupLocation,
+      preferredTime: `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`, requirements,
+    };
+    try {
+      validateQuest(payload, Boolean(file));
+      if (file && (!file.size || file.size > MAX_PRINT_FILE_BYTES || !["application/pdf", "image/png", "image/jpeg"].includes(file.type))) throw new Error("Choose a PDF, JPG, or PNG file up to 3 MB.");
+    } catch (error) { setSubmissionError(error instanceof Error ? error.message : "Check your quest details."); return; }
+    if (!review) { setReview(true); return; }
+    if (posting.current) return;
+    posting.current = true;
     setSubmitting(true);
 
     try {
-      const formattedTime = `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`;
-      const questId = await createQuest(
-        {
-          title: form.title.trim(),
-          category: form.category,
-          description: form.description.trim(),
-          reward: Number(form.reward),
-          location: form.pickupLocation,
-          meetUpPoint: form.meetupLocation,
-          preferredTime: formattedTime,
-        }
-      );
+      const questId = await createQuest(payload, file);
 
       setSuccess(true);
       router.replace(`/quests/active?id=${encodeURIComponent(questId)}`);
@@ -202,6 +214,7 @@ export default function PostQuestPage() {
         error instanceof Error ? error.message : "Unable to post your quest. Please try again."
       );
     } finally {
+      posting.current = false;
       setSubmitting(false);
     }
   }
@@ -242,6 +255,17 @@ export default function PostQuestPage() {
 
   return (
     <div className="bg-transparent min-h-full">
+      <dialog ref={dialog} onCancel={(event) => { if (submitting) event.preventDefault(); else setReview(false); }} aria-labelledby="review-title" className="m-auto w-[calc(100%-2rem)] max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/60">
+        <h2 id="review-title" className="text-2xl font-bold">Review your quest</h2>
+        <p className="my-3">Check for typos and confirm all details before posting.</p>
+        <h3 className="font-bold break-words">{form.title}</h3><p>{form.category}</p><p className="my-3 whitespace-pre-wrap break-words">{form.description}</p>
+        <dl className="space-y-2 text-sm"><div><dt className="font-bold">Reward</dt><dd>?{form.reward} ? Cash on delivery</dd></div><div><dt className="font-bold">Task / pickup location</dt><dd>{form.pickupLocation}</dd></div><div><dt className="font-bold">Meet-up</dt><dd>{form.meetupLocation} ? {form.meetupHour}:{form.meetupMinute} {form.meetupPeriod}</dd></div>
+          {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}><dt className="font-bold">{field.label}</dt><dd className="break-words">{requirements[field.key]}</dd></div>)}
+          {file && <div><dt className="font-bold">Attached file</dt><dd className="break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB ? {file.type}</dd></div>}
+        </dl>
+        {submissionError && <p role="alert" className="mt-4 text-red-700">{submissionError}</p>}
+        <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting?" : "Confirm and Post"}</button></div>
+      </dialog>
       <div className="page-container py-6 sm:py-10 lg:py-12">
         {/* Page Title (mobile) */}
         <div className="mb-6 lg:hidden">
@@ -354,7 +378,22 @@ export default function PostQuestPage() {
                 </div>
               </section>
 
-              <p className="mb-6 text-sm text-muted">File uploads are not available yet. Include task instructions in the description and coordinate details in Messenger after acceptance.</p>
+              <section className="mb-6 space-y-4">
+                <SectionLabel>{form.category} requirements</SectionLabel>
+                {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}>
+                  <FieldLabel htmlFor={`requirement-${field.key}`}>{field.label} *</FieldLabel>
+                  {["color", "sides"].includes(field.key) ? <select id={`requirement-${field.key}`} className={inputClass} value={requirements[field.key] || ""} onChange={(event) => setRequirements((current) => ({ ...current, [field.key]: event.target.value }))}>
+                    <option value="">Select an option</option>{(field.key === "color" ? ["Black and white", "Color"] : ["Single-sided", "Double-sided"]).map((option) => <option key={option}>{option}</option>)}
+                  </select> : <input id={`requirement-${field.key}`} className={inputClass} maxLength={500} value={requirements[field.key] || ""} placeholder={field.hint} onChange={(event) => setRequirements((current) => ({ ...current, [field.key]: event.target.value }))} />}
+                </div>)}
+                {form.category === "Printing" && <div>
+                  <FieldLabel htmlFor="printing-file">Printing file *</FieldLabel>
+                  <input key={form.category} id="printing-file" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setFile(event.target.files?.[0])} className={inputClass} />
+                  <p className="mt-2 text-sm">PDF, JPG, or PNG, up to 3 MB. Only you and your assigned runner can download it. Export Word documents to PDF first.</p>
+                  {file && <p className="mt-2 text-sm break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB</p>}
+                </div>}
+                {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward. Agree on purchase costs in chat before the runner spends money.</p>}
+              </section>
 
               {/* LOCATION */}
               <section className="mb-6 sm:mb-8">
@@ -461,7 +500,7 @@ export default function PostQuestPage() {
                   disabled={submitting}
                   className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
                 >
-                  {submitting ? "Posting..." : "Post Quest"}
+                  {submitting ? "Posting..." : "Review Quest"}
                 </button>
                 {success && (
                   <div className="mt-3 rounded-xl bg-[#eefbf3] border border-green-200 px-4 py-3 text-sm text-green-800 font-medium text-center">
@@ -510,7 +549,7 @@ export default function PostQuestPage() {
                 onClick={handleSubmit}
                 className="hidden lg:inline-flex w-full items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
               >
-                {submitting ? "Posting..." : "Post Quest"}
+                {submitting ? "Posting..." : "Review Quest"}
               </button>
 
               <p className="mt-3 text-[11px] text-center text-[#4a4340] leading-relaxed hidden lg:block">

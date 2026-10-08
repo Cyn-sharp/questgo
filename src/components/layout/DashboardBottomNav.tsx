@@ -17,7 +17,7 @@ const tabs: TabItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Find", href: "/quests", icon: Search },
   { label: "Post", href: "/post-quest", icon: PlusCircle, isCenter: true },
-  { label: "Requests", href: "/requests", icon: ClipboardList },
+  { label: "My Quests", href: "/requests", icon: ClipboardList },
   { label: "Profile", href: "/profile", icon: User },
 ];
 

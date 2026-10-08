@@ -28,14 +28,18 @@ test results, reproduction and the two-browser walkthrough.
 2. **CIT-U production policy.** Remove or explicitly isolate the Gmail testing
    allowance in registration, session issuance, protected access and database
    rules. Verification alone is not proof of an official CIT-U address.
-3. **Disputes and accepted-quest cancellation.** Only unclaimed quests can be
-   cancelled today. Design an agreed cancellation/dispute/admin workflow so a
-   participant cannot become indefinitely stuck after acceptance.
+3. **Disputes and abandoned quests.** Accepted and ongoing quests now support
+   cancellation by mutual agreement, with decline and withdrawal options. Progress
+   pauses while a request is pending; chat stays open and becomes read-only after
+   cancellation. Completion also asks for confirmation before submitting. An
+   admin review workflow for unresponsive participants is still needed; mutual
+   cancellation alone does not resolve abandonment or prevent dishonest users.
 4. **Attachments.** The old file selector accepted files but did not upload them.
    It is now replaced with clear availability text. Add validated private uploads
    and participant-authorized downloads before claiming printing-file support.
-5. **Ratings, reporting, blocking and notifications.** These are not completed
-   workflows. Ratings still need trusted server aggregation, uniqueness and
+5. **Ratings, reporting, blocking and push notifications.** In-app message badges
+   and quest status notices are implemented. Background push delivery is not.
+   Ratings still need trusted server aggregation, uniqueness and
    authorization; report/block controls need persistence and admin handling.
 6. **Scale and abuse controls.** Add chat pagination beyond the latest 100
    messages, paginated quest/history queries, broader API quotas/App Check,

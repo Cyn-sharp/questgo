@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adminAuth } from "@/lib/auth/firebase-admin";
+import { QuestNotifications } from "@/components/quest/QuestNotifications";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = (await cookies()).get("questgo_session")?.value;
@@ -14,5 +15,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
-  return <>{children}</>;
+  return <QuestNotifications>{children}</QuestNotifications>;
 }

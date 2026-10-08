@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { useQuest, useQuestClock } from "@/hooks/useQuests";
 import { getQuestExpirationMillis } from "@/lib/db/quests";
 import { questRequest } from "@/lib/quests/client";
+import { questNextStep } from "@/lib/quests/progress";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { CATEGORY_FIELDS } from "@/lib/quests/requirements";
+import { PrintingFile } from "./PrintingFile";
 
 export function LiveQuest({ id, participantsOnly = false }: { id: string; participantsOnly?: boolean }) {
   const { user, quest, loading, error } = useQuest(id);
@@ -25,6 +28,12 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
   const status = expired ? "expired" : quest.status;
   async function act(action: string) {
     if (pending) return;
+    const confirmations: Record<string, string> = {
+      complete: "Have you received your item or service and paid the runner in cash? Completing this quest makes chat read-only.",
+      "request-cancellation": "Ask to cancel this quest? The other person must agree. Discuss any work already done or money spent in chat first.",
+      "approve-cancellation": "Agree to cancel this quest? Make sure you have settled any work or money spent. This does not issue a refund and will make chat read-only.",
+    };
+    if (confirmations[action] && !window.confirm(confirmations[action])) return;
     setPending(true); setActionError("");
     try {
       await questRequest(`/${encodeURIComponent(id)}`, { action });
@@ -37,7 +46,14 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
     <Card className="mt-5 p-6 sm:p-8 space-y-5">
       <div className="flex flex-wrap justify-between gap-3"><span className="badge-gold">{quest.category}</span><span className="font-semibold capitalize">{status.replaceAll("_", " ")}</span></div>
       <h1 className="text-3xl font-bold text-maroon">{quest.title}</h1>
+      <section aria-label="Your next step" className="rounded-xl bg-amber-50 p-4 space-y-2">
+        <p className="text-sm font-semibold">{requester ? "You are the requester" : runner ? "You are the runner" : "Become this quest's runner"}</p>
+        <p>{questNextStep({ ...quest, status }, requester)}</p>
+        <p className="text-xs text-gray-600">Posted ? Accepted ? In progress ? Ready for handover ? Completed</p>
+      </section>
       <p className="whitespace-pre-wrap break-words">{quest.description}</p>
+      {quest.requirements && <section aria-label="Task requirements" className="rounded-xl border p-4"><h2 className="font-bold mb-3">Task requirements</h2><dl className="grid sm:grid-cols-2 gap-3">{(CATEGORY_FIELDS[quest.category] || []).map((field) => <div key={field.key}><dt className="font-semibold">{field.label}</dt><dd className="break-words">{quest.requirements?.[field.key]}</dd></div>)}</dl></section>}
+      <PrintingFile quest={quest} canOpen={requester || runner} />
       <p className="text-2xl font-bold">₱{quest.reward.toLocaleString()} <span className="text-sm font-normal">Cash on delivery</span></p>
       <dl className="grid sm:grid-cols-2 gap-4">
         <div><dt className="font-semibold">Requester</dt><dd>{quest.requesterName || "Requester"}{requester && " (you)"}</dd></div>
@@ -49,14 +65,21 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
       </dl>
       {quest.completionRequestedAt && quest.status === "in_progress" ? <p className="rounded-xl bg-amber-50 p-4">The runner has marked the work ready. The requester must confirm receipt and cash payment to complete the quest.</p> : null}
       {requester && quest.status === "available" && !expired && <p>Waiting for a runner. You can post again after this quest is cancelled, expires, or is completed.</p>}
+      {quest.cancellationRequestedBy && (requester || runner) && ["accepted", "in_progress"].includes(status) && <section aria-label="Cancellation request" className="rounded-xl bg-amber-50 p-4 space-y-3">
+        <p>{quest.cancellationRequestedBy === user.uid ? "You asked to cancel. Waiting for the other person to respond." : "The other person has asked to cancel this quest."} Discuss any costs or work already done in chat before agreeing. Quest progress is paused until this request is resolved.</p>
+        {quest.cancellationRequestedBy === user.uid
+          ? <Button variant="outline" disabled={pending} onClick={() => act("withdraw-cancellation")}>Withdraw Request</Button>
+          : <div className="flex flex-wrap gap-3"><Button disabled={pending} onClick={() => act("approve-cancellation")}>Agree to Cancel</Button><Button variant="outline" disabled={pending} onClick={() => act("decline-cancellation")}>Keep Quest</Button></div>}
+      </section>}
+      {(requester || runner) && ["accepted", "in_progress"].includes(status) && !quest.cancellationRequestedBy && <Button variant="outline" disabled={pending} onClick={() => act("request-cancellation")}>Request Cancellation</Button>}
       {actionError && <p role="alert" className="text-red-700">{actionError}</p>}
       <div className="flex flex-wrap gap-3">
         {!requester && status === "available" && <Button disabled={pending} onClick={() => act("accept")}>Accept Quest</Button>}
-        {requester && quest.status === "available" && <Button variant="outline" disabled={pending} onClick={() => act("cancel")}>Cancel Quest</Button>}
-        {runner && status === "accepted" && <Button disabled={pending} onClick={() => act("start")}>Start Quest</Button>}
-        {runner && status === "in_progress" && !quest.completionRequestedAt && <Button disabled={pending} onClick={() => act("request-completion")}>Mark Work Ready</Button>}
-        {requester && status === "in_progress" && Boolean(quest.completionRequestedAt) && <Button disabled={pending} onClick={() => act("complete")}>Confirm Receipt & Cash Payment</Button>}
-        {(requester || runner) && ["accepted", "in_progress", "completed"].includes(status) && <Link className="btn-outline" href={`/messenger?id=${encodeURIComponent(id)}`}>{status === "completed" ? "View Conversation" : "Open Messenger"}</Link>}
+        {requester && status === "available" && <Button variant="outline" disabled={pending} onClick={() => act("cancel")}>Cancel Quest</Button>}
+        {!quest.cancellationRequestedBy && runner && status === "accepted" && <Button disabled={pending} onClick={() => act("start")}>Start Quest</Button>}
+        {!quest.cancellationRequestedBy && runner && status === "in_progress" && !quest.completionRequestedAt && <Button disabled={pending} onClick={() => act("request-completion")}>Mark Work Ready</Button>}
+        {!quest.cancellationRequestedBy && requester && status === "in_progress" && Boolean(quest.completionRequestedAt) && <Button disabled={pending} onClick={() => act("complete")}>Confirm Receipt & Cash Payment</Button>}
+        {(requester || runner) && ["accepted", "in_progress", "completed", "cancelled"].includes(status) && <Link className="btn-outline" href={`/messenger?id=${encodeURIComponent(id)}`}>{["completed", "cancelled"].includes(status) ? "View Conversation" : "Open Messenger"}</Link>}
       </div>
       {pending && <p role="status">Updating quest…</p>}
     </Card>

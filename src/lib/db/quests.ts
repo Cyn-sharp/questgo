@@ -3,17 +3,29 @@ import {
   doc,
   getDoc,
   getDocs,
+  getAggregateFromServer,
+  getCountFromServer,
+  count,
+  sum,
   query,
   where,
   Timestamp,
 } from "firebase/firestore";
 
-import { db } from "@/lib/auth/firebase";
+import { auth, db } from "@/lib/auth/firebase";
 import type { Quest } from "@/types/quest";
 
 import { questRequest } from "@/lib/quests/client";
 
 const questsCollection = collection(db, "quests");
+
+export async function getProfileQuestStats(userId: string) {
+  const [posted, completed] = await Promise.all([
+    getCountFromServer(query(questsCollection, where("requesterId", "==", userId))),
+    getAggregateFromServer(query(questsCollection, where("questRunnerId", "==", userId), where("status", "==", "completed")), { completed: count(), earnings: sum("reward") }),
+  ]);
+  return { posted: posted.data().count, completed: completed.data().completed, earnings: completed.data().earnings };
+}
 
 function getTimestampMillis(value: unknown): number | null {
   if (value instanceof Timestamp) return value.toMillis();
@@ -42,8 +54,17 @@ export async function createQuest(
     | "acceptedAt"
     | "completedAt"
   >,
+  file?: File,
 ) {
-  const result = await questRequest("", questData);
+  let result: { id?: string };
+  if (file) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Please log in again.");
+    const body = new FormData(); body.set("quest", JSON.stringify(questData)); body.set("file", file);
+    const response = await fetch("/api/quests", { method: "POST", headers: { Authorization: `Bearer ${await user.getIdToken()}` }, body });
+    result = await response.json();
+    if (!response.ok) throw new Error((result as { message?: string }).message || "Unable to upload and post this quest.");
+  } else result = await questRequest("", questData);
   if (!result.id) throw new Error("The server did not return the new quest.");
   return result.id;
 }

@@ -5,11 +5,11 @@ import { initializeApp as adminApp, deleteApp as deleteAdminApp } from "firebase
 import { getAuth as adminAuth } from "firebase-admin/auth";
 import { getFirestore as adminFirestore, Timestamp } from "firebase-admin/firestore";
 import { initializeApp, deleteApp } from "firebase/app";
-import { collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate } from "firebase/firestore";
+import { count, sum, getAggregateFromServer, getDocs, where, orderBy, limit, startAfter, collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate } from "firebase/firestore";
 
 // Never allow this suite to touch the live project.
 const projectId = "demo-questgo-test";
-if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8085" || process.env.FIREBASE_AUTH_EMULATOR_HOST !== "127.0.0.1:9095") {
+if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8085" || process.env.FIREBASE_AUTH_EMULATOR_HOST !== "127.0.0.1:9095" || process.env.FIREBASE_STORAGE_EMULATOR_HOST !== "127.0.0.1:9195") {
   throw new Error("Run through firebase emulators:exec with firebase.emulator.json. Live Firebase is forbidden.");
 }
 const admin = adminApp({ projectId }, "workflow-test");
@@ -37,7 +37,7 @@ async function request(uid, path, body) {
 }
 
 const input = { title: "Pick up my notes", description: "Meet at the main entrance.", category: "Pickup", reward: 30,
-  location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
+  requirements: { items: "Class notes", collection: "Collect from the library desk" }, location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
 
 before(async () => {
   for (const uid of ["requester", "runner1", "runner2", "outsider", "unverified"]) {
@@ -49,7 +49,7 @@ before(async () => {
     assert.ok(body.idToken); tokens[uid] = body.idToken;
   }
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", "3105"], {
-    env: { ...process.env, FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+    env: { ...process.env, FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId, FIREBASE_STORAGE_BUCKET: "demo-questgo-test.appspot.com" }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
   });
   server.stdout.on("data", (data) => { serverOutput += data; });
   server.stderr.on("data", (data) => { serverOutput += data; });
@@ -108,6 +108,11 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   await received;
   const messageRef = `quests/${id}/messages/${message.body.id}`;
   assert.equal((await db.doc(messageRef).get()).data().senderId, "requester");
+  const inboxPath = `users/${runner}/questInbox/${id}`;
+  assert.equal((await getDoc(doc(runnerDb, inboxPath))).data().messageId, message.body.id);
+  await assert.rejects(getDoc(doc(outsiderDb, inboxPath)), { code: "permission-denied" });
+  await assert.rejects(getDoc(doc(requesterDb, inboxPath)), { code: "permission-denied" });
+  await assert.rejects(setDoc(doc(runnerDb, inboxPath), { messageId: "forged" }), { code: "permission-denied" });
   await assert.rejects(getDoc(doc(outsiderDb, messageRef)), { code: "permission-denied" });
   await assert.rejects(setDoc(doc(runnerDb, `quests/${id}/messages/forged`), { senderId: "requester", text: "forged" }), { code: "permission-denied" });
   const replyReceived = waitForMessage(requesterDb, "On my way");
@@ -116,19 +121,78 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 200);
   assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 403);
   assert.equal((await request(runner, `/${id}`, { action: "request-completion" })).status, 200);
+  assert.equal((await request(runner, `/${id}`, { action: "request-cancellation" })).status, 200);
+  assert.equal((await ref.get()).data().cancellationRequestedBy, runner);
+  assert.equal((await request(runner, `/${id}`, { action: "approve-cancellation" })).status, 409);
+  assert.equal((await request("outsider", `/${id}`, { action: "approve-cancellation" })).status, 409);
+  assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 409);
+  assert.equal((await request("requester", `/${id}`, { action: "decline-cancellation" })).status, 200);
+  assert.equal((await ref.get()).data().cancellationRequestedBy, undefined);
+  assert.equal((await request("requester", `/${id}`, { action: "request-cancellation" })).status, 200);
+  assert.equal((await request("requester", `/${id}`, { action: "withdraw-cancellation" })).status, 200);
   assert.equal((await request(runner, `/${id}`, { action: "complete" })).status, 403);
   assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 200);
   assert.equal((await request(runner, `/${id}/messages`, { text: "closed" })).status, 403);
   const next = await request("requester", "", input);
   assert.equal(next.status, 201);
-  assert.equal((await request("requester", `/${next.body.id}`, { action: "cancel" })).status, 200);
+  const cancelId = next.body.id;
+  assert.equal((await request(runner, `/${cancelId}`, { action: "accept" })).status, 200);
+  const cancelMessage = await request(runner, `/${cancelId}/messages`, { text: "Please cancel" });
+  assert.equal(cancelMessage.status, 201);
+  assert.equal((await request("requester", `/${cancelId}`, { action: "request-cancellation" })).status, 200);
+  assert.equal((await request("requester", "", input)).status, 409);
+  assert.equal((await request(runner, `/${cancelId}`, { action: "approve-cancellation" })).status, 200);
+  assert.equal((await db.doc(`quests/${cancelId}`).get()).data().status, "cancelled");
+  assert.equal((await request(runner, `/${cancelId}/messages`, { text: "closed" })).status, 403);
+  const cancelledMessagePath = `quests/${cancelId}/messages/${cancelMessage.body.id}`;
+  assert.equal((await getDoc(doc(requesterDb, cancelledMessagePath))).data().text, "Please cancel");
+  await assert.rejects(getDoc(doc(outsiderDb, cancelledMessagePath)), { code: "permission-denied" });
+  const unclaimed = await request("requester", "", input);
+  assert.equal(unclaimed.status, 201);
+  assert.equal((await request("requester", `/${unclaimed.body.id}`, { action: "cancel" })).status, 200);
   const expiring = await request("requester", "", input);
   assert.equal(expiring.status, 201);
   await db.doc(`quests/${expiring.body.id}`).update({ expiresAt: Timestamp.fromMillis(Date.now() - 1000) });
   assert.equal((await request(runner, `/${expiring.body.id}`, { action: "accept" })).status, 409);
   assert.equal((await request("requester", "", input)).status, 201);
 
+  const archiveQuery = [where("requesterId", "==", "requester"), where("status", "in", ["completed", "cancelled"]), orderBy("createdAt", "desc")];
+  const firstPage = await getDocs(query(collection(requesterDb, "quests"), ...archiveQuery, limit(2)));
+  assert.equal(firstPage.size, 2);
+  const secondPage = await getDocs(query(collection(requesterDb, "quests"), ...archiveQuery, startAfter(firstPage.docs.at(-1)), limit(2)));
+  assert.ok(secondPage.size > 0);
+  assert.ok(secondPage.docs.every((record) => !firstPage.docs.some((first) => first.id === record.id)));
+  const totals = await getAggregateFromServer(query(collection(runnerDb, "quests"), where("questRunnerId", "==", runner), where("status", "==", "completed")), { completed: count(), earnings: sum("reward") });
+  assert.deepEqual(totals.data(), { completed: 1, earnings: 30 });
+  const recentClosed = await getDocs(query(collection(requesterDb, "quests"), where("requesterId", "==", "requester"), where("status", "in", ["completed", "cancelled"]), orderBy("updatedAt", "desc"), limit(3)));
+  assert.equal(recentClosed.size, 3);
+
   // Existing records from before the lock rollout still enforce the restriction.
   await db.doc("quests/legacy").set({ ...input, requesterId: "outsider", status: "accepted", expiresAt: Timestamp.now() });
   assert.equal((await request("outsider", "", input)).status, 409);
+});
+
+
+test("printing upload is required, preserved, and private to participants", async () => {
+  const printing = { ...input, category: "Printing", title: "Print my module", requirements: { paperSize: "A4", copies: "2", pages: "All pages", color: "Black and white", sides: "Single-sided" } };
+  assert.equal((await request("runner2", "", printing)).status, 400);
+  async function upload(content, type, name) {
+    const body = new FormData(); body.set("quest", JSON.stringify(printing)); body.set("file", new Blob([content], { type }), name);
+    const response = await fetch(endpoint + "/api/quests", { method: "POST", headers: { Authorization: `Bearer ${tokens.runner2}` }, body });
+    return { status: response.status, body: await response.json() };
+  }
+  assert.equal((await upload("not a PDF", "application/pdf", "fake.pdf")).status, 400);
+  const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXZkAAAAASUVORK5CYII=", "base64");
+  const created = await upload(bytes, "image/png", "page.png");
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  const id = created.body.id;
+  const download = (uid) => fetch(`${endpoint}/api/quests/${id}/file`, { headers: tokens[uid] ? { Authorization: `Bearer ${tokens[uid]}` } : {} });
+  assert.equal((await download("missing")).status, 401);
+  assert.equal((await download("outsider")).status, 403);
+  assert.equal((await download("requester")).status, 403);
+  const ownerFile = await download("runner2");
+  assert.equal(ownerFile.status, 200);
+  assert.deepEqual(Buffer.from(await ownerFile.arrayBuffer()), bytes);
+  assert.equal((await request("requester", `/${id}`, { action: "accept" })).status, 200);
+  assert.equal((await download("requester")).status, 200);
 });
