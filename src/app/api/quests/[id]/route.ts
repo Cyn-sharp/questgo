@@ -5,7 +5,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const actor = await verifiedActor(request);
     const id = questId((await context.params).id);
     const body = await readBody(request);
-    await quests.act(actor.uid, actor.name, id, String(body?.action ?? ""));
+    if (body.action === "repost") return Response.json({ id: await quests.repost(actor.uid, id) });
+    await quests.act(actor.uid, actor.name, id, String(body?.action ?? ""), body);
     return Response.json({ ok: true });
   } catch (error) { return apiError(error); }
 }

@@ -73,7 +73,7 @@ export function useNotificationQuests() {
     const uid = user.uid;
     const stops = ["requesterId", "questRunnerId"].flatMap((field) => [false, true].map((closed) => {
       const key = field + closed;
-      const source = query(collection(db, "quests"), where(field, "==", uid), where("status", "in", closed ? ["completed", "cancelled"] : ["accepted", "in_progress"]), ...(closed ? [orderBy("updatedAt", "desc"), limit(3)] : []));
+      const source = query(collection(db, "quests"), where(field, "==", uid), where("status", "in", closed ? ["completed", "cancelled"] : ["accepted", "in_progress", "settlement"]), ...(closed ? [orderBy("updatedAt", "desc"), limit(3)] : []));
       return onSnapshot(source, (snapshot) => setState((current) => ({ uid, groups: { ...(current?.uid === uid ? current.groups : {}), [key]: snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Quest) } })), () => setState((current) => ({ uid, groups: current?.uid === uid ? current.groups : {}, error: "Unable to load quest updates." })));
     }));
     return () => stops.forEach((stop) => stop());

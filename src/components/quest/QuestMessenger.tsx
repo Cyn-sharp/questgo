@@ -14,7 +14,7 @@ type Message = { id: string; senderId: string; text: string; createdAt?: Timesta
 export function QuestMessenger({ id }: { id: string }) {
   const { user, quest, loading, error } = useQuest(id);
   const participant = Boolean(user && quest && (quest.requesterId === user.uid || quest.questRunnerId === user.uid));
-  const readable = participant && Boolean(quest && ["accepted", "in_progress", "completed", "cancelled"].includes(quest.status));
+  const readable = participant && Boolean(quest && ["accepted", "in_progress", "settlement", "completed", "cancelled"].includes(quest.status));
   const key = `${user?.uid}:${id}`;
   const [feed, setFeed] = useState<{ key: string; messages: Message[]; error?: string }>();
   const [draft, setDraft] = useState("");

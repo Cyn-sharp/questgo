@@ -1,3 +1,4 @@
+import { validateFunding } from "./funding.ts";
 import { meaningfulText, validateRequirements } from "./requirements.ts";
 
 export class QuestError extends Error {
@@ -29,8 +30,10 @@ export function validateQuest(input: unknown, hasAttachment = false) {
   if (typeof data.reward !== "number" || !Number.isFinite(data.reward) || data.reward <= 0 || data.reward > 10000 || Math.abs(Math.round(data.reward * 100) - data.reward * 100) > 0.00001) {
     throw new QuestError("Reward must be between ₱0.01 and ₱10,000, with at most two decimal places.");
   }
+  let funding;
+  try { funding = validateFunding(data, category); } catch (error) { throw new QuestError(error instanceof Error ? error.message : "Invalid funding."); }
   // Whitelist fields: identities, status, attachments and timestamps are never client supplied.
-  return { title: text("title", 120), category, requirements, description: text("description", 3000), reward: data.reward,
+  return { ...funding, workflowVersion: 2, title: text("title", 120), category, requirements, description: text("description", 3000), reward: data.reward,
     location: text("location", 200), meetUpPoint: text("meetUpPoint", 200), preferredTime: text("preferredTime", 100) };
 }
 
@@ -41,6 +44,8 @@ export type WorkflowQuest = {
   expiresAt?: { toMillis(): number };
   completionRequestedAt?: unknown;
   cancellationRequestedBy?: string;
+  workflowVersion?: number;
+  committedAt?: unknown;
 };
 
 export function isActiveQuest(quest: WorkflowQuest, now: number) {
@@ -73,6 +78,6 @@ export function transitionQuest(quest: WorkflowQuest, uid: string, action: strin
 }
 
 export function canMessage(quest: WorkflowQuest, uid: string) {
-  return ["accepted", "in_progress"].includes(quest.status) &&
+  return ["accepted", "in_progress", "settlement"].includes(quest.status) &&
     (quest.requesterId === uid || quest.questRunnerId === uid);
 }

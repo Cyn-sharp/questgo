@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canMessage, isActiveQuest, transitionQuest, validateQuest } from "../src/lib/quests/policy.ts";
 
-const input = { title: "Print module", category: "Pickup", description: "Collect the printed pages from the library", reward: 30,
+const input = { fundingMethod: "no_purchase", purchaseBudget: 0, vendorInstructions: "", workflowVersion: 2, title: "Print module", category: "Pickup", description: "Collect the printed pages from the library", reward: 30,
   requirements: { items: "Printed module", collection: "Collect from the library desk" }, location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
 const available = { requesterId: "requester", status: "available", expiresAt: { toMillis: () => 2000 } };
 

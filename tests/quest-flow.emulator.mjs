@@ -36,7 +36,7 @@ async function request(uid, path, body) {
   return { status: response.status, body: await response.json() };
 }
 
-const input = { title: "Pick up my notes", description: "Meet at the main entrance.", category: "Pickup", reward: 30,
+const input = { fundingMethod: "no_purchase", purchaseBudget: 0, title: "Pick up my notes", description: "Meet at the main entrance.", category: "Pickup", reward: 30,
   requirements: { items: "Class notes", collection: "Collect from the library desk" }, location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
 
 before(async () => {
@@ -120,6 +120,8 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   await replyReceived;
   assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 200);
   assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 403);
+  assert.equal((await request(runner, `/${id}`, { action: "request-completion" })).status, 409);
+  assert.equal((await request(runner, `/${id}`, { action: "commit" })).status, 200);
   assert.equal((await request(runner, `/${id}`, { action: "request-completion" })).status, 200);
   assert.equal((await request(runner, `/${id}`, { action: "request-cancellation" })).status, 200);
   assert.equal((await ref.get()).data().cancellationRequestedBy, runner);
@@ -131,7 +133,9 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   assert.equal((await request("requester", `/${id}`, { action: "request-cancellation" })).status, 200);
   assert.equal((await request("requester", `/${id}`, { action: "withdraw-cancellation" })).status, 200);
   assert.equal((await request(runner, `/${id}`, { action: "complete" })).status, 403);
-  assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 200);
+  assert.equal((await request("requester", `/${id}`, { action: "complete", receiptConfirmed: true, paymentConfirmed: true })).status, 409);
+  assert.equal((await request(runner, `/${id}`, { action: "acknowledge-payment" })).status, 200);
+  assert.equal((await request("requester", `/${id}`, { action: "complete", receiptConfirmed: true, paymentConfirmed: true })).status, 200);
   assert.equal((await request(runner, `/${id}/messages`, { text: "closed" })).status, 403);
   const next = await request("requester", "", input);
   assert.equal(next.status, 201);
@@ -174,7 +178,7 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
 
 
 test("printing upload is required, preserved, and private to participants", async () => {
-  const printing = { ...input, category: "Printing", title: "Print my module", requirements: { paperSize: "A4", copies: "2", pages: "All pages", color: "Black and white", sides: "Single-sided" } };
+  const printing = { ...input, fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Requester pays the campus print shop directly", category: "Printing", title: "Print my module", requirements: { paperSize: "A4", copies: "2", pages: "All pages", color: "Black and white", sides: "Single-sided" } };
   assert.equal((await request("runner2", "", printing)).status, 400);
   async function upload(content, type, name) {
     const body = new FormData(); body.set("quest", JSON.stringify(printing)); body.set("file", new Blob([content], { type }), name);
@@ -195,4 +199,76 @@ test("printing upload is required, preserved, and private to participants", asyn
   assert.deepEqual(Buffer.from(await ownerFile.arrayBuffer()), bytes);
   assert.equal((await request("requester", `/${id}`, { action: "accept" })).status, 200);
   assert.equal((await download("requester")).status, 200);
+});
+
+
+test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings and administrator boundaries", { timeout: 90000 }, async () => {
+  for (const id of ["recovery-requester", "recovery-runner", "recovery-next", "recovery-admin"]) {
+    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    if (id === "recovery-admin") await auth.setCustomUserClaims(id, { admin: true });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[id] = (await response.json()).idToken;
+  }
+  const requester = "recovery-requester", runner = "recovery-runner", next = "recovery-next", adminId = "recovery-admin";
+  const created = await request(requester, "", input);
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  assert.equal((await request(runner, "/" + id, { action: "accept" })).status, 200);
+  const oldMessage = await request(runner, "/" + id + "/messages", { text: "Old assignment private message" });
+  assert.equal(oldMessage.status, 201);
+  assert.equal((await request(runner, "/" + id, { action: "leave", reason: "I cannot continue this errand" })).status, 200);
+  assert.equal((await db.doc("quests/" + id).get()).data().status, "cancelled");
+  const reposts = await Promise.all([request(requester, "/" + id, { action: "repost" }), request(requester, "/" + id, { action: "repost" })]);
+  assert.deepEqual(reposts.map((r) => r.status).sort(), [200, 409]);
+  const replacementId = reposts.find((r) => r.status === 200).body.id;
+  assert.equal((await request(next, "/" + replacementId, { action: "accept" })).status, 200);
+  await assert.rejects(getDoc(doc(client(next), "quests", id, "messages", oldMessage.body.id)), { code: "permission-denied" });
+  assert.equal((await request(requester, "/" + replacementId, { action: "open-issue", reason: "Runner is not responding" })).status, 200);
+  assert.equal((await request(next, "/" + replacementId, { action: "start" })).status, 409);
+  assert.equal((await request(requester, "/" + replacementId, { action: "escalate-issue" })).status, 409);
+  await db.doc("quests/" + replacementId).update({ issueDeadline: Timestamp.fromMillis(Date.now() - 1) });
+  assert.equal((await request(requester, "/" + replacementId, { action: "escalate-issue" })).status, 200);
+  assert.equal((await db.doc("quests/" + replacementId).get()).data().status, "cancelled");
+  const abonoInput = { ...input, fundingMethod: "abono", purchaseBudget: 150 };
+  const abono = await request(requester, "", abonoInput);
+  assert.equal(abono.status, 201);
+  const abonoId = abono.body.id;
+  assert.equal((await request(runner, "/" + abonoId, { action: "accept" })).status, 400);
+  assert.equal((await request(runner, "/" + abonoId, { action: "accept", acceptAdvance: true })).status, 200);
+  assert.equal((await request(runner, "/" + abonoId, { action: "start" })).status, 200);
+  assert.equal((await request(runner, "/" + abonoId, { action: "commit" })).status, 409);
+  assert.equal((await request(runner, "/" + abonoId, { action: "record-expense", amount: 140, evidence: "Campus store quote 001" })).status, 200);
+  assert.equal((await request(runner, "/" + abonoId, { action: "approve-expense" })).status, 409);
+  assert.equal((await request(requester, "/" + abonoId, { action: "approve-expense" })).status, 200);
+  assert.equal((await request(runner, "/" + abonoId, { action: "commit" })).status, 200);
+  assert.equal((await request(runner, "/" + abonoId, { action: "record-receipt", amount: 145, evidence: "Receipt 002" })).status, 400);
+  assert.equal((await request(runner, "/" + abonoId, { action: "record-receipt", amount: 135, evidence: "Campus store receipt 002" })).status, 200);
+  assert.equal((await request(requester, "/" + abonoId, { action: "leave", reason: "I cannot collect the supplies" })).status, 200);
+  assert.equal((await db.doc("quests/" + abonoId).get()).data().status, "settlement");
+  assert.equal((await request(runner, "/" + abonoId + "/messages", { text: "Please settle the purchase" })).status, 201);
+  assert.equal((await request(requester, "/" + abonoId, { action: "repost" })).status, 409);
+  const another = await request(requester, "", input);
+  assert.equal(another.status, 201);
+  const anotherId = another.body.id;
+  async function adminRequest(uid, path = "", body) {
+    const response = await fetch(endpoint + "/api/admin/quests" + path, { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tokens[uid], "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, body: await response.json() };
+  }
+  assert.equal((await adminRequest(requester)).status, 403);
+  assert.equal((await adminRequest(requester, "", { id: abonoId, note: "Forged resolution", settlementVerified: true })).status, 403);
+  assert.equal((await adminRequest(adminId)).status, 200);
+  assert.equal((await adminRequest(adminId, "/" + abonoId)).status, 200);
+  assert.equal((await adminRequest(adminId, "", { id: abonoId, note: "No verified settlement yet" })).status, 400);
+  assert.equal((await adminRequest(adminId, "", { id: abonoId, note: "Both participants confirmed reimbursement and return of belongings.", settlementVerified: true })).status, 200);
+  assert.equal((await request(next, "/" + anotherId, { action: "accept" })).status, 200);
+  assert.equal((await request(next, "/" + anotherId, { action: "start" })).status, 200);
+  assert.equal((await request(next, "/" + anotherId, { action: "commit" })).status, 200);
+  assert.equal((await request(next, "/" + anotherId, { action: "request-completion" })).status, 200);
+  assert.equal((await request(requester, "/" + anotherId, { action: "complete", receiptConfirmed: true, paymentConfirmed: true })).status, 409);
+  assert.equal((await request(next, "/" + anotherId, { action: "acknowledge-payment" })).status, 200);
+  assert.equal((await request(requester, "/" + anotherId, { action: "complete", receiptConfirmed: true, paymentConfirmed: true })).status, 200);
+  const ratings = await Promise.all([request(requester, "/" + anotherId + "/rating", { rating: 5, reviewerId: "outsider" }), request(requester, "/" + anotherId + "/rating", { rating: 5 })]);
+  assert.deepEqual(ratings.map((r) => r.status).sort(), [200, 409]);
+  assert.equal((await db.doc("users/" + next).get()).data().averageRating, 5);
+  assert.equal((await request(runner, "/" + anotherId + "/rating", { rating: 1 })).status, 403);
 });

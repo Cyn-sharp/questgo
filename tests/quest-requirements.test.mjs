@@ -4,7 +4,7 @@ import { validateQuest } from "../src/lib/quests/policy.ts";
 import { validateRequirements } from "../src/lib/quests/requirements.ts";
 import { validatePrintFile, MAX_PRINT_FILE_BYTES } from "../src/lib/quests/files.ts";
 
-const printing = { title: "Print my class module", description: "Print this class module and meet me at the library.", category: "Printing", reward: 30, location: "Library", meetUpPoint: "Main entrance", preferredTime: "4:30 PM", requirements: { paperSize: "A4", copies: "1", pages: "All pages", color: "Color", sides: "Single-sided" } };
+const printing = { fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Pay campus print shop directly", title: "Print my class module", description: "Print this class module and meet me at the library.", category: "Printing", reward: 30, location: "Library", meetUpPoint: "Main entrance", preferredTime: "4:30 PM", requirements: { paperSize: "A4", copies: "1", pages: "All pages", color: "Color", sides: "Single-sided" } };
 test("printing requires an actual server attachment and complete print settings", () => {
   assert.throws(() => validateQuest({ ...printing, attachment: { name: "fake.pdf" } }), /Attach/);
   assert.equal(validateQuest(printing, true).requirements.paperSize, "A4");

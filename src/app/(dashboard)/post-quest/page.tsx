@@ -88,6 +88,9 @@ type FormState = {
   category: string;
   description: string;
   reward: string;
+  fundingMethod: "no_purchase" | "prepaid" | "abono";
+  purchaseBudget: string;
+  vendorInstructions: string;
   pickupLocation: string;
   meetupLocation: string;
   meetupHour: string;
@@ -100,6 +103,9 @@ const INITIAL_FORM: FormState = {
   category: "Printing",
   description: "",
   reward: "30",
+  fundingMethod: "prepaid",
+  purchaseBudget: "",
+  vendorInstructions: "",
   pickupLocation: "CIT-U Library",
   meetupLocation: "CIT-U Main Entrance",
   meetupHour: "4",
@@ -151,7 +157,7 @@ export default function PostQuestPage() {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setReview(false);
-    if (key === "category") { setRequirements({}); setFile(undefined); }
+    if (key === "category") { setRequirements({}); setFile(undefined); if (["Printing", "Shopping"].includes(String(value))) setForm((current) => ({ ...current, fundingMethod: current.fundingMethod === "no_purchase" ? "prepaid" : current.fundingMethod })); }
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
@@ -194,6 +200,7 @@ export default function PostQuestPage() {
       title: form.title.trim(), category: form.category, description: form.description.trim(),
       reward: Number(form.reward), location: form.pickupLocation, meetUpPoint: form.meetupLocation,
       preferredTime: `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`, requirements,
+      fundingMethod: form.fundingMethod, purchaseBudget: form.fundingMethod === "no_purchase" ? 0 : Number(form.purchaseBudget), vendorInstructions: form.vendorInstructions,
     };
     try {
       validateQuest(payload, Boolean(file));
@@ -263,6 +270,7 @@ export default function PostQuestPage() {
           {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}><dt className="font-bold">{field.label}</dt><dd className="break-words">{requirements[field.key]}</dd></div>)}
           {file && <div><dt className="font-bold">Attached file</dt><dd className="break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB ? {file.type}</dd></div>}
         </dl>
+        <p className="mt-3 text-sm">Funding: {form.fundingMethod === "abono" ? "Runner advances payment" : form.fundingMethod === "prepaid" ? "Requester pays vendor directly" : "No purchase needed"}. Runner reward: ₱{form.reward}. Purchase limit: ₱{form.fundingMethod === "no_purchase" ? "0" : form.purchaseBudget}.</p>
         {submissionError && <p role="alert" className="mt-4 text-red-700">{submissionError}</p>}
         <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting?" : "Confirm and Post"}</button></div>
       </dialog>
@@ -359,7 +367,7 @@ export default function PostQuestPage() {
               <section className="mb-6 sm:mb-8">
                 <SectionLabel>Reward</SectionLabel>
                 <div>
-                  <FieldLabel htmlFor="reward">Reward Amount (₱)</FieldLabel>
+                  <FieldLabel htmlFor="reward">Runner Reward (₱)</FieldLabel>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#c9a227]">₱</span>
                     <input
@@ -392,9 +400,22 @@ export default function PostQuestPage() {
                   <p className="mt-2 text-sm">PDF, JPG, or PNG, up to 3 MB. Only you and your assigned runner can download it. Export Word documents to PDF first.</p>
                   {file && <p className="mt-2 text-sm break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB</p>}
                 </div>}
-                {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward. Agree on purchase costs in chat before the runner spends money.</p>}
+                {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward. The item budget must match the purchase cost limit below.</p>}
               </section>
 
+              <section className="mb-6 space-y-4">
+                <SectionLabel>Who pays the errand cost?</SectionLabel>
+                <FieldLabel htmlFor="funding">Funding arrangement *</FieldLabel>
+                <select id="funding" className={inputClass} value={form.fundingMethod} onChange={(event) => update("fundingMethod", event.target.value as FormState["fundingMethod"])}>
+                  {!["Printing", "Shopping"].includes(form.category) && <option value="no_purchase">No purchase needed — ₱0 runner upfront</option>}
+                  <option value="prepaid">Requester pays vendor directly — ₱0 runner upfront</option>
+                  <option value="abono">Runner advances payment (optional abono)</option>
+                </select>
+                {form.fundingMethod !== "no_purchase" && <><FieldLabel htmlFor="purchase-budget">Purchase cost limit (separate from reward)</FieldLabel><input id="purchase-budget" className={inputClass} type="number" min="0.01" max="10000" step="0.01" value={form.purchaseBudget} onChange={(event) => update("purchaseBudget", event.target.value)} /></>}
+                {form.fundingMethod === "prepaid" && <><FieldLabel htmlFor="vendor-instructions">Vendor payment / collection instructions</FieldLabel><textarea id="vendor-instructions" className={inputClass} maxLength={500} value={form.vendorInstructions} onChange={(event) => update("vendorInstructions", event.target.value)} placeholder="Name the vendor and how you will pay and arrange collection. Never include payment secrets." /><p className="text-sm">Pay the vendor directly before collection. Refunds and change should go directly to you.</p></>}
+                {form.fundingMethod === "abono" && <p className="text-sm">Runners see this advance limit before accepting. Approve the recorded cost before they spend. At handover you owe the actual approved cost plus the runner reward.</p>}
+                <p className="text-xs text-gray-600">QuestGo records participant acknowledgements. It does not process payments, verify external transfers, or guarantee reimbursement.</p>
+              </section>
               {/* LOCATION */}
               <section className="mb-6 sm:mb-8">
                 <SectionLabel>Location</SectionLabel>

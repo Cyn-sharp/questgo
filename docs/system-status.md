@@ -1,3 +1,7 @@
+# Latest update — October 11, 2026
+
+Funding, withdrawal, replacement, settlement review, payment acknowledgements, and trusted ratings are now implemented locally. See [funding-and-recovery.md](funding-and-recovery.md) for the current behavior, verification, and release limits. The September review below is historical.
+
 # QuestGo system review — September 30, 2026
 
 ## Implemented locally in this pass

@@ -20,3 +20,10 @@ test("next step distinguishes requester and runner, cancellation and finished wo
   assert.match(questNextStep({ status: "in_progress", cancellationRequestedBy: "runner" }, true), /cancellation/);
   assert.match(questNextStep({ status: "expired" }, true), /post a new quest/);
 });
+
+test("issue, funding approval, settlement and payment alerts guide the next action", () => {
+  assert.match(questNextStep({ status: "in_progress", issueRequestedBy: "runner" }, true), /paused/);
+  assert.match(questNextStep({ status: "settlement" }, false), /Settle/);
+  assert.match(questUpdate({ status: "in_progress" }, { status: "in_progress", expenseApproved: true }, false), /approved/);
+  assert.match(questUpdate({ status: "in_progress" }, { status: "in_progress", paymentReceivedAt: true }, true), /acknowledged/);
+});

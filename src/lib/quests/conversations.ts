@@ -8,7 +8,7 @@ export function conversationPriority(status: string) {
 export function selectConversations<T extends ConversationQuest>(quests: T[]) {
   const unique = [...new Map(quests.map((quest) => [quest.id, quest])).values()];
   const recent = (a: T, b: T) => timestampMillis(b.updatedAt ?? b.completedAt ?? b.cancelledAt ?? b.createdAt) - timestampMillis(a.updatedAt ?? a.completedAt ?? a.cancelledAt ?? a.createdAt);
-  const active = unique.filter((quest) => ["accepted", "in_progress"].includes(quest.status))
+  const active = unique.filter((quest) => ["accepted", "in_progress", "settlement"].includes(quest.status))
     .sort((a, b) => conversationPriority(a.status) - conversationPriority(b.status) || recent(a, b));
   const closed = unique.filter((quest) => quest.questRunnerId && ["completed", "cancelled"].includes(quest.status)).sort(recent).slice(0, 3);
   return { active, closed };
