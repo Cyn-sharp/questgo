@@ -6,36 +6,28 @@ import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "@/lib/auth/firebase";
 import { EyeIcon } from "@/components/ui/icons/EyeIcon";
 
-export function ResetPasswordForm() {
-  const [code, setCode] = useState("");
+export function ResetPasswordForm({ code }: { code: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(code ? "" : "This password reset link is missing or invalid.");
   const [isValidCode, setIsValidCode] = useState(false);
-  const [isCheckingCode, setIsCheckingCode] = useState(true);
+  const [isCheckingCode, setIsCheckingCode] = useState(Boolean(code));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const actionCode = params.get("oobCode") ?? "";
-    setCode(actionCode);
-    if (!actionCode) {
-      setMessage("This password reset link is missing or invalid.");
-      setIsCheckingCode(false);
-      return;
-    }
-    verifyPasswordResetCode(auth, actionCode)
+    if (!code) return;
+    verifyPasswordResetCode(auth, code)
       .then((accountEmail) => {
         setEmail(accountEmail);
         setIsValidCode(true);
       })
       .catch(() => setMessage("This password reset link has expired or was already used."))
       .finally(() => setIsCheckingCode(false));
-  }, []);
+  }, [code]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -9,6 +9,8 @@ import { db } from "@/lib/auth/firebase";
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { FirebaseError } from "firebase/app";
+import { ALLOW_TEST_GMAIL, EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 type FormValues = {
   fullName: string;
@@ -77,8 +79,8 @@ export function RegisterForm() {
       return;
     }
     const normalizedEmail = formValues.email.trim().toLowerCase();
-    if (!normalizedEmail.endsWith("@cit.edu") && !normalizedEmail.endsWith("@gmail.com")) {
-      setFormMessage("Please use a CIT-U or Gmail address for testing.");
+    if (!isAllowedEmail(normalizedEmail)) {
+      setFormMessage(EMAIL_POLICY_MESSAGE);
       return;
     }
     if (formValues.password.length < 8) {
@@ -156,19 +158,20 @@ export function RegisterForm() {
       }
 
       router.replace(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
-    } catch (error: any) {
+    } catch (error) {
+      const code = error instanceof FirebaseError ? error.code : "";
       const message =
-        error?.code === "auth/email-already-in-use"
+        code === "auth/email-already-in-use"
           ? "An account already exists for this email. Try logging in."
-          : error?.code === "auth/weak-password"
+          : code === "auth/weak-password"
             ? "Choose a stronger password with at least 8 characters."
-            : error?.code === "auth/operation-not-allowed"
+            : code === "auth/operation-not-allowed"
               ? "Email/password registration is not enabled in Firebase Authentication."
-              : error?.code === "auth/too-many-requests"
+              : code === "auth/too-many-requests"
                 ? "Firebase temporarily blocked requests. Please wait and try again."
-                : error?.code === "auth/network-request-failed"
+                : code === "auth/network-request-failed"
                   ? "Could not contact Firebase. Check your internet connection and try again."
-                  : error?.code === "storage/unauthorized"
+                  : code === "storage/unauthorized"
                     ? "Your account was created, but the profile photo could not be uploaded. Try registering without a photo."
                     : "Something went wrong. Please try again.";
       setFormMessage(message);
@@ -225,7 +228,7 @@ export function RegisterForm() {
                 type="email"
                 autoComplete="email"
                 inputMode="email"
-                placeholder="studentname@cit.edu or Gmail"
+                placeholder={EMAIL_PLACEHOLDER}
                 value={formValues.email}
                 onChange={(event) => updateField("email", event.target.value)}
                 className="h-11 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-normal outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
@@ -284,10 +287,12 @@ export function RegisterForm() {
             </div>
           </div>
 
-          <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">
-            Testing mode: CIT-U and Gmail addresses are currently accepted. Verification is sent to
-            the address you enter.
-          </aside>
+          {ALLOW_TEST_GMAIL ? (
+            <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">
+              Testing mode: CIT-U and Gmail addresses are currently accepted. Verification is sent to
+              the address you enter.
+            </aside>
+          ) : null}
 
           <label className="flex items-start gap-2 font-inter text-[13px] text-muted cursor-pointer">
             <input
@@ -302,14 +307,14 @@ export function RegisterForm() {
             <span>
               I agree to the{" "}
               <a
-                href="/terms-and-conditions"
+                href="/terms"
                 className="font-semibold text-maroon underline-offset-2 hover:underline"
               >
                 Terms &amp; Conditions
               </a>{" "}
               and{" "}
               <a
-                href="/privacy-policy"
+                href="/privacy"
                 className="font-semibold text-maroon underline-offset-2 hover:underline"
               >
                 Privacy Policy

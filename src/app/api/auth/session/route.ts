@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/auth/firebase-admin";
+import { EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 const SESSION_COOKIE = "questgo_session";
 const SESSION_DURATION_MS = 5 * 24 * 60 * 60 * 1000;
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     if (!decodedToken.email_verified) {
       return NextResponse.json({ message: "Please verify your email before logging in." }, { status: 403 });
+    }
+    if (!isAllowedEmail(decodedToken.email)) {
+      return NextResponse.json({ message: EMAIL_POLICY_MESSAGE }, { status: 403 });
     }
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
