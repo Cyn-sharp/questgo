@@ -272,3 +272,66 @@ test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings a
   assert.equal((await db.doc("users/" + next).get()).data().averageRating, 5);
   assert.equal((await request(runner, "/" + anotherId + "/rating", { rating: 1 })).status, 403);
 });
+
+test("reports are deduplicated and admin-only; blocks hide quests, stop acceptance both ways, and stay private", { timeout: 90000 }, async () => {
+  for (const id of ["safety-requester", "safety-runner", "safety-other", "safety-admin"]) {
+    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    if (id === "safety-admin") await auth.setCustomUserClaims(id, { admin: true });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[id] = (await response.json()).idToken;
+  }
+  const requester = "safety-requester", runner = "safety-runner", other = "safety-other", adminId = "safety-admin";
+  async function call(uid, url, method = "POST", body) {
+    const response = await fetch(endpoint + url, { method, headers: { Authorization: "Bearer " + tokens[uid], "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, body: await response.json() };
+  }
+  const created = await request(requester, "", input);
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+
+  // The requester has nobody to report until a runner accepts; invalid reports are rejected.
+  assert.equal((await request(requester, "/" + id + "/report", { reason: "other", details: "Nobody here yet" })).status, 409);
+  assert.equal((await request(other, "/" + id + "/report", { reason: "spam", details: "Prohibited listing text" })).status, 400);
+
+  // Blocking is self-only, cannot target yourself, and the list is private to its owner.
+  assert.equal((await call(other, "/api/users/" + other + "/block")).status, 400);
+  assert.equal((await call(other, "/api/users/nobody-here/block")).status, 404);
+  assert.equal((await call(other, "/api/users/" + requester + "/block")).status, 200);
+  await assert.doesNotReject(getDoc(doc(client(other), "users", other, "blocks", requester)));
+  await assert.rejects(getDoc(doc(client(requester), "users", other, "blocks", requester)));
+  await assert.rejects(setDoc(doc(client(requester), "users", requester, "blocks", other), { blockedId: other }));
+  await assert.rejects(getDocs(collection(client(adminId), "reports")));
+
+  // Blocking stops acceptance in both directions without revealing who blocked whom.
+  const blockedAccept = await request(other, "/" + id, { action: "accept" });
+  assert.equal(blockedAccept.status, 403);
+  assert.equal(blockedAccept.body.message, "You can't accept this quest.");
+  assert.equal((await call(other, "/api/users/" + requester + "/block", "DELETE")).status, 200);
+  assert.equal((await call(requester, "/api/users/" + other + "/block")).status, 200);
+  assert.equal((await request(other, "/" + id, { action: "accept" })).status, 403);
+  assert.equal((await call(requester, "/api/users/" + other + "/block", "DELETE")).status, 200);
+
+  assert.equal((await request(runner, "/" + id, { action: "accept" })).status, 200);
+  const reports = await Promise.all([
+    request(requester, "/" + id + "/report", { reason: "no_show", details: "Runner stopped replying after accepting", block: true }),
+    request(requester, "/" + id + "/report", { reason: "no_show", details: "Runner stopped replying after accepting" }),
+  ]);
+  assert.deepEqual(reports.map((r) => r.status).sort(), [201, 409]);
+  const reportId = reports.find((r) => r.status === 201).body.id;
+  const stored = (await db.doc("reports/" + reportId).get()).data();
+  assert.equal(stored.reporterId, requester);
+  assert.equal(stored.reportedId, runner);
+  assert.ok((await db.doc(`users/${requester}/blocks/${runner}`).get()).exists);
+
+  // Only claim-authorized admins can list or resolve; suspension disables the account.
+  assert.equal((await call(requester, "/api/admin/reports", "GET")).status, 403);
+  assert.equal((await call(requester, "/api/admin/reports", "POST", { id: reportId, outcome: "dismissed", note: "Forged dismissal attempt" })).status, 403);
+  const queue = await call(adminId, "/api/admin/reports", "GET");
+  assert.equal(queue.status, 200);
+  assert.ok(queue.body.reports.some((r) => r.id === reportId));
+  assert.equal((await call(adminId, "/api/admin/reports", "POST", { id: reportId, outcome: "suspended", note: "ok" })).status, 400);
+  assert.equal((await call(adminId, "/api/admin/reports", "POST", { id: reportId, outcome: "suspended", note: "Repeated abandonment confirmed in chat logs" })).status, 200);
+  assert.equal((await call(adminId, "/api/admin/reports", "POST", { id: reportId, outcome: "dismissed", note: "Second decision should fail" })).status, 409);
+  assert.equal((await auth.getUser(runner)).disabled, true);
+  assert.equal((await request(runner, "/" + id + "/messages", { text: "still here?" })).status, 401);
+});

@@ -1,8 +1,9 @@
 import { recoveryChanges } from "./recovery";
+import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest, validateQuest, type WorkflowQuest } from "./policy";
 
-export function questService(db: Firestore) {
+export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safetyService>, "eitherBlocked">) {
   return {
     async create(uid: string, name: string, input: unknown, attachment?: { path: string; name: string; size: number; contentType: string }) {
       const data = validateQuest(input, Boolean(attachment));
@@ -30,6 +31,8 @@ export function questService(db: Firestore) {
         const snapshot = await tx.get(ref);
         if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
         const quest = snapshot.data() as WorkflowQuest;
+        // Deliberately vague so a user cannot discover who has blocked them.
+        if (action === "accept" && safety && await safety.eitherBlocked(tx, uid, quest.requesterId)) throw new QuestError("You can't accept this quest.", 403);
         if (quest.cancellationRequestedBy && ["record-expense", "record-receipt", "approve-expense", "commit"].includes(action)) throw new QuestError("Resolve cancellation before committing work.", 409);
         const recovery = recoveryChanges(quest, uid, action, input, Date.now());
         const status = recovery?.status ?? (recovery ? quest.status : transitionQuest(quest, uid, action, Date.now()));

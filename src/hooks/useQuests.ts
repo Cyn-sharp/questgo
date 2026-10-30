@@ -49,8 +49,23 @@ export function useQuestClock() {
   return now;
 }
 
+export type BlockedUser = { id: string; blockedName: string };
+
+export function useBlockedUsers() {
+  const { user } = useAuth();
+  const [state, setState] = useState<{ uid: string; records: BlockedUser[] }>();
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(collection(db, "users", user.uid, "blocks"), (snapshot) => {
+      setState({ uid: user.uid, records: snapshot.docs.map((record) => ({ id: record.id, blockedName: String(record.data().blockedName || "QuestGo User") })) });
+    }, () => setState({ uid: user.uid, records: [] }));
+  }, [user]);
+  return state?.uid === user?.uid ? state?.records ?? [] : [];
+}
+
 export function useAvailableQuests() {
   const { user, isLoading: authLoading } = useAuth();
+  const blocked = useBlockedUsers();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{ uid: string; records: Quest[]; error: boolean }>();
   useEffect(() => {
@@ -60,7 +75,8 @@ export function useAvailableQuests() {
     }, () => setState({ uid: user.uid, records: [], error: true }));
   }, [user, attempt]);
   const current = state?.uid === user?.uid ? state : undefined;
-  return { records: current?.records ?? [], isLoading: authLoading || Boolean(user && !current),
+  const hidden = new Set(blocked.map((entry) => entry.id));
+  return { records: (current?.records ?? []).filter((quest) => !hidden.has(quest.requesterId)), isLoading: authLoading || Boolean(user && !current),
     hasError: current?.error ?? false, retry: () => setAttempt((value) => value + 1) };
 }
 

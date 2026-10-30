@@ -1,8 +1,11 @@
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
+import { isAllowedEmail } from "@/lib/auth/email-policy";
 import { QuestError } from "./policy";
 import { questService } from "./service";
+import { safetyService } from "./safety-service";
 
-export const quests = questService(adminDb);
+export const safety = safetyService(adminDb);
+export const quests = questService(adminDb, safety);
 
 export async function verifiedActor(request: Request) {
   const bearer = request.headers.get("authorization");
@@ -11,7 +14,7 @@ export async function verifiedActor(request: Request) {
     const token = await adminAuth.verifyIdToken(bearer.slice(7), true);
     if (!token.email_verified) throw new QuestError("Verify your email first.", 403);
     const account = await adminAuth.getUser(token.uid);
-    if (account.disabled || !account.emailVerified) throw new QuestError("This account cannot access quests.", 403);
+    if (account.disabled || !account.emailVerified || !isAllowedEmail(account.email)) throw new QuestError("This account cannot access quests.", 403);
     return { uid: account.uid, name: account.displayName?.trim() || "QuestGo User" };
   } catch (error) {
     if (error instanceof QuestError) throw error;

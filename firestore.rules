@@ -12,6 +12,11 @@ service cloud.firestore {
         allow read: if verified() && request.auth.uid == userId;
         allow write: if false;
       }
+      // Each user sees only their own block list; the server writes it.
+      match /blocks/{blockedId} {
+        allow read: if verified() && request.auth.uid == userId;
+        allow write: if false;
+      }
       allow read: if request.auth != null
         && request.auth.uid == userId;
 
@@ -51,6 +56,6 @@ service cloud.firestore {
         allow write: if false;
       }
     }
-    // Locks and message rate limits are server-only; unmatched paths are denied.
+    // Locks, message rate limits and reports are server-only; unmatched paths are denied.
   }
 }

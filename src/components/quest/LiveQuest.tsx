@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Card";
 import { CATEGORY_FIELDS } from "@/lib/quests/requirements";
 import { QuestRecovery } from "./QuestRecovery";
 import { PrintingFile } from "./PrintingFile";
+import { SafetyActions } from "./SafetyActions";
 
 export function LiveQuest({ id, participantsOnly = false }: { id: string; participantsOnly?: boolean }) {
   const { user, quest, loading, error } = useQuest(id);
@@ -88,6 +89,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
         {(requester || runner) && ["accepted", "in_progress", "settlement", "completed", "cancelled"].includes(status) && <Link className="btn-outline" href={`/messenger?id=${encodeURIComponent(id)}`}>{["completed", "cancelled"].includes(status) ? "View Conversation" : "Open Messenger"}</Link>}
       </div>
       {pending && <p role="status">Updating quest…</p>}
+      <SafetyActions quest={quest} uid={user.uid} />
     </Card>
   </div>;
 }

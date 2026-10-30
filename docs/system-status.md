@@ -1,4 +1,8 @@
-# Latest update — October 11, 2026
+# Latest update — October 30, 2026
+
+Report and block are implemented locally with an admin report queue; see [report-and-block.md](report-and-block.md). Registration, login, password reset, session creation and quest APIs now accept only `@cit.edu` unless `NEXT_PUBLIC_ALLOW_TEST_GMAIL=true` is set. Whole-project lint passes with no errors or warnings.
+
+# Update — October 11, 2026
 
 Funding, withdrawal, replacement, settlement review, payment acknowledgements, and trusted ratings are now implemented locally. See [funding-and-recovery.md](funding-and-recovery.md) for the current behavior, verification, and release limits. The September review below is historical.
 
