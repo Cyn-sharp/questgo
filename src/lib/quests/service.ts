@@ -2,6 +2,7 @@ import { recoveryChanges } from "./recovery";
 import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest, validateQuest, type WorkflowQuest } from "./policy";
+import { canShareLocation, MIN_LOCATION_INTERVAL_MS, TRACKING_STATUSES, validateLocation } from "./tracking";
 
 export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safetyService>, "eitherBlocked">) {
   return {
@@ -64,6 +65,7 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         if (action === "complete") { changes.completedAt = FieldValue.serverTimestamp(); changes.receiptConfirmedAt = FieldValue.serverTimestamp(); }
         if (action === "cancel") changes.cancelledAt = FieldValue.serverTimestamp();
         tx.update(ref, changes);
+        if (!TRACKING_STATUSES.includes(String(status))) tx.delete(ref.collection("tracking").doc("runner"));
         tx.create(ref.collection("events").doc(), { actorId: uid, actorName: name, action, fromStatus: quest.status, toStatus: status, reason: typeof input.reason === "string" ? input.reason.trim() : "", ...(["record-expense", "record-receipt"].includes(action) ? { amount: changes.actualExpense, evidence: changes.expenseEvidence } : {}), createdAt: FieldValue.serverTimestamp() });
       });
     },
@@ -106,6 +108,27 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         });
       });
       return messageRef.id;
+    },
+    async shareLocation(uid: string, id: string, input: Record<string, unknown>) {
+      const location = validateLocation(input);
+      const questRef = db.collection("quests").doc(id);
+      const trackingRef = questRef.collection("tracking").doc("runner");
+      await db.runTransaction(async (tx) => {
+        const [snapshot, previous] = await Promise.all([tx.get(questRef), tx.get(trackingRef)]);
+        if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
+        if (!canShareLocation(snapshot.data() as WorkflowQuest, uid)) throw new QuestError("Only the runner can share location while the quest is underway.", 403);
+        const now = Timestamp.now();
+        const last = previous.data()?.updatedAt as Timestamp | undefined;
+        if (last && now.toMillis() - last.toMillis() < MIN_LOCATION_INTERVAL_MS) throw new QuestError("Location updates are limited to one every 5 seconds.", 429);
+        tx.set(trackingRef, { ...location, updatedAt: now });
+      });
+    },
+    async stopSharing(uid: string, id: string) {
+      const questRef = db.collection("quests").doc(id);
+      const snapshot = await questRef.get();
+      if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
+      if (snapshot.data()?.questRunnerId !== uid) throw new QuestError("Only the runner can stop sharing.", 403);
+      await questRef.collection("tracking").doc("runner").delete();
     },
   };
 }

@@ -14,6 +14,7 @@ import {
 import { fundingSummary, money } from "@/lib/quests/funding";
 import { getQuestExpirationMillis } from "@/lib/db/quests";
 import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { Quest as FirestoreQuest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
@@ -258,14 +259,11 @@ export function QuestsMarketplace() {
       <div className="page-container py-6 sm:py-10 lg:py-12">
         {/* Title Header */}
         <ScrollReveal>
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-2">
-              Campus Quest Marketplace
-            </h1>
-            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
-              Browse and claim quick gigs posted by other Wildcat students
-            </p>
-          </div>
+          <PageHeader
+            eyebrow="Find a quest"
+            title="Campus Quest Marketplace"
+            description="Browse and claim quick tasks posted by other Wildcats. Quests stay open for 30 minutes."
+          />
         </ScrollReveal>
 
         {/* Search & Category Filter Card */}

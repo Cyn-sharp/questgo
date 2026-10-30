@@ -314,7 +314,7 @@ test("reports are deduplicated and admin-only; blocks hide quests, stop acceptan
   assert.equal((await request(runner, "/" + id, { action: "accept" })).status, 200);
   const reports = await Promise.all([
     request(requester, "/" + id + "/report", { reason: "no_show", details: "Runner stopped replying after accepting", block: true }),
-    request(requester, "/" + id + "/report", { reason: "no_show", details: "Runner stopped replying after accepting" }),
+    request(requester, "/" + id + "/report", { reason: "no_show", details: "Runner stopped replying after accepting", block: true }),
   ]);
   assert.deepEqual(reports.map((r) => r.status).sort(), [201, 409]);
   const reportId = reports.find((r) => r.status === 201).body.id;
@@ -334,4 +334,41 @@ test("reports are deduplicated and admin-only; blocks hide quests, stop acceptan
   assert.equal((await call(adminId, "/api/admin/reports", "POST", { id: reportId, outcome: "dismissed", note: "Second decision should fail" })).status, 409);
   assert.equal((await auth.getUser(runner)).disabled, true);
   assert.equal((await request(runner, "/" + id + "/messages", { text: "still here?" })).status, 401);
+});
+
+test("runner location is private to participants, rate-limited, and deleted when the quest ends", { timeout: 60000 }, async () => {
+  for (const id of ["map-requester", "map-runner", "map-outsider"]) {
+    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[id] = (await response.json()).idToken;
+  }
+  const requester = "map-requester", runner = "map-runner", outsider = "map-outsider";
+  const here = { lat: 10.2957503, lng: 123.8803769, accuracy: 8 };
+  async function locate(uid, id, body, method = "POST") {
+    const response = await fetch(`${endpoint}/api/quests/${id}/location`, { method, headers: { Authorization: "Bearer " + tokens[uid], "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return response.status;
+  }
+  const id = (await request(requester, "", input)).body.id;
+  assert.equal(await locate(runner, id, here), 403); // not accepted yet
+  assert.equal((await request(runner, "/" + id, { action: "accept" })).status, 200);
+  assert.equal(await locate(requester, id, here), 403);
+  assert.equal(await locate(outsider, id, here), 403);
+  assert.equal(await locate(runner, id, { lat: 200, lng: 0 }), 400);
+  assert.equal(await locate(runner, id, here), 200);
+  assert.equal(await locate(runner, id, here), 429);
+
+  const tracking = (uid) => getDoc(doc(client(uid), "quests", id, "tracking", "runner"));
+  assert.equal((await tracking(requester)).data().lat, 10.29575);
+  assert.ok((await tracking(runner)).exists());
+  await assert.rejects(tracking(outsider));
+  await assert.rejects(setDoc(doc(client(runner), "quests", id, "tracking", "runner"), here));
+
+  assert.equal(await locate(requester, id, undefined, "DELETE"), 403);
+  assert.equal(await locate(runner, id, undefined, "DELETE"), 200);
+  assert.equal((await db.doc(`quests/${id}/tracking/runner`).get()).exists, false);
+  await pause(5100);
+  assert.equal(await locate(runner, id, here), 200);
+  assert.equal((await request(runner, "/" + id, { action: "leave", reason: "I can no longer do this quest" })).status, 200);
+  assert.equal((await db.doc(`quests/${id}/tracking/runner`).get()).exists, false);
+  assert.equal(await locate(runner, id, here), 403);
 });

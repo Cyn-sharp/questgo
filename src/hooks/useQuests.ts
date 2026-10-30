@@ -49,6 +49,22 @@ export function useQuestClock() {
   return now;
 }
 
+export type RunnerLocation = { lat: number; lng: number; accuracy: number; updatedAt: number };
+
+// Live runner position for a quest's participants; null when not sharing.
+export function useRunnerLocation(questId: string, enabled: boolean) {
+  const key = `${questId}:${enabled}`;
+  const [state, setState] = useState<{ key: string; location: RunnerLocation | null }>();
+  useEffect(() => {
+    if (!enabled) return;
+    return onSnapshot(doc(db, "quests", questId, "tracking", "runner"), (snapshot) => {
+      const data = snapshot.data();
+      setState({ key, location: data ? { lat: data.lat, lng: data.lng, accuracy: data.accuracy ?? 0, updatedAt: data.updatedAt?.toMillis?.() ?? 0 } : null });
+    }, () => setState({ key, location: null }));
+  }, [questId, enabled, key]);
+  return enabled && state?.key === key ? state.location : null;
+}
+
 export type BlockedUser = { id: string; blockedName: string };
 
 export function useBlockedUsers() {

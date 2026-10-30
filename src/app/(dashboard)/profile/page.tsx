@@ -278,7 +278,7 @@ export default function ProfilePage() {
   const profileAvatar =
     profile.profilePhotoUrl ||
     user.photoURL ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileName)}`;
+    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(profileName)}&backgroundColor=7a1f32&textColor=f6ecc8`;
 
   return (
     <div className="bg-transparent min-h-full">

@@ -21,6 +21,7 @@ import { validateQuest } from "@/lib/quests/policy";
 import { MAX_PRINT_FILE_BYTES } from "@/lib/quests/files";
 import { createQuest } from "@/lib/db/quests";
 import { useAuth } from "@/hooks/useAuth";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 function ScrollReveal({
   children,
@@ -272,18 +273,14 @@ export default function PostQuestPage() {
         </dl>
         <p className="mt-3 text-sm">Funding: {form.fundingMethod === "abono" ? "Runner advances payment" : form.fundingMethod === "prepaid" ? "Requester pays vendor directly" : "No purchase needed"}. Runner reward: ₱{form.reward}. Purchase limit: ₱{form.fundingMethod === "no_purchase" ? "0" : form.purchaseBudget}.</p>
         {submissionError && <p role="alert" className="mt-4 text-red-700">{submissionError}</p>}
-        <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting?" : "Confirm and Post"}</button></div>
+        <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting…" : "Confirm and Post"}</button></div>
       </dialog>
       <div className="page-container py-6 sm:py-10 lg:py-12">
-        {/* Page Title (mobile) */}
-        <div className="mb-6 lg:hidden">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-1">
-            Post a New Quest
-          </h1>
-          <p className="text-sm text-[#f6ecc8]/85">
-            Broadcast your task to Wildcats near you
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Post a quest"
+          title="Post a New Quest"
+          description="Describe your task and reward. Runners on campus can accept it for the next 30 minutes."
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start">
           {/* LEFT: FORM */}
@@ -295,16 +292,6 @@ export default function PostQuestPage() {
                 shake ? "animate-form-shake" : ""
               }`}
             >
-              {/* Header — desktop only */}
-              <div className="mb-8 hidden lg:block">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#161414] mb-2">
-                  Post a New Quest
-                </h1>
-                <p className="text-sm sm:text-base text-[#4a4340]">
-                  Fill out details to broadcast your task to Wildcats near you
-                </p>
-              </div>
-
               {/* QUEST INFO */}
               <section className="mb-6 sm:mb-8">
                 <SectionLabel>Quest Information</SectionLabel>

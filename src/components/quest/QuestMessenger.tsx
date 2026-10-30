@@ -49,7 +49,7 @@ export function QuestMessenger({ id }: { id: string }) {
     finally { setSending(false); }
   }
   if (loading) return <p className="page-container py-8 text-white">Loading conversation…</p>;
-  if (error || !readable || !quest) return <div className="page-container py-8 text-white"><p role="alert">{error || "Messaging opens after acceptance and is private to the requester and assigned runner."}</p><Link href="/requests" className="underline">Choose a quest in My Requests</Link></div>;
+  if (error || !readable || !quest) return <div className="page-container py-8 text-white"><p role="alert">{error || "Messaging opens after acceptance and is private to the requester and assigned runner."}</p><Link href="/requests" className="underline">Choose a quest in My Quests</Link></div>;
   const current = feed?.key === key ? feed : undefined;
   const other = quest.requesterId === user?.uid ? quest.runnerName : quest.requesterName;
   return <div className="page-container py-6 max-w-4xl"><section className="rounded-2xl bg-white overflow-hidden shadow-xl">

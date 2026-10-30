@@ -13,6 +13,7 @@ import { CATEGORY_FIELDS } from "@/lib/quests/requirements";
 import { QuestRecovery } from "./QuestRecovery";
 import { PrintingFile } from "./PrintingFile";
 import { SafetyActions } from "./SafetyActions";
+import { RunnerMap } from "./RunnerMap";
 
 export function LiveQuest({ id, participantsOnly = false }: { id: string; participantsOnly?: boolean }) {
   const { user, quest, loading, error } = useQuest(id);
@@ -23,7 +24,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState("");
   if (loading) return <p className="page-container py-10 text-white">Loading quest…</p>;
-  if (error || !quest || !user) return <div className="page-container py-10 text-white"><p role="alert">{error || "Quest not found or you are signed out."}</p><Link href="/requests">Back to My Requests</Link></div>;
+  if (error || !quest || !user) return <div className="page-container py-10 text-white"><p role="alert">{error || "Quest not found or you are signed out."}</p><Link href="/requests">Back to My Quests</Link></div>;
   const requester = user.uid === quest.requesterId;
   const runner = user.uid === quest.questRunnerId;
   if (participantsOnly && !requester && !runner) return <p role="alert" className="page-container py-10 text-white">Only this quest’s participants can open its active workspace.</p>;
@@ -47,7 +48,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
     finally { setPending(false); }
   }
   return <div className="page-container py-8 max-w-4xl">
-    <Link href="/requests" className="text-white underline">My Requests & running quests</Link>
+    <Link href="/requests" className="text-white underline">Back to My Quests</Link>
     <Card className="mt-5 p-6 sm:p-8 space-y-5">
       <div className="flex flex-wrap justify-between gap-3"><span className="badge-gold">{quest.category}</span><span className="font-semibold capitalize">{status.replaceAll("_", " ")}</span></div>
       <h1 className="text-3xl font-bold text-maroon">{quest.title}</h1>
@@ -69,6 +70,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
         <div><dt className="font-semibold">Preferred time</dt><dd>{quest.preferredTime}</dd></div>
         {quest.status === "available" && <div><dt className="font-semibold">Time to accept</dt><dd>{expired ? "Expired" : `${Math.floor(remaining / 60000)}:${String(Math.floor(remaining / 1000) % 60).padStart(2, "0")}`}</dd></div>}
       </dl>
+      {["available", "accepted", "in_progress"].includes(status) && <RunnerMap quest={quest} uid={user.uid} now={now} />}
       {quest.completionRequestedAt && quest.status === "in_progress" ? <p className="rounded-xl bg-amber-50 p-4">The runner has marked the work ready. The runner acknowledges receiving payment, then the requester confirms receipt and payment to complete the quest.</p> : null}
       {requester && quest.status === "available" && !expired && <p>Waiting for a runner. You can post again after this quest is cancelled, expires, or is completed.</p>}
       {quest.cancellationRequestedBy && (requester || runner) && ["accepted", "in_progress"].includes(status) && <section aria-label="Cancellation request" className="rounded-xl bg-amber-50 p-4 space-y-3">

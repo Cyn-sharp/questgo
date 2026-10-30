@@ -19,9 +19,11 @@
   --color-border: #e5e0d8;
   --color-white: #ffffff;
 
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
-  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  /* Font pairing: Outfit for display (headings, brand), Inter for body and UI. */
+  --font-sans: var(--font-inter-face), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit-face), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-inter: var(--font-inter-face), ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: var(--font-outfit-face), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 10px 24px rgba(122, 31, 50, 0.35);
@@ -58,7 +60,8 @@
 
   h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    @apply font-sans font-bold tracking-tight leading-tight;
+    text-wrap: balance;
+    @apply font-display font-bold tracking-tight leading-tight;
   }
 
   p {

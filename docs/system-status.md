@@ -1,5 +1,7 @@
 # Latest update — October 30, 2026
 
+Campus map and live runner location are implemented locally; see [runner-map.md](runner-map.md). The dashboard now opens with a compact welcome strip and a "Your current quest" card, and its stat cards link to the relevant pages.
+
 Report and block are implemented locally with an admin report queue; see [report-and-block.md](report-and-block.md). Registration, login, password reset, session creation and quest APIs now accept only `@cit.edu` unless `NEXT_PUBLIC_ALLOW_TEST_GMAIL=true` is set. Whole-project lint passes with no errors or warnings.
 
 # Update — October 11, 2026

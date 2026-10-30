@@ -1,34 +1,24 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/auth/firebase";
 import { getProfileName } from "@/lib/auth/profile-name";
+import { BrandMark } from "@/components/ui/BrandMark";
+import { Avatar } from "@/components/ui/Avatar";
+import { NavLink } from "@/components/navigation/NavLink";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
-// Changed anchors to /#path so they function correctly across all subroutes
+// Anchors use /#path so they work from every subroute.
 const marketingNavItems = [
-  {
-    label: "Home",
-    href: "/#home",
-    className: "font-semibold text-[15px] text-[#c9a227] hover:text-[#e6b93d] transition",
-  },
-  {
-    label: "How It Works",
-    href: "/#how-it-works",
-    className: "font-medium text-[15px] text-white/90 hover:text-[#c9a227] transition",
-  },
-  {
-    label: "Safety",
-    href: "/#safety",
-    className: "font-medium text-[15px] text-white/90 hover:text-[#c9a227] transition",
-  },
+  { label: "Home", href: "/#home" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Safety", href: "/#safety" },
 ];
 
 export const HeaderContainer = (): ReactElement => {
@@ -61,32 +51,20 @@ export const HeaderContainer = (): ReactElement => {
   }, [isMenuOpen]);
 
   return (
-    <header className="relative z-50 flex min-h-[72px] w-full flex-col items-start bg-[#161414] border-b border-white/10">
-      <div className="flex min-h-[72px] w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-16 md:py-4">
-        <Link href="/#home" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
-          <Image
-            src="/logo.png"
-            alt="QuestGo logo"
-            width={40}
-            height={40}
-            className="rounded-[10px] object-contain"
-            priority
-          />
-          <span className="inline-flex min-w-0 flex-col items-start gap-0.5">
-            <span className="font-bold text-lg leading-none tracking-tight text-white sm:text-xl">
-              QuestGo
-            </span>
-            <span className="hidden font-medium text-[11px] uppercase leading-none tracking-[0.12em] text-white/70 sm:inline">
-              CIT-U Campus
-            </span>
-          </span>
+    <header className="sticky top-0 z-50 flex w-full flex-col items-start border-b border-white/[0.08] bg-[#161414]/95 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+        <Link href="/#home" aria-label="QuestGo CIT-U Campus home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+          <BrandMark />
         </Link>
 
         <nav aria-label="Primary navigation" className="hidden md:block">
-          <ul className="inline-flex items-center gap-8">
+          <ul className="flex items-center gap-1">
             {marketingNavItems.map((item) => (
               <li key={item.label}>
-                <Link href={item.href} className={item.className}>
+                <Link
+                  href={item.href}
+                  className="inline-flex h-9 items-center rounded-full px-3.5 text-[14px] font-medium text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+                >
                   {item.label}
                 </Link>
               </li>
@@ -97,13 +75,13 @@ export const HeaderContainer = (): ReactElement => {
         <div className="inline-flex shrink-0 items-center gap-2 sm:gap-3">
           <Link
             href="/login"
-            className="hidden items-center justify-center rounded-xl border-[1.5px] border-white/20 px-3 py-2 font-semibold text-xs text-white transition hover:bg-white/10 sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
+            className="hidden h-10 items-center justify-center rounded-xl border border-white/20 px-4 text-[14px] font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold sm:inline-flex"
           >
             Log In
           </Link>
           <Link
             href="/register"
-            className="hidden items-center justify-center rounded-xl bg-[#c9a227] px-3 py-2 font-bold text-xs text-[#161414] shadow-[0px_4px_18px_rgba(201,162,39,0.25)] transition hover:bg-[#b08b1e] sm:inline-flex sm:px-5 sm:py-2.5 sm:text-[14px]"
+            className="hidden h-10 items-center justify-center rounded-xl bg-gold px-4 text-[14px] font-semibold text-dark shadow-[0_4px_18px_rgba(201,162,39,0.25)] transition hover:bg-[#b08b1e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-dark sm:inline-flex"
           >
             Register
           </Link>
@@ -140,7 +118,7 @@ export const HeaderContainer = (): ReactElement => {
                   <Link
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex min-h-11 items-center rounded-lg px-3 font-inter text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-[#c9a227]"
+                    className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-gold"
                   >
                     {item.label}
                   </Link>
@@ -190,8 +168,8 @@ export const Navbar = (): ReactElement => {
   } | null>(null);
   const currentProfile = savedProfile?.uid === firebaseUser?.uid ? savedProfile : null;
   const headerName = getProfileName(firebaseUser?.displayName, currentProfile?.fullName);
-  const headerAvatar = currentProfile?.profilePhotoUrl || firebaseUser?.photoURL ||
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(headerName)}`;
+  const firstName = headerName.split(/\s+/)[0];
+  const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href));
 
   useEffect(() => {
     if (!firebaseUser) {
@@ -215,75 +193,36 @@ export const Navbar = (): ReactElement => {
   }, [firebaseUser]);
 
   return (
-    <header className="hidden md:flex flex-col items-start bg-[#161414] border-b border-[#2a2a2a]">
-      <div className="flex items-center justify-between px-6 md:px-16 py-4 w-full max-w-screen-2xl mx-auto">
-        <Link href="/dashboard" aria-label="QuestGo CIT-U Campus home" className="inline-flex items-center gap-3">
-          <Image
-            src="/logo.png"
-            alt="QuestGo logo"
-            width={40}
-            height={40}
-            className="rounded-[10px] object-contain"
-            priority
-          />
-          <span className="inline-flex flex-col items-start gap-0.5">
-            <span className="font-bold text-white text-xl tracking-tight leading-none">QuestGo</span>
-            <span className="font-medium text-white/77 text-[11px] tracking-[0.12em] uppercase leading-none">
-              CIT-U Campus
-            </span>
-          </span>
+    // Shown at every width: phones get the brand and avatar (links live in the bottom bar),
+    // tablets and up get the full link row.
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#161414]/95 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center gap-4 px-4 sm:px-6 lg:px-10">
+        <Link href="/dashboard" aria-label="QuestGo home" className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
+          <BrandMark />
         </Link>
 
-        {/* Dynamic Navigation Links */}
-        <nav aria-label="Primary navigation" className="hidden lg:block">
-          <ul className="inline-flex items-center gap-8">
-            {dashboardNavItems.map((item) => {
-              // Determines active link based on current URL path
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname.startsWith(item.href);
-
-              return (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className={`text-[14px] font-medium transition-all pb-1 border-b-2 ${
-                      isActive
-                        ? "text-[#c9a227] border-[#c9a227]"
-                        : "text-white/90 border-transparent hover:text-[#c9a227]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
+        <nav aria-label="Primary navigation" className="hidden flex-1 justify-center md:flex">
+          <ul className="flex items-center gap-0.5 lg:gap-1">
+            {dashboardNavItems.map((item) => (
+              <li key={item.href}>
+                <NavLink href={item.href} active={isActive(item.href)}>{item.label}</NavLink>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* User Badge, Notifications & Profile */}
-        <div className="hidden md:inline-flex items-center gap-6">
-          <div className="flex items-center gap-1.5 border border-[#3A3326] bg-[#221D15] px-3 py-1.5 rounded-full">
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#c9a227]" />
-            <span className="text-[#c9a227] text-[10px] font-bold tracking-widest uppercase">
-              CIT-U Verified
-            </span>
-          </div>
-
-
-          <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition">
-            <Image
-              src={headerAvatar}
-              alt="User avatar"
-              width={36}
-              height={36}
-              className="rounded-full bg-white shrink-0 object-cover"
-              unoptimized
-            />
-            <span className="text-white text-[14px] font-medium whitespace-nowrap">
-              {headerName}
-            </span>
+        <div className="ml-auto flex items-center gap-3 md:ml-0">
+          <span className="hidden items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gold xl:inline-flex">
+            <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+            CIT-U Verified
+          </span>
+          <Link
+            href="/profile"
+            aria-label={`Your profile, ${headerName}`}
+            className="flex items-center gap-2.5 rounded-full p-1 ring-1 ring-white/10 transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold lg:pr-3.5"
+          >
+            <Avatar name={headerName} src={currentProfile?.profilePhotoUrl || firebaseUser?.photoURL} size={30} />
+            <span className="hidden max-w-[9rem] truncate text-[14px] font-medium text-white lg:block">{firstName}</span>
           </Link>
         </div>
       </div>

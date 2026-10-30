@@ -44,15 +44,23 @@ service cloud.firestore {
       // All mutations go through authenticated server transactions.
       allow create, update, delete: if false;
 
+      function participantWhile(statuses) {
+        let quest = get(/databases/$(database)/documents/quests/$(questId)).data;
+        return verified()
+          && quest.status in statuses
+          && (quest.requesterId == request.auth.uid
+            || quest.get('questRunnerId', '') == request.auth.uid);
+      }
+
       match /messages/{messageId} {
-        function participant() {
-          let quest = get(/databases/$(database)/documents/quests/$(questId)).data;
-          return verified()
-            && quest.status in ['accepted', 'in_progress', 'settlement', 'completed', 'cancelled']
-            && (quest.requesterId == request.auth.uid
-              || quest.get('questRunnerId', '') == request.auth.uid);
-        }
-        allow read: if participant();
+        allow read: if participantWhile(['accepted', 'in_progress', 'settlement', 'completed', 'cancelled']);
+        allow write: if false;
+      }
+
+      // The runner's live location, visible to the two participants only
+      // while the quest is underway. Written by the server.
+      match /tracking/{trackerId} {
+        allow read: if participantWhile(['accepted', 'in_progress']);
         allow write: if false;
       }
     }
