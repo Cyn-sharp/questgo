@@ -1,20 +1,31 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
+  getAggregateFromServer,
+  getCountFromServer,
+  count,
+  sum,
   query,
-  updateDoc,
   where,
-  serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
 
 import { auth, db } from "@/lib/auth/firebase";
 import type { Quest } from "@/types/quest";
 
+import { questRequest } from "@/lib/quests/client";
+
 const questsCollection = collection(db, "quests");
+
+export async function getProfileQuestStats(userId: string) {
+  const [posted, completed] = await Promise.all([
+    getCountFromServer(query(questsCollection, where("requesterId", "==", userId))),
+    getAggregateFromServer(query(questsCollection, where("questRunnerId", "==", userId), where("status", "==", "completed")), { completed: count(), earnings: sum("reward") }),
+  ]);
+  return { posted: posted.data().count, completed: completed.data().completed, earnings: completed.data().earnings };
+}
 
 function getTimestampMillis(value: unknown): number | null {
   if (value instanceof Timestamp) return value.toMillis();
@@ -43,29 +54,19 @@ export async function createQuest(
     | "acceptedAt"
     | "completedAt"
   >,
+  file?: File,
 ) {
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    throw new Error("You must be logged in to post a quest.");
-  }
-
-  const now = Timestamp.now();
-
-  const expiresAt = Timestamp.fromMillis(
-    now.toMillis() + 30 * 60 * 1000,
-  );
-
-  const docRef = await addDoc(questsCollection, {
-    ...questData,
-    requesterId: currentUser.uid,
-
-    status: "available",
-
-    createdAt: serverTimestamp(),
-    expiresAt,
-  });
-
-  return docRef.id;
+  let result: { id?: string };
+  if (file) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Please log in again.");
+    const body = new FormData(); body.set("quest", JSON.stringify(questData)); body.set("file", file);
+    const response = await fetch("/api/quests", { method: "POST", headers: { Authorization: `Bearer ${await user.getIdToken()}` }, body });
+    result = await response.json();
+    if (!response.ok) throw new Error((result as { message?: string }).message || "Unable to upload and post this quest.");
+  } else result = await questRequest("", questData);
+  if (!result.id) throw new Error("The server did not return the new quest.");
+  return result.id;
 }
 
 export async function getAvailableQuests(): Promise<Quest[]> {
@@ -111,54 +112,12 @@ export async function getQuestById(
   } as Quest;
 }
 
-export async function acceptQuest(questId: string, userId: string) {
-  const questRef = doc(db, "quests", questId);
-  const snapshot = await getDoc(questRef);
-
-  if (!snapshot.exists()) {
-    throw new Error("Quest no longer exists.");
-  }
-
-  const quest = snapshot.data() as Quest;
-
-  if (quest.requesterId === userId) {
-    throw new Error("You cannot accept your own quest.");
-  }
-
-  if (quest.status !== "available") {
-    throw new Error("This quest is no longer available.");
-  }
-
-  await updateDoc(questRef, {
-    questRunnerId: userId,
-    status: "accepted",
-    acceptedAt: serverTimestamp(),
-  });
+export async function acceptQuest(questId: string) {
+  await questRequest(`/${encodeURIComponent(questId)}`, { action: "accept" });
 }
 
-export async function cancelQuest(questId: string, userId: string) {
-  const questRef = doc(db, "quests", questId);
-  const snapshot = await getDoc(questRef);
-
-  if (!snapshot.exists()) {
-    throw new Error("Quest not found.");
-  }
-
-  const quest = snapshot.data() as Quest;
-
-  if (quest.requesterId !== userId) {
-    throw new Error("You can only cancel quests you posted.");
-  }
-
-  if (quest.status === "completed" || quest.status === "cancelled") {
-    throw new Error("This quest can no longer be cancelled.");
-  }
-
-  await updateDoc(questRef, {
-    status: "cancelled",
-    cancelledAt: serverTimestamp(),
-    questRunnerId: null,
-  });
+export async function cancelQuest(questId: string) {
+  await questRequest(`/${encodeURIComponent(questId)}`, { action: "cancel" });
 }
 
 export async function getMyRequests(userId: string): Promise<Quest[]> {
@@ -177,25 +136,8 @@ export async function getMyRequests(userId: string): Promise<Quest[]> {
     });
 }
 
-export async function markQuestCompleted(questId: string, userId: string) {
-  const questRef = doc(db, "quests", questId);
-  const snapshot = await getDoc(questRef);
-
-  if (!snapshot.exists()) {
-    throw new Error("Quest not found.");
-  }
-
-  const quest = snapshot.data() as Quest;
-
-  if (quest.questRunnerId && quest.questRunnerId !== userId) {
-    throw new Error("You are not the assigned runner for this quest.");
-  }
-
-  await updateDoc(questRef, {
-    status: "completed",
-    completedAt: serverTimestamp(),
-    questRunnerId: userId,
-  });
+export async function markQuestCompleted(questId: string) {
+  await questRequest(`/${encodeURIComponent(questId)}`, { action: "request-completion" });
 }
 
 // Count of available (open) quests on the platform

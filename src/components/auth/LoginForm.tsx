@@ -14,6 +14,8 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
+import { EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 type FieldErrors = {
   email?: string;
@@ -82,8 +84,8 @@ export function LoginForm() {
       await signOut(auth);
       setErrorTitle("Verification email sent");
       setError("Check your email Inbox, Junk, or Spam folder for the new verification link.");
-    } catch (err: any) {
-      if (err?.code === "auth/too-many-requests") {
+    } catch (err) {
+      if (err instanceof FirebaseError && err.code === "auth/too-many-requests") {
         setErrorTitle("Too many requests");
         setError("Please wait a few minutes before requesting another verification email.");
       } else {
@@ -127,11 +129,11 @@ export function LoginForm() {
       return;
     }
 
-    if (!trimmedEmail.endsWith("@cit.edu") && !trimmedEmail.endsWith("@gmail.com")) {
+    if (!isAllowedEmail(trimmedEmail)) {
       triggerError({
         title: "Unsupported email",
-        message: "Please use a CIT-U or Gmail address for testing.",
-        fields: { email: "Use @cit.edu or @gmail.com" },
+        message: EMAIL_POLICY_MESSAGE,
+        fields: { email: "This email domain is not supported." },
       });
       return;
     }
@@ -173,14 +175,15 @@ export function LoginForm() {
 
       setFailedAttempts(0);
       router.push("/dashboard");
-    } catch (err: any) {
-      console.error("Firebase Login Error:", err?.code, err?.message);
+    } catch (err) {
+      const code = err instanceof FirebaseError ? err.code : "";
+      console.error("Firebase Login Error:", code, err instanceof Error ? err.message : err);
 
       if (
-        err?.code === "auth/invalid-credential" ||
-        err?.code === "auth/user-not-found" ||
-        err?.code === "auth/wrong-password" ||
-        err?.code === "auth/invalid-email"
+        code === "auth/invalid-credential" ||
+        code === "auth/user-not-found" ||
+        code === "auth/wrong-password" ||
+        code === "auth/invalid-email"
       ) {
         triggerError({
           title: "Invalid email or password",
@@ -192,13 +195,13 @@ export function LoginForm() {
           },
           bumpAttempts: true,
         });
-      } else if (err?.code === "auth/too-many-requests") {
+      } else if (code === "auth/too-many-requests") {
         triggerError({
           title: "Too many attempts",
           message: "Please wait a few minutes, then try again.",
           bumpAttempts: true,
         });
-      } else if (err?.code === "auth/network-request-failed") {
+      } else if (code === "auth/network-request-failed") {
         triggerError({
           title: "Network error",
           message: "Check your internet connection and try again.",
@@ -278,7 +281,7 @@ export function LoginForm() {
                 type="email"
                 autoComplete="email"
                 inputMode="email"
-                placeholder="studentname@cit.edu or Gmail"
+                placeholder={EMAIL_PLACEHOLDER}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);

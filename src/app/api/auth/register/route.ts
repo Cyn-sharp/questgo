@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
+import { EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 export async function POST(request: Request) {
   try {
@@ -13,9 +14,8 @@ export async function POST(request: Request) {
     const fullName = body.fullName?.trim();
     const email = body.email?.trim().toLowerCase();
 
-    const allowedEmail = email?.endsWith("@cit.edu") || email?.endsWith("@gmail.com");
-    if (!body.idToken || !fullName || !email || !allowedEmail) {
-      return NextResponse.json({ message: "Please provide a valid CIT-U or Gmail address." }, { status: 400 });
+    if (!body.idToken || !fullName || !email || !isAllowedEmail(email)) {
+      return NextResponse.json({ message: EMAIL_POLICY_MESSAGE }, { status: 400 });
     }
 
     const decodedToken = await adminAuth.verifyIdToken(body.idToken);

@@ -113,7 +113,7 @@ export default function QuestCard({
             <span className="sm:hidden">VERIFIED</span>
           </span>
           <Link
-            href={`/quests/${id}`}
+            href={`/quests/viewquest?id=${encodeURIComponent(id)}`}
             className="
               bg-[#7a1f32] text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-lg
               transition-all duration-300 active:scale-95

@@ -61,7 +61,7 @@ function ScrollReveal({
 export default function RateQuestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const questId = searchParams.get("id");
 
   const [rating, setRating] = useState<number>(5);

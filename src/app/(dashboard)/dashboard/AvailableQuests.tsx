@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import QuestCard from "./QuestCard";
 import {
-  getRecentAvailableQuests,
   getQuestExpirationMillis,
 } from "@/lib/db/quests";
+import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
 import type { Quest as FirestoreQuest } from "@/types/quest";
 
 type DisplayQuest = {
@@ -48,36 +48,16 @@ function toDisplayQuest(q: FirestoreQuest): DisplayQuest | null {
 }
 
 export default function AvailableQuests() {
-  const [quests, setQuests] = useState<DisplayQuest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const raw = await getRecentAvailableQuests(3);
-        const mapped = raw
-          .map(toDisplayQuest)
-          .filter((q): q is DisplayQuest => q !== null);
-        setQuests(mapped);
-      } catch (err) {
-        console.error("Failed to load quests:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    void load();
-
-    const interval = window.setInterval(() => {
-      setQuests((current) => current.map((q) => q));
-    }, 30_000);
-
-    return () => window.clearInterval(interval);
-  }, []);
+  const { records, isLoading, hasError, retry } = useAvailableQuests();
+  const now = useQuestClock();
+  const quests = records.filter((quest) => (getQuestExpirationMillis(quest) ?? 0) > now)
+    .sort((a, b) => (getQuestExpirationMillis(b) ?? 0) - (getQuestExpirationMillis(a) ?? 0))
+    .slice(0, 3).map(toDisplayQuest).filter((quest): quest is DisplayQuest => quest !== null);
 
   return (
     <section className="bg-transparent">
       <div className="page-container py-10 sm:py-12 lg:py-14">
+        {hasError && <p role="alert" className="text-white">Unable to load quests. <button onClick={retry} className="underline">Retry</button></p>}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 sm:mb-8">
           <ScrollReveal>
             <div>

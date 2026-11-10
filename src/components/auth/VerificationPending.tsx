@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/auth/firebase";
 import { sendEmailVerification, signOut } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 
 type VerificationPendingProps = {
   email: string;
@@ -49,9 +50,9 @@ export function VerificationPending({ email }: VerificationPendingProps) {
     try {
       await sendEmailVerification(auth.currentUser);
       setMessage("A new verification link was sent. Check your inbox, Junk, or Spam folder.");
-    } catch (error: any) {
+    } catch (error) {
       setMessage(
-        error?.code === "auth/too-many-requests"
+        error instanceof FirebaseError && error.code === "auth/too-many-requests"
           ? "Too many requests. Please wait a few minutes before trying again."
           : "We could not send a new verification link. Please try again."
       );

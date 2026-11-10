@@ -4,7 +4,8 @@ export type QuestStatus =
   | "in_progress"
   | "completed"
   | "expired"
-  | "cancelled";
+  | "cancelled"
+  | "settlement";
 
 export interface Quest {
   id: string;
@@ -23,10 +24,37 @@ export interface Quest {
   neededBy?: string;
 
   attachmentUrl?: string;
+  attachment?: { path: string; name: string; size: number; contentType: string };
+  requirements?: Record<string, string>;
 
   requesterId: string;
   questRunnerId?: string;
+  requesterName?: string;
+  runnerName?: string;
+  completionRequestedAt?: unknown;
+  cancellationRequestedBy?: string;
+  cancellationRequestedAt?: unknown;
 
+  workflowVersion?: number;
+  fundingMethod?: import("@/lib/quests/funding").FundingMethod;
+  purchaseBudget?: number;
+  vendorInstructions?: string;
+  vendorPaymentConfirmedAt?: unknown;
+  committedAt?: unknown;
+  paymentReceivedAt?: unknown;
+  receiptConfirmedAt?: unknown;
+  receiptRecordedAt?: unknown;
+  actualExpense?: number;
+  expenseEvidence?: string;
+  expenseApproved?: boolean;
+  issueReason?: string;
+  issueRequestedBy?: string;
+  issueDeadline?: unknown;
+  settlementConfirmedBy?: string[];
+  reviewRequestedAt?: unknown;
+  resolutionNote?: string;
+  replacementQuestId?: string;
+  closedReason?: string;
   status: QuestStatus;
 
   createdAt: unknown;
@@ -34,4 +62,6 @@ export interface Quest {
 
   acceptedAt?: unknown;
   completedAt?: unknown;
+  cancelledAt?: unknown;
+  updatedAt?: unknown;
 }

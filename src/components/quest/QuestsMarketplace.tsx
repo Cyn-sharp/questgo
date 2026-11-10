@@ -11,7 +11,10 @@ import {
   Star,
   CheckCircle2,
 } from "lucide-react";
-import { getAvailableQuests, getQuestExpirationMillis } from "@/lib/db/quests";
+import { fundingSummary, money } from "@/lib/quests/funding";
+import { getQuestExpirationMillis } from "@/lib/db/quests";
+import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { Quest as FirestoreQuest } from "@/types/quest";
 
 /* ─────────────────────────────────────────────────────────
@@ -76,6 +79,8 @@ type Quest = {
   distance: string;
   time: string;
   rating: string;
+  upfront: number | null;
+  fundingLabel: string;
 };
 
 const CATEGORIES: Category[] = [
@@ -118,6 +123,8 @@ function toDisplayQuest(quest: FirestoreQuest): Quest | null {
     distance: "On campus",
     time: formatPreferredTime(quest.preferredTime),
     rating: "New",
+    upfront: fundingSummary(quest).upfront,
+    fundingLabel: fundingSummary(quest).label,
   };
 }
 
@@ -169,10 +176,11 @@ function QuestCard({ quest }: { quest: Quest }) {
         <div className="flex items-end gap-2 mb-4 sm:mb-5">
           <span className="text-2xl sm:text-3xl font-extrabold text-[#c9a227]">₱{quest.price}</span>
           <span className="text-[11px] sm:text-xs text-[#4a4340] mb-1 font-medium transition-colors duration-500 group-hover:text-white/70">
-            Cash on Delivery
+            Runner earnings
           </span>
         </div>
 
+        <p className="mb-4 text-sm text-[#7a1f32] group-hover:text-white">{quest.fundingLabel}<br />{quest.upfront === null ? "Upfront cost not recorded" : quest.upfront === 0 ? "₱0 upfront — earn without advancing money" : "Advance up to " + money(quest.upfront)}</p>
         {/* Location & Details */}
         <div className="flex flex-col gap-2 text-[11px] sm:text-xs text-[#4a4340] mb-4 sm:mb-5 flex-grow transition-colors duration-500 group-hover:text-white/80">
           <div className="flex items-center gap-1.5">
@@ -222,51 +230,11 @@ function QuestCard({ quest }: { quest: Quest }) {
 ───────────────────────────────────────────────────────── */
 export function QuestsMarketplace() {
   const [query, setQuery] = useState("");
+  const [zeroUpfront, setZeroUpfront] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>("All");
-  const [quests, setQuests] = useState<Quest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-
-  async function loadQuests() {
-    setIsLoading(true);
-    setHasError(false);
-
-    try {
-      const nextQuests = (await getAvailableQuests())
-        .map(toDisplayQuest)
-        .filter((quest): quest is Quest => quest !== null);
-      setQuests(nextQuests);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => void loadQuests(), 0);
-
-    const interval = window.setInterval(() => {
-      setQuests((currentQuests) =>
-        currentQuests
-          .filter((quest) => quest.expiresAt > Date.now())
-          .map((quest) => ({
-            ...quest,
-            timeLeft: formatTimeLeft(quest.expiresAt),
-          })),
-      );
-    }, 30_000);
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") void loadQuests();
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
+  const { records, isLoading, hasError, retry: loadQuests } = useAvailableQuests();
+  const now = useQuestClock();
+  const quests = useMemo(() => records.filter((quest) => (getQuestExpirationMillis(quest) ?? 0) > now).map(toDisplayQuest).filter((quest): quest is Quest => quest !== null), [records, now]);
 
   const filteredQuests = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -282,23 +250,20 @@ export function QuestsMarketplace() {
         quest.category.toLowerCase().includes(q) ||
         quest.location.toLowerCase().includes(q);
 
-      return matchesCategory && matchesQuery;
+      return matchesCategory && matchesQuery && (!zeroUpfront || quest.upfront === 0);
     });
-  }, [query, activeCategory, quests]);
+  }, [query, activeCategory, quests, zeroUpfront]);
 
   return (
     <div className="bg-transparent min-h-full">
       <div className="page-container py-6 sm:py-10 lg:py-12">
         {/* Title Header */}
         <ScrollReveal>
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-2">
-              Campus Quest Marketplace
-            </h1>
-            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
-              Browse and claim quick gigs posted by other Wildcat students
-            </p>
-          </div>
+          <PageHeader
+            eyebrow="Find a quest"
+            title="Campus Quest Marketplace"
+            description="Browse and claim quick tasks posted by other Wildcats. Quests stay open for 30 minutes."
+          />
         </ScrollReveal>
 
         {/* Search & Category Filter Card */}
@@ -321,6 +286,7 @@ export function QuestsMarketplace() {
               />
             </div>
 
+            <label className="mb-4 flex items-center gap-2 text-sm"><input type="checkbox" checked={zeroUpfront} onChange={(event) => setZeroUpfront(event.target.checked)} />₱0 upfront — no abono needed</label>
             {/* Category Pills */}
             <div className="flex flex-wrap items-center gap-2">
               {CATEGORIES.map((cat) => {
@@ -392,6 +358,7 @@ export function QuestsMarketplace() {
                 type="button"
                 onClick={() => {
                   setQuery("");
+                  setZeroUpfront(false);
                   setActiveCategory("All");
                 }}
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"

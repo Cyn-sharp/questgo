@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/auth/firebase";
+import { EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -15,8 +16,8 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
     setMessage("");
-    if (!normalizedEmail.endsWith("@cit.edu") && !normalizedEmail.endsWith("@gmail.com")) {
-      setMessage("Use a CIT-U or Gmail address for testing.");
+    if (!isAllowedEmail(normalizedEmail)) {
+      setMessage(EMAIL_POLICY_MESSAGE);
       return;
     }
 
@@ -60,7 +61,7 @@ export function ForgotPasswordForm() {
             inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="studentname@cit.edu or Gmail"
+            placeholder={EMAIL_PLACEHOLDER}
             className="mt-1 h-11 w-full rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 font-inter text-[13px] outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
             required
           />
