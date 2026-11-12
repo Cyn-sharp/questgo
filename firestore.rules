@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function verified() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    match /users/{userId} {
+      match /questInbox/{questId} {
+        allow read: if verified() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      // Each user sees only their own block list; the server writes it.
+      match /blocks/{blockedId} {
+        allow read: if verified() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      allow read: if request.auth != null
+        && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'id', 'email', 'fullName', 'isVerified', 'createdAt',
+          'updatedAt', 'profilePhotoUrl', 'course'
+        ])
+        && request.resource.data.id == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.isVerified == request.auth.token.email_verified;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'fullName', 'profilePhotoUrl', 'course', 'updatedAt'
+        ]);
+    }
+
+    match /quests/{questId} {
+
+      allow read: if verified();
+
+      // All mutations go through authenticated server transactions.
+      allow create, update, delete: if false;
+
+      function participantWhile(statuses) {
+        let quest = get(/databases/$(database)/documents/quests/$(questId)).data;
+        return verified()
+          && quest.status in statuses
+          && (quest.requesterId == request.auth.uid
+            || quest.get('questRunnerId', '') == request.auth.uid);
+      }
+
+      match /messages/{messageId} {
+        allow read: if participantWhile(['accepted', 'in_progress', 'settlement', 'completed', 'cancelled']);
+        allow write: if false;
+      }
+
+      // The runner's live location, visible to the two participants only
+      // while the quest is underway. Written by the server.
+      match /tracking/{trackerId} {
+        allow read: if participantWhile(['accepted', 'in_progress']);
+        allow write: if false;
+      }
+    }
+    // Locks, message rate limits and reports are server-only; unmatched paths are denied.
+  }
+}

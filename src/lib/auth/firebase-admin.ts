@@ -1,0 +1,27 @@
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+
+function getAdminApp() {
+  if (getApps().length) return getApps()[0];
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  if (projectId?.startsWith("demo-") && process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    return initializeApp({ projectId });
+  }
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error("Firebase Admin environment variables are not configured.");
+  }
+
+  return initializeApp({
+    credential: cert({ projectId, clientEmail, privateKey }),
+  });
+}
+
+const adminApp = getAdminApp();
+
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);

@@ -1,0 +1,10 @@
+"use client";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
+type Entry = { id: string; senderId?: string; actorName?: string; action?: string; text?: string; reason?: string; createdAt?: string; amount?: number; evidence?: string };
+function Review() { const id = useSearchParams().get("id") || "", { user } = useAuth(); const [data, setData] = useState<{ events: Entry[]; messages: Entry[] }>(), [error, setError] = useState("");
+  useEffect(() => { let current = true; if (!user || !id) return; void (async () => { try { const response = await fetch("/api/admin/quests/" + encodeURIComponent(id), { headers: { Authorization: "Bearer " + await user.getIdToken() } }); const body = await response.json(); if (!response.ok) throw new Error(body.message); if (current) setData(body); } catch (e) { if (current) setError(e instanceof Error ? e.message : "Unable to review."); } })(); return () => { current = false; }; }, [user, id]);
+  return <div className="page-container py-8"><section className="rounded-xl bg-white p-6 space-y-4"><Link href="/admin" className="underline">Back to resolution queue</Link><h1 className="text-2xl font-bold">Case records</h1>{error && <p role="alert">{error}</p>}{data && [ { title: "Latest 100 activity records", records: data.events }, { title: "Latest 100 messages", records: data.messages } ].map((group) => <section key={group.title}><h2 className="font-bold">{group.title}</h2>{group.records.map((entry) => <article key={entry.id} className="border-b py-3"><p>{entry.action || entry.senderId} · {entry.actorName}</p><p className="whitespace-pre-wrap">{entry.text || entry.reason}</p>{entry.amount !== undefined && <p>Recorded amount: ₱{entry.amount} · {entry.evidence}</p>}<time className="text-xs">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : ""}</time></article>)}</section>)}</section></div>; }
+export default function Page() { return <Suspense fallback={<p>Loading case…</p>}><Review /></Suspense>; }
