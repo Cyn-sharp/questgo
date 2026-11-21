@@ -51,8 +51,9 @@ test results, reproduction and the two-browser walkthrough.
    and quest status notices are implemented. Background push delivery is not.
    Ratings still need trusted server aggregation, uniqueness and
    authorization; report/block controls need persistence and admin handling.
-6. **Scale and abuse controls.** Add chat pagination beyond the latest 100
-   messages, paginated quest/history queries, broader API quotas/App Check,
+6. **Scale and abuse controls.** Participant chat now pages older messages
+   (latest 100 live, older in batches of 50); the admin case view still shows only
+   the latest 100. Add paginated quest/history queries, broader API quotas/App Check,
    audit logs and operational monitoring. Current creation checks scan that
    requester's records to include legacy data; a migration could later allow
    the lock alone to identify the active quest.
