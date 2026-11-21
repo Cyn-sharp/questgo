@@ -176,6 +176,68 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   assert.equal((await request("outsider", "", input)).status, 409);
 });
 
+test("S2-10 acceptance contract: missing quests, audit timestamp, marketplace removal, role views, and Accepted -> In Progress guards", { timeout: 60000 }, async () => {
+  for (const id of ["s2-requester", "s2-runner", "s2-outsider"]) {
+    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[id] = (await response.json()).idToken;
+  }
+  const requester = "s2-requester", runner = "s2-runner", outsider = "s2-outsider";
+
+  // A missing Quest cannot be accepted, started, or messaged.
+  assert.equal((await request(runner, "/does-not-exist", { action: "accept" })).status, 404);
+  assert.equal((await request(runner, "/does-not-exist", { action: "start" })).status, 404);
+  assert.equal((await request(runner, "/does-not-exist/messages", { text: "hello?" })).status, 404);
+
+  const created = await request(requester, "", input);
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  const ref = db.doc(`quests/${id}`);
+  const runnerDb = client(runner);
+  const requesterDb = client(requester);
+  const available = async () => (await getDocs(query(collection(runnerDb, "quests"), where("status", "==", "available")))).docs.map((d) => d.id);
+  assert.ok((await available()).includes(id));
+
+  // Unverified accounts and non-participants are blocked before acceptance, including messaging.
+  assert.equal((await request("unverified", `/${id}`, { action: "accept" })).status, 403);
+  assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 403);
+  assert.equal((await request(runner, `/${id}/messages`, { text: "too early" })).status, 403);
+  await assert.rejects(getDocs(collection(runnerDb, "quests", id, "messages")), { code: "permission-denied" });
+
+  // Acceptance is persisted with the runner and an auditable server timestamp.
+  const before = Date.now();
+  assert.equal((await request(runner, `/${id}`, { action: "accept" })).status, 200);
+  const accepted = (await ref.get()).data();
+  assert.equal(accepted.status, "accepted");
+  assert.equal(accepted.questRunnerId, runner);
+  assert.ok(accepted.acceptedAt instanceof Timestamp);
+  assert.ok(accepted.acceptedAt.toMillis() >= before - 5000);
+  assert.equal(accepted.requesterId, requester);
+
+  // The accepted Quest leaves the marketplace and cannot be accepted again.
+  assert.ok(!(await available()).includes(id));
+  assert.equal((await request(outsider, `/${id}`, { action: "accept" })).status, 409);
+  assert.equal((await request(runner, `/${id}`, { action: "accept" })).status, 409);
+
+  // Each participant finds the Quest in their own My Requests / Active Quest view.
+  const mine = await getDocs(query(collection(requesterDb, "quests"), where("requesterId", "==", requester), where("status", "in", ["available", "accepted", "in_progress"])));
+  assert.deepEqual(mine.docs.map((d) => d.id), [id]);
+  const running = await getDocs(query(collection(runnerDb, "quests"), where("questRunnerId", "==", runner)));
+  assert.deepEqual(running.docs.map((d) => d.id), [id]);
+
+  // Accepted -> In Progress: only the assigned runner, only once, never by the requester or an outsider.
+  assert.equal((await request(requester, `/${id}`, { action: "start" })).status, 403);
+  assert.equal((await request(outsider, `/${id}`, { action: "start" })).status, 403);
+  assert.equal((await request(runner, `/${id}`, { action: "complete" })).status, 403);
+  assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 200);
+  assert.equal((await ref.get()).data().status, "in_progress");
+  assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 403);
+  assert.equal((await request(requester, `/${id}`, { action: "cancel" })).status, 403);
+
+  // Clients cannot bypass the server to change the status or runner directly.
+  await assert.rejects(setDoc(doc(runnerDb, "quests", id), { status: "completed" }, { merge: true }), { code: "permission-denied" });
+  await assert.rejects(setDoc(doc(requesterDb, "quests", id), { questRunnerId: outsider, status: "accepted" }, { merge: true }), { code: "permission-denied" });
+});
 
 test("printing upload is required, preserved, and private to participants", async () => {
   const printing = { ...input, fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Requester pays the campus print shop directly", category: "Printing", title: "Print my module", requirements: { paperSize: "A4", copies: "2", pages: "All pages", color: "Black and white", sides: "Single-sided" } };
