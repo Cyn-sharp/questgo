@@ -151,6 +151,25 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   const cancelledMessagePath = `quests/${cancelId}/messages/${cancelMessage.body.id}`;
   assert.equal((await getDoc(doc(requesterDb, cancelledMessagePath))).data().text, "Please cancel");
   await assert.rejects(getDoc(doc(outsiderDb, cancelledMessagePath)), { code: "permission-denied" });
+  // Message history paging: newest-first window, then startAfter pages; closed quests stay readable, outsiders stay denied.
+  const pagedBase = db.collection(`quests/${cancelId}/messages`);
+  const seedBatch = db.batch();
+  for (let i = 0; i < 120; i++) seedBatch.set(pagedBase.doc(`seed-${String(i).padStart(3, "0")}`), { senderId: "requester", text: `seed ${i}`, createdAt: Timestamp.fromMillis(1000 + Math.floor(i / 2) * 10) }); // pairs share createdAt
+  await seedBatch.commit();
+  const pagedRef = collection(requesterDb, "quests", cancelId, "messages");
+  const latest = await getDocs(query(pagedRef, orderBy("createdAt", "desc"), limit(100)));
+  let seen = latest.docs.map((record) => record.id);
+  let cursor = latest.docs.at(-1);
+  while (true) {
+    const page = await getDocs(query(pagedRef, orderBy("createdAt", "desc"), startAfter(cursor), limit(50)));
+    seen = seen.concat(page.docs.map((record) => record.id));
+    if (page.size < 50) break;
+    cursor = page.docs.at(-1);
+  }
+  assert.equal(seen.length, 121); // 120 seeded + the original "Please cancel"
+  assert.equal(new Set(seen).size, seen.length, "no duplicates across pages");
+  assert.ok(seen.includes("seed-000") && seen.includes("seed-119"), "no gaps");
+  await assert.rejects(getDocs(query(collection(outsiderDb, "quests", cancelId, "messages"), orderBy("createdAt", "desc"), startAfter(cursor), limit(50))), { code: "permission-denied" });
   const unclaimed = await request("requester", "", input);
   assert.equal(unclaimed.status, 201);
   assert.equal((await request("requester", `/${unclaimed.body.id}`, { action: "cancel" })).status, 200);

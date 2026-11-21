@@ -19,6 +19,13 @@ export function validateQuest(input: unknown, hasAttachment = false) {
     }
     return value.trim();
   };
+  // The meet-up time is optional: participants can agree it in Messenger after acceptance.
+  const optionalText = (key: string, max: number) => {
+    const value = data[key];
+    if (value === undefined || value === null || value === "") return "";
+    if (typeof value !== "string" || value.trim().length > max) throw new QuestError(`Please provide a valid ${key} (up to ${max} characters).`);
+    return value.trim();
+  };
   const category = text("category", 30);
   if (!QUEST_CATEGORIES.includes(category)) throw new QuestError("Invalid category.");
   if (!meaningfulText(data.title, 5, 120)) throw new QuestError("Write a clear quest title (5–120 characters), not a placeholder.");
@@ -34,7 +41,7 @@ export function validateQuest(input: unknown, hasAttachment = false) {
   try { funding = validateFunding(data, category); } catch (error) { throw new QuestError(error instanceof Error ? error.message : "Invalid funding."); }
   // Whitelist fields: identities, status, attachments and timestamps are never client supplied.
   return { ...funding, workflowVersion: 2, title: text("title", 120), category, requirements, description: text("description", 3000), reward: data.reward,
-    location: text("location", 200), meetUpPoint: text("meetUpPoint", 200), preferredTime: text("preferredTime", 100) };
+    location: text("location", 200), meetUpPoint: text("meetUpPoint", 200), preferredTime: optionalText("preferredTime", 100) };
 }
 
 export type WorkflowQuest = {

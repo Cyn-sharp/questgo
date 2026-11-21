@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { CATEGORY_FIELDS } from "@/lib/quests/requirements";
 import { validateQuest } from "@/lib/quests/policy";
+import { buildQuestPayload, effectiveFunding, formatMeetupTime, fundingMethodsFor, needsFile, needsPurchaseLimit, needsVendorInstructions, purchaseLimitFromItemBudget, type QuestFormValues } from "@/lib/quests/form";
 import { MAX_PRINT_FILE_BYTES } from "@/lib/quests/files";
 import { createQuest } from "@/lib/db/quests";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,20 +85,7 @@ const CAMPUS_LOCATIONS = [
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
-type FormState = {
-  title: string;
-  category: string;
-  description: string;
-  reward: string;
-  fundingMethod: "no_purchase" | "prepaid" | "abono";
-  purchaseBudget: string;
-  vendorInstructions: string;
-  pickupLocation: string;
-  meetupLocation: string;
-  meetupHour: string;
-  meetupMinute: string;
-  meetupPeriod: "AM" | "PM";
-};
+type FormState = QuestFormValues;
 
 const INITIAL_FORM: FormState = {
   title: "",
@@ -109,6 +97,7 @@ const INITIAL_FORM: FormState = {
   vendorInstructions: "",
   pickupLocation: "CIT-U Library",
   meetupLocation: "CIT-U Main Entrance",
+  setTime: false,
   meetupHour: "4",
   meetupMinute: "30",
   meetupPeriod: "PM",
@@ -139,18 +128,24 @@ const inputClass = `
 
 export default function PostQuestPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [requirements, setRequirements] = useState<Record<string, string>>({});
+  // Kept per category so switching category and back does not lose what was typed.
+  const [requirementsByCategory, setRequirementsByCategory] = useState<Record<string, Record<string, string>>>({});
   const [file, setFile] = useState<File | undefined>();
   const [review, setReview] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const posting = useRef(false);
+  const errorSummary = useRef<HTMLDivElement>(null);
   useEffect(() => { if (review) dialog.current?.showModal(); else dialog.current?.close(); }, [review]);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const requirements = requirementsByCategory[form.category] ?? {};
+  const funding = effectiveFunding(form.category, form.fundingMethod);
+  const setRequirement = (key: string, value: string) => { setReview(false); setRequirementsByCategory((current) => ({ ...current, [form.category]: { ...current[form.category], [key]: value } })); };
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [shake, setShake] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
+  useEffect(() => { if (submissionError && !review) errorSummary.current?.focus(); }, [submissionError, review]);
   const router = useRouter();
   const { posted, loading: requestsLoading, error: requestsError } = useMyQuests();
   const now = useQuestClock();
@@ -158,7 +153,6 @@ export default function PostQuestPage() {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setReview(false);
-    if (key === "category") { setRequirements({}); setFile(undefined); if (["Printing", "Shopping"].includes(String(value))) setForm((current) => ({ ...current, fundingMethod: current.fundingMethod === "no_purchase" ? "prepaid" : current.fundingMethod })); }
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
@@ -174,7 +168,6 @@ export default function PostQuestPage() {
     }
     if (!form.pickupLocation.trim()) next.pickupLocation = "Pickup location is required.";
     if (!form.meetupLocation.trim()) next.meetupLocation = "Meet-up location is required.";
-    if (!form.meetupHour || !form.meetupMinute) next.meetupHour = "Please select a valid time.";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -192,20 +185,17 @@ export default function PostQuestPage() {
     if (submitting || requestsLoading || requestsError || activeQuest) return;
 
     if (!validate()) {
+      setSubmissionError("Please fix the highlighted fields.");
       setShake(true);
       setTimeout(() => setShake(false), 500);
       return;
     }
 
-    const payload = {
-      title: form.title.trim(), category: form.category, description: form.description.trim(),
-      reward: Number(form.reward), location: form.pickupLocation, meetUpPoint: form.meetupLocation,
-      preferredTime: `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`, requirements,
-      fundingMethod: form.fundingMethod, purchaseBudget: form.fundingMethod === "no_purchase" ? 0 : Number(form.purchaseBudget), vendorInstructions: form.vendorInstructions,
-    };
+    const payload = buildQuestPayload(form, requirementsByCategory);
+    const attachment = needsFile(form.category) ? file : undefined;
     try {
-      validateQuest(payload, Boolean(file));
-      if (file && (!file.size || file.size > MAX_PRINT_FILE_BYTES || !["application/pdf", "image/png", "image/jpeg"].includes(file.type))) throw new Error("Choose a PDF, JPG, or PNG file up to 3 MB.");
+      validateQuest(payload, Boolean(attachment));
+      if (attachment && (!attachment.size || attachment.size > MAX_PRINT_FILE_BYTES || !["application/pdf", "image/png", "image/jpeg"].includes(attachment.type))) throw new Error("Choose a PDF, JPG, or PNG file up to 3 MB.");
     } catch (error) { setSubmissionError(error instanceof Error ? error.message : "Check your quest details."); return; }
     if (!review) { setReview(true); return; }
     if (posting.current) return;
@@ -213,7 +203,7 @@ export default function PostQuestPage() {
     setSubmitting(true);
 
     try {
-      const questId = await createQuest(payload, file);
+      const questId = await createQuest(payload, attachment);
 
       setSuccess(true);
       router.replace(`/quests/active?id=${encodeURIComponent(questId)}`);
@@ -259,7 +249,9 @@ export default function PostQuestPage() {
     );
   }
 
-  const previewTime = `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`;
+  const previewTime = formatMeetupTime(form) || "Agree in Messenger";
+  const attachedFile = needsFile(form.category) ? file : undefined;
+  const purchaseLimit = funding === "no_purchase" ? "0" : purchaseLimitFromItemBudget(form.category, funding) ? requirements.budget || "" : form.purchaseBudget;
 
   return (
     <div className="bg-transparent min-h-full">
@@ -267,11 +259,12 @@ export default function PostQuestPage() {
         <h2 id="review-title" className="text-2xl font-bold">Review your quest</h2>
         <p className="my-3">Check for typos and confirm all details before posting.</p>
         <h3 className="font-bold break-words">{form.title}</h3><p>{form.category}</p><p className="my-3 whitespace-pre-wrap break-words">{form.description}</p>
-        <dl className="space-y-2 text-sm"><div><dt className="font-bold">Reward</dt><dd>?{form.reward} ? Cash on delivery</dd></div><div><dt className="font-bold">Task / pickup location</dt><dd>{form.pickupLocation}</dd></div><div><dt className="font-bold">Meet-up</dt><dd>{form.meetupLocation} ? {form.meetupHour}:{form.meetupMinute} {form.meetupPeriod}</dd></div>
+        <dl className="space-y-2 text-sm"><div><dt className="font-bold">Reward</dt><dd>₱{form.reward} · Cash on delivery</dd></div><div><dt className="font-bold">Task / pickup location</dt><dd>{form.pickupLocation}</dd></div><div><dt className="font-bold">Meet-up</dt><dd>{form.meetupLocation} · {formatMeetupTime(form) || "Time to be agreed in Messenger"}</dd></div>
           {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}><dt className="font-bold">{field.label}</dt><dd className="break-words">{requirements[field.key]}</dd></div>)}
-          {file && <div><dt className="font-bold">Attached file</dt><dd className="break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB ? {file.type}</dd></div>}
+          {attachedFile && <div><dt className="font-bold">Attached file</dt><dd className="break-all">{attachedFile.name} · {(attachedFile.size / 1024).toFixed(1)} KB · {attachedFile.type}</dd></div>}
+          <div><dt className="font-bold">Funding</dt><dd>{funding === "abono" ? "Runner advances payment" : funding === "prepaid" ? "Requester pays vendor directly" : "No purchase needed"} · Purchase limit ₱{purchaseLimit || "0"}</dd></div>
+          {needsVendorInstructions(funding) && <div><dt className="font-bold">Vendor payment / collection instructions</dt><dd className="break-words whitespace-pre-wrap">{form.vendorInstructions}</dd></div>}
         </dl>
-        <p className="mt-3 text-sm">Funding: {form.fundingMethod === "abono" ? "Runner advances payment" : form.fundingMethod === "prepaid" ? "Requester pays vendor directly" : "No purchase needed"}. Runner reward: ₱{form.reward}. Purchase limit: ₱{form.fundingMethod === "no_purchase" ? "0" : form.purchaseBudget}.</p>
         {submissionError && <p role="alert" className="mt-4 text-red-700">{submissionError}</p>}
         <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting…" : "Confirm and Post"}</button></div>
       </dialog>
@@ -292,16 +285,21 @@ export default function PostQuestPage() {
                 shake ? "animate-form-shake" : ""
               }`}
             >
+              {submissionError && !review && <div ref={errorSummary} tabIndex={-1} role="alert" className="mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{submissionError}</div>}
+              <p className="mb-6 rounded-xl bg-[#fbf8f0] px-4 py-3 text-sm text-[#4a4340]"><span aria-hidden="true">*</span> Required — runners and the server need these to understand, accept, fund and complete your quest. Anything marked optional can be agreed in Messenger after a runner accepts.</p>
               {/* QUEST INFO */}
               <section className="mb-6 sm:mb-8">
                 <SectionLabel>Quest Information</SectionLabel>
                 <div className="space-y-4">
                   <div>
-                    <FieldLabel htmlFor="title">Quest Title</FieldLabel>
+                    <FieldLabel htmlFor="title">Quest Title <span aria-hidden="true">*</span></FieldLabel>
                     <div className="relative">
                       <Type className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45" />
                       <input
                         id="title"
+                        aria-required="true"
+                        aria-invalid={Boolean(errors.title)}
+                        aria-describedby={errors.title ? "title-error" : undefined}
                         type="text"
                         value={form.title}
                         onChange={(e) => update("title", e.target.value)}
@@ -309,11 +307,11 @@ export default function PostQuestPage() {
                         className={`${inputClass} pl-10 ${errors.title ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
                       />
                     </div>
-                    {errors.title && <p className="mt-1.5 text-xs text-red-600">{errors.title}</p>}
+                    {errors.title && <p id="title-error" className="mt-1.5 text-xs text-red-600">{errors.title}</p>}
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="category">Category</FieldLabel>
+                    <FieldLabel htmlFor="category">Category <span aria-hidden="true">*</span></FieldLabel>
                     <div className="relative">
                       <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
                       <select
@@ -333,11 +331,15 @@ export default function PostQuestPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="description">Description & Instruction</FieldLabel>
+                    <FieldLabel htmlFor="description">Description & Instruction <span aria-hidden="true">*</span></FieldLabel>
+                    <p id="description-hint" className="mb-1.5 -mt-0.5 text-xs text-[#4a4340]">At least 20 characters — enough for a runner to know what to do. Category details are asked below.</p>
                     <div className="relative">
                       <FileText className="absolute left-3.5 top-3.5 w-4 h-4 text-[#4a4340]/45" />
                       <textarea
                         id="description"
+                        aria-required="true"
+                        aria-invalid={Boolean(errors.description)}
+                        aria-describedby={errors.description ? "description-hint description-error" : "description-hint"}
                         rows={4}
                         value={form.description}
                         onChange={(e) => update("description", e.target.value)}
@@ -345,7 +347,7 @@ export default function PostQuestPage() {
                         className={`${inputClass} pl-10 resize-y min-h-[110px] ${errors.description ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
                       />
                     </div>
-                    {errors.description && <p className="mt-1.5 text-xs text-red-600">{errors.description}</p>}
+                    {errors.description && <p id="description-error" className="mt-1.5 text-xs text-red-600">{errors.description}</p>}
                   </div>
                 </div>
               </section>
@@ -354,11 +356,14 @@ export default function PostQuestPage() {
               <section className="mb-6 sm:mb-8">
                 <SectionLabel>Reward</SectionLabel>
                 <div>
-                  <FieldLabel htmlFor="reward">Runner Reward (₱)</FieldLabel>
+                  <FieldLabel htmlFor="reward">Runner Reward (₱) <span aria-hidden="true">*</span></FieldLabel>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#c9a227]">₱</span>
                     <input
                       id="reward"
+                      aria-required="true"
+                      aria-invalid={Boolean(errors.reward)}
+                      aria-describedby={errors.reward ? "reward-error" : undefined}
                       type="number"
                       inputMode="decimal"
                       min={0.01}
@@ -369,38 +374,39 @@ export default function PostQuestPage() {
                       className={`${inputClass} pl-9 ${errors.reward ? "border-red-400 focus:border-red-400 focus:ring-red-200" : ""}`}
                     />
                   </div>
-                  {errors.reward && <p className="mt-1.5 text-xs text-red-600">{errors.reward}</p>}
+                  {errors.reward && <p id="reward-error" className="mt-1.5 text-xs text-red-600">{errors.reward}</p>}
                 </div>
               </section>
 
               <section className="mb-6 space-y-4">
                 <SectionLabel>{form.category} requirements</SectionLabel>
                 {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}>
-                  <FieldLabel htmlFor={`requirement-${field.key}`}>{field.label} *</FieldLabel>
-                  {["color", "sides"].includes(field.key) ? <select id={`requirement-${field.key}`} className={inputClass} value={requirements[field.key] || ""} onChange={(event) => setRequirements((current) => ({ ...current, [field.key]: event.target.value }))}>
+                  <FieldLabel htmlFor={`requirement-${field.key}`}>{field.label} <span aria-hidden="true">*</span></FieldLabel>
+                  <p id={`requirement-${field.key}-hint`} className="mb-1.5 -mt-0.5 text-xs text-[#4a4340]">{field.hint}</p>
+                  {["color", "sides"].includes(field.key) ? <select id={`requirement-${field.key}`} aria-required="true" aria-describedby={`requirement-${field.key}-hint`} className={inputClass} value={requirements[field.key] || ""} onChange={(event) => setRequirement(field.key, event.target.value)}>
                     <option value="">Select an option</option>{(field.key === "color" ? ["Black and white", "Color"] : ["Single-sided", "Double-sided"]).map((option) => <option key={option}>{option}</option>)}
-                  </select> : <input id={`requirement-${field.key}`} className={inputClass} maxLength={500} value={requirements[field.key] || ""} placeholder={field.hint} onChange={(event) => setRequirements((current) => ({ ...current, [field.key]: event.target.value }))} />}
+                  </select> : <input id={`requirement-${field.key}`} aria-required="true" aria-describedby={`requirement-${field.key}-hint`} className={inputClass} maxLength={500} value={requirements[field.key] || ""} inputMode={["copies", "budget"].includes(field.key) ? "decimal" : undefined} onChange={(event) => setRequirement(field.key, event.target.value)} />}
                 </div>)}
                 {form.category === "Printing" && <div>
-                  <FieldLabel htmlFor="printing-file">Printing file *</FieldLabel>
-                  <input key={form.category} id="printing-file" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setFile(event.target.files?.[0])} className={inputClass} />
-                  <p className="mt-2 text-sm">PDF, JPG, or PNG, up to 3 MB. Only you and your assigned runner can download it. Export Word documents to PDF first.</p>
-                  {file && <p className="mt-2 text-sm break-all">{file.name} ? {(file.size / 1024).toFixed(1)} KB</p>}
+                  <FieldLabel htmlFor="printing-file">Printing file <span aria-hidden="true">*</span></FieldLabel>
+                  <input id="printing-file" type="file" aria-required="true" aria-describedby="printing-file-hint" accept=".pdf,.jpg,.jpeg,.png" onChange={(event) => setFile(event.target.files?.[0])} className={inputClass} />
+                  <p id="printing-file-hint" className="mt-2 text-sm">PDF, JPG, or PNG, up to 3 MB. Only you and your assigned runner can download it. Export Word documents to PDF first.</p>
+                  {file && <p className="mt-2 text-sm break-all">Selected: {file.name} · {(file.size / 1024).toFixed(1)} KB</p>}
                 </div>}
-                {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward. The item budget must match the purchase cost limit below.</p>}
+                {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward and is also used as the purchase cost limit.</p>}
               </section>
 
               <section className="mb-6 space-y-4">
                 <SectionLabel>Who pays the errand cost?</SectionLabel>
-                <FieldLabel htmlFor="funding">Funding arrangement *</FieldLabel>
-                <select id="funding" className={inputClass} value={form.fundingMethod} onChange={(event) => update("fundingMethod", event.target.value as FormState["fundingMethod"])}>
-                  {!["Printing", "Shopping"].includes(form.category) && <option value="no_purchase">No purchase needed — ₱0 runner upfront</option>}
-                  <option value="prepaid">Requester pays vendor directly — ₱0 runner upfront</option>
-                  <option value="abono">Runner advances payment (optional abono)</option>
+                <p className="text-sm text-[#4a4340]">Needed so the runner knows whether they must spend their own money before accepting.</p>
+                <FieldLabel htmlFor="funding">Funding arrangement <span aria-hidden="true">*</span></FieldLabel>
+                <select id="funding" aria-required="true" className={inputClass} value={funding} onChange={(event) => update("fundingMethod", event.target.value as FormState["fundingMethod"])}>
+                  {fundingMethodsFor(form.category).map((method) => <option key={method} value={method}>{method === "no_purchase" ? "No purchase needed — ₱0 runner upfront" : method === "prepaid" ? "Requester pays vendor directly — ₱0 runner upfront" : "Runner advances payment (optional abono)"}</option>)}
                 </select>
-                {form.fundingMethod !== "no_purchase" && <><FieldLabel htmlFor="purchase-budget">Purchase cost limit (separate from reward)</FieldLabel><input id="purchase-budget" className={inputClass} type="number" min="0.01" max="10000" step="0.01" value={form.purchaseBudget} onChange={(event) => update("purchaseBudget", event.target.value)} /></>}
-                {form.fundingMethod === "prepaid" && <><FieldLabel htmlFor="vendor-instructions">Vendor payment / collection instructions</FieldLabel><textarea id="vendor-instructions" className={inputClass} maxLength={500} value={form.vendorInstructions} onChange={(event) => update("vendorInstructions", event.target.value)} placeholder="Name the vendor and how you will pay and arrange collection. Never include payment secrets." /><p className="text-sm">Pay the vendor directly before collection. Refunds and change should go directly to you.</p></>}
-                {form.fundingMethod === "abono" && <p className="text-sm">Runners see this advance limit before accepting. Approve the recorded cost before they spend. At handover you owe the actual approved cost plus the runner reward.</p>}
+                {needsPurchaseLimit(form.category, funding) && <><FieldLabel htmlFor="purchase-budget">Purchase cost limit (₱, separate from reward) <span aria-hidden="true">*</span></FieldLabel><input id="purchase-budget" aria-required="true" inputMode="decimal" className={inputClass} type="number" min="0.01" max="10000" step="0.01" value={form.purchaseBudget} onChange={(event) => update("purchaseBudget", event.target.value)} /></>}
+                {purchaseLimitFromItemBudget(form.category, funding) && <p className="text-sm">Purchase cost limit: ₱{requirements.budget || "—"} (taken from your item budget above).</p>}
+                {needsVendorInstructions(funding) && <><FieldLabel htmlFor="vendor-instructions">Vendor payment / collection instructions <span aria-hidden="true">*</span></FieldLabel><textarea id="vendor-instructions" aria-required="true" aria-describedby="vendor-hint" className={inputClass} maxLength={500} value={form.vendorInstructions} onChange={(event) => update("vendorInstructions", event.target.value)} placeholder="Name the vendor and how you will pay and arrange collection. Never include payment secrets." /><p id="vendor-hint" className="text-sm">At least 5 characters. Pay the vendor directly before collection. Refunds and change should go directly to you.</p></>}
+                {funding === "abono" &&<p className="text-sm">Runners see this advance limit before accepting. Approve the recorded cost before they spend. At handover you owe the actual approved cost plus the runner reward.</p>}
                 <p className="text-xs text-gray-600">QuestGo records participant acknowledgements. It does not process payments, verify external transfers, or guarantee reimbursement.</p>
               </section>
               {/* LOCATION */}
@@ -408,7 +414,7 @@ export default function PostQuestPage() {
                 <SectionLabel>Location</SectionLabel>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel htmlFor="pickup">Pickup / Task Location</FieldLabel>
+                    <FieldLabel htmlFor="pickup">Pickup / Task Location <span aria-hidden="true">*</span></FieldLabel>
                     <div className="relative">
                       <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
                       <select
@@ -426,7 +432,7 @@ export default function PostQuestPage() {
                   </div>
 
                   <div>
-                    <FieldLabel htmlFor="meetup">Meet-up Location</FieldLabel>
+                    <FieldLabel htmlFor="meetup">Meet-up Location <span aria-hidden="true">*</span></FieldLabel>
                     <div className="relative">
                       <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
                       <select
@@ -447,11 +453,16 @@ export default function PostQuestPage() {
 
               {/* SCHEDULE */}
               <section className="mb-6 sm:mb-8">
-                <SectionLabel>Schedule</SectionLabel>
-                <FieldLabel>Preferred Meet-up Time</FieldLabel>
-                <div className="grid grid-cols-3 gap-2">
+                <SectionLabel>Schedule (optional)</SectionLabel>
+                <label className="flex items-center gap-3 text-sm font-semibold text-[#161414] min-h-11">
+                  <input type="checkbox" className="h-5 w-5" checked={form.setTime} onChange={(e) => update("setTime", e.target.checked)} aria-describedby="time-hint" />
+                  I have a preferred meet-up time
+                </label>
+                <p id="time-hint" className="mb-3 text-xs text-[#4a4340]">Skip this and you and the runner can agree a time in Messenger after they accept.</p>
+                {form.setTime && <fieldset className="grid grid-cols-3 gap-2"><legend className="sr-only">Preferred meet-up time</legend>
                   <div className="relative">
                     <select
+                      aria-label="Hour"
                       value={form.meetupHour}
                       onChange={(e) => update("meetupHour", e.target.value)}
                       className={`${inputClass} pr-8 appearance-none cursor-pointer ${errors.meetupHour ? "border-red-400" : ""}`}
@@ -464,6 +475,7 @@ export default function PostQuestPage() {
                   </div>
                   <div className="relative">
                     <select
+                      aria-label="Minute"
                       value={form.meetupMinute}
                       onChange={(e) => update("meetupMinute", e.target.value)}
                       className={`${inputClass} pr-8 appearance-none cursor-pointer ${errors.meetupHour ? "border-red-400" : ""}`}
@@ -476,6 +488,7 @@ export default function PostQuestPage() {
                   </div>
                   <div className="relative">
                     <select
+                      aria-label="AM or PM"
                       value={form.meetupPeriod}
                       onChange={(e) => update("meetupPeriod", e.target.value as "AM" | "PM")}
                       className={`${inputClass} pr-8 appearance-none cursor-pointer font-bold ${errors.meetupHour ? "border-red-400" : ""}`}
@@ -485,8 +498,7 @@ export default function PostQuestPage() {
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
                   </div>
-                </div>
-                {errors.meetupHour && <p className="mt-1.5 text-xs text-red-600">{errors.meetupHour}</p>}
+                </fieldset>}
               </section>
 
               {/* PAYMENT */}
