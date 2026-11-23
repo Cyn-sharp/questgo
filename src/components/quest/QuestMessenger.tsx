@@ -5,11 +5,11 @@ import { collection, limit, onSnapshot, orderBy, query, type Timestamp } from "f
 import Link from "next/link";
 import { db } from "@/lib/auth/firebase";
 import { useQuest } from "@/hooks/useQuests";
+import { MessengerSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import { questRequest } from "@/lib/quests/client";
 import { useQuestNotifications } from "./QuestNotifications";
 import { Button } from "@/components/ui/Button";
-import { MessengerSkeleton } from "@/components/skeletons/PageSkeletons";
-import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 type Message = { id: string; senderId: string; text: string; createdAt?: Timestamp };
 
