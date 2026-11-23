@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, MapPin } from "lucide-react";
 import { useMyQuests, useQuestClock } from "@/hooks/useQuests";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import { getQuestExpirationMillis } from "@/lib/db/quests";
 import { questNextStep } from "@/lib/quests/progress";
 import type { Quest } from "@/types/quest";
@@ -17,7 +18,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 // The one thing a returning user most needs: where their current quest stands.
 export default function CurrentQuest() {
-  const { posted, running, loading } = useMyQuests();
+  const { posted, running, loading: dataLoading } = useMyQuests();
+  const loading = useMinimumLoading(dataLoading);
   const now = useQuestClock();
   if (loading) return null;
 

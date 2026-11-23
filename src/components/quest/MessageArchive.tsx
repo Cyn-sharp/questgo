@@ -6,6 +6,8 @@ import { collection, getDocs, limit, orderBy, query, startAfter, where, type Que
 import { db } from "@/lib/auth/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import type { Quest } from "@/types/quest";
+import { ArchiveListSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 export function MessageArchive() {
   const { user } = useAuth();
@@ -45,6 +47,8 @@ function ArchiveRecords({ uid, field }: { uid: string; field: string }) {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const firstLoad = useMinimumLoading(loading && !records.length) && !error;
+  if (firstLoad) return <ArchiveListSkeleton />;
   return <>
     <p className="mb-4 text-sm">Newest posted first · 10 transactions at a time</p>
     <div className="space-y-3">{records.map((quest) => <article key={quest.id} className="rounded-xl bg-gray-100 p-5 text-gray-700">
@@ -54,7 +58,7 @@ function ArchiveRecords({ uid, field }: { uid: string; field: string }) {
     </article>)}</div>
     {!loading && !error && !records.length && <p>No archived quests yet.</p>}
     {error && <p role="alert" className="mt-4">{error}</p>}
-    {loading && <p role="status" className="mt-4">Loading archive…</p>}
+    {loading && <ArchiveListSkeleton count={records.length ? 2 : 3} />}
     {(more || error) && <button disabled={loading} onClick={load} className="btn-outline mt-4">{error ? "Retry" : "Load older transactions"}</button>}
   </>;
 }
