@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMyQuests, useQuestClock } from "@/hooks/useQuests";
 import { getQuestExpirationMillis } from "@/lib/db/quests";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import {
   AlertCircle,
   ShieldCheck,
@@ -22,6 +23,7 @@ import { MAX_PRINT_FILE_BYTES } from "@/lib/quests/files";
 import { createQuest } from "@/lib/db/quests";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PostQuestSkeleton } from "@/components/skeletons/PageSkeletons";
 
 function ScrollReveal({
   children,
@@ -228,12 +230,9 @@ export default function PostQuestPage() {
   }
 
 
-  if (authLoading || requestsLoading) {
-    return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <p className="text-lg font-semibold text-white">Checking account status...</p>
-      </div>
-    );
+  const showSkeleton = useMinimumLoading(authLoading || requestsLoading) && !requestsError;
+  if (showSkeleton) {
+    return <PostQuestSkeleton />;
   }
 
   if (requestsError) return <div className="page-container py-10 text-white" role="alert">{requestsError} Posting is unavailable until your existing quests can be checked.</div>;

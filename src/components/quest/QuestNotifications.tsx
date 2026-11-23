@@ -10,6 +10,7 @@ import { useNotificationQuests } from "@/hooks/useQuests";
 import { conversationPriority, selectConversations } from "@/lib/quests/conversations";
 import { questUpdate } from "@/lib/quests/progress";
 import type { Quest } from "@/types/quest";
+import { InboxSkeleton } from "@/components/skeletons/PageSkeletons";
 
 type Inbox = { questId: string; title: string; messageId: string; sentAt: Timestamp };
 type Notice = { id: number; text: string; href: string };
@@ -129,15 +130,14 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
         <div className="flex justify-between items-center"><h2 className="font-bold">Messages {unread.length > 0 && `(${unread.length} unread)`}</h2><button aria-label="Close messages" onClick={() => setPanel(false)} className="p-2"><X size={18} /></button></div>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {questError && <p role="alert" className="text-sm text-red-700">Quest updates could not connect. Refresh to retry.</p>}
-        {!inboxLoaded && <p role="status" className="py-3 text-sm">Loading messages…</p>}
-        <div className="max-h-72 overflow-y-auto">{[{ label: "Ongoing quests", records: active, muted: false }, { label: "Last 3 closed conversations", records: closed, muted: true }].map((group) => <div key={group.label}>
+        {(loading && !questError) || !inboxLoaded ? <InboxSkeleton /> : <div className="max-h-72 overflow-y-auto">{[{ label: "Ongoing quests", records: active, muted: false }, { label: "Last 3 closed conversations", records: closed, muted: true }].map((group) => <div key={group.label}>
           <h3 className="mt-3 text-xs font-bold uppercase text-gray-500">{group.label}</h3>
           {!group.records.length && <p className="py-2 text-sm text-gray-500">None yet.</p>}
           {group.records.map((quest) => <Link key={quest.id} href={`/messenger?id=${encodeURIComponent(quest.id)}`} onClick={() => setPanel(false)} className={`my-1 flex items-center justify-between gap-3 rounded-lg p-3 text-sm ${group.muted ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-amber-50 text-gray-900 hover:bg-amber-100"}`}>
             <span className="min-w-0 break-words"><span className="block font-semibold">{quest.title}</span><span className="text-xs capitalize">{quest.status.replaceAll("_", " ")}{group.muted && " ? Read-only"}</span></span>
             {unread.some((item) => item.questId === quest.id) && <span className="shrink-0 text-xs font-bold text-red-600">New</span>}
           </Link>)}
-        </div>)}</div>
+        </div>)}</div>}
         <Link href="/profile/archive" onClick={() => setPanel(false)} className="mt-3 block text-sm font-semibold text-maroon underline">Open message archive</Link>
         <Link href="/requests" onClick={() => setPanel(false)} className="mt-3 block text-sm font-semibold text-maroon underline">View all my quests</Link>
       </section>}

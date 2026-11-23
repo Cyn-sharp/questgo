@@ -10,6 +10,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "./StatusBadge";
 import type { Quest } from "@/types/quest";
+import { MyQuestsSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 type Section = "active" | "attention" | "history";
 
@@ -20,7 +22,8 @@ const EMPTY: Record<Section, { title: string; description: string }> = {
 };
 
 export function MyQuests() {
-  const { user, posted, running, loading, error } = useMyQuests();
+  const { user, posted, running, loading: dataLoading, error } = useMyQuests();
+  const loading = useMinimumLoading(dataLoading) && !error;
   const [section, setSection] = useState<Section>("active");
   const [role, setRole] = useState<"posted" | "running">("posted");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -77,11 +80,7 @@ export function MyQuests() {
         />
       </div>
 
-      {loading && (
-        <div className="grid gap-4 md:grid-cols-2" role="status" aria-label="Loading your quests">
-          {[0, 1].map((i) => <div key={i} className="h-44 animate-pulse rounded-2xl bg-white/10" />)}
-        </div>
-      )}
+      {loading && <MyQuestsSkeleton />}
       {error && <p role="alert" className="rounded-2xl bg-white p-4 text-sm font-medium text-red-700">{error}</p>}
       {!loading && !error && !records.length && (
         <EmptyState
