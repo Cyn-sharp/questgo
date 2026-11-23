@@ -16,7 +16,7 @@ export function AuthNavbar() {
       >
         <Link href="/" className="inline-flex items-center gap-3" aria-label="QuestGo home">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt=""
             width={40}
             height={40}

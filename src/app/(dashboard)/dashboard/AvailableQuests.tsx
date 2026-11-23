@@ -10,6 +10,8 @@ import {
 } from "@/lib/db/quests";
 import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
 import type { Quest as FirestoreQuest } from "@/types/quest";
+import { QuestGridSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 type DisplayQuest = {
   id: string;
@@ -48,7 +50,8 @@ function toDisplayQuest(q: FirestoreQuest): DisplayQuest | null {
 }
 
 export default function AvailableQuests() {
-  const { records, isLoading, hasError, retry } = useAvailableQuests();
+  const { records, isLoading: dataLoading, hasError, retry } = useAvailableQuests();
+  const isLoading = useMinimumLoading(dataLoading) && !hasError;
   const now = useQuestClock();
   const quests = records.filter((quest) => (getQuestExpirationMillis(quest) ?? 0) > now)
     .sort((a, b) => (getQuestExpirationMillis(b) ?? 0) - (getQuestExpirationMillis(a) ?? 0))
@@ -82,9 +85,7 @@ export default function AvailableQuests() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-16 text-[#f6ecc8]/70">
-            Loading quests...
-          </div>
+          <QuestGridSkeleton count={3}/>
         ) : quests.length === 0 ? (
           <div className="text-center py-16 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
             <p className="text-[#f6ecc8]/85 text-sm sm:text-base">

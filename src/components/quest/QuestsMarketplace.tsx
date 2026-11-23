@@ -16,6 +16,8 @@ import { getQuestExpirationMillis } from "@/lib/db/quests";
 import { useAvailableQuests, useQuestClock } from "@/hooks/useQuests";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { Quest as FirestoreQuest } from "@/types/quest";
+import { QuestGridSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL UTILITY
@@ -232,7 +234,8 @@ export function QuestsMarketplace() {
   const [query, setQuery] = useState("");
   const [zeroUpfront, setZeroUpfront] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>("All");
-  const { records, isLoading, hasError, retry: loadQuests } = useAvailableQuests();
+  const { records, isLoading: dataLoading, hasError, retry: loadQuests } = useAvailableQuests();
+  const isLoading = useMinimumLoading(dataLoading) && !hasError;
   const now = useQuestClock();
   const quests = useMemo(() => records.filter((quest) => (getQuestExpirationMillis(quest) ?? 0) > now).map(toDisplayQuest).filter((quest): quest is Quest => quest !== null), [records, now]);
 
@@ -315,9 +318,7 @@ export function QuestsMarketplace() {
 
         {/* Quest Grid */}
         {isLoading ? (
-          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
-            <p className="text-base sm:text-lg font-bold text-[#161414]">Loading quests...</p>
-          </div>
+          <QuestGridSkeleton count={6} withDescription />
         ) : hasError ? (
           <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
             <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">

@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Search, Clock, CheckSquare, Briefcase, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { Skeleton } from "@/components/ui/Skeleton";
 import {
   getAvailableQuestsCount,
   getMyActiveRequestsCount,
   getCompletedQuestsCount,
   getQuestEarnings,
 } from "@/lib/db/quests";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 type StatConfig = {
   label: string;
@@ -71,7 +73,9 @@ export default function DashboardStats() {
     completed: 0,
     earnings: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+
+  const [dataLoading, setIsLoading] = useState(true);
+  const isLoading = useMinimumLoading(dataLoading);
 
   useEffect(() => {
     async function loadStats() {
@@ -135,7 +139,11 @@ export default function DashboardStats() {
                         {stat.label}
                       </p>
                       <p className="text-lg sm:text-2xl font-bold text-[#161414] leading-tight mt-0.5">
-                        {formatValue(stat.key, stat.prefix)}
+                        {isLoading ? (
+                          <Skeleton tone={stat.key === "earnings" ? "gold" : "light"} className="my-[0.2em] h-[0.85em] w-[3em]" />
+                        ) : (
+                          formatValue(stat.key, stat.prefix)
+                        )}
                       </p>
                       {!isLoading && stats[stat.key] === 0 && (
                         <p className="text-[11px] sm:text-xs text-[#6b625e] truncate mt-0.5">{stat.emptyHint}</p>
