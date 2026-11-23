@@ -5,7 +5,7 @@ import { initializeApp as adminApp, deleteApp as deleteAdminApp } from "firebase
 import { getAuth as adminAuth } from "firebase-admin/auth";
 import { getFirestore as adminFirestore, Timestamp } from "firebase-admin/firestore";
 import { initializeApp, deleteApp } from "firebase/app";
-import { count, sum, getAggregateFromServer, getDocs, where, orderBy, limit, startAfter, collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate } from "firebase/firestore";
+import { count, sum, getAggregateFromServer, getDocs, where, orderBy, limit, startAfter, collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 // Never allow this suite to touch the live project.
 const projectId = "demo-questgo-test";
@@ -113,11 +113,27 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   await assert.rejects(getDoc(doc(outsiderDb, inboxPath)), { code: "permission-denied" });
   await assert.rejects(getDoc(doc(requesterDb, inboxPath)), { code: "permission-denied" });
   await assert.rejects(setDoc(doc(runnerDb, inboxPath), { messageId: "forged" }), { code: "permission-denied" });
+  // The recipient may mark only the latest message read, and change nothing else.
+  await assert.rejects(updateDoc(doc(runnerDb, inboxPath), { readMessageId: "older", readAt: serverTimestamp() }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(runnerDb, inboxPath), { readMessageId: message.body.id, readAt: serverTimestamp(), title: "forged" }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(runnerDb, inboxPath), { readMessageId: message.body.id, readAt: new Date(0) }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(requesterDb, inboxPath), { readMessageId: message.body.id, readAt: serverTimestamp() }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(outsiderDb, inboxPath), { readMessageId: message.body.id, readAt: serverTimestamp() }), { code: "permission-denied" });
+  await assert.rejects(deleteDoc(doc(runnerDb, inboxPath)), { code: "permission-denied" });
+  await updateDoc(doc(runnerDb, inboxPath), { readMessageId: message.body.id, readAt: serverTimestamp() });
+  assert.equal((await getDoc(doc(runnerDb, inboxPath))).data().readMessageId, message.body.id);
   await assert.rejects(getDoc(doc(outsiderDb, messageRef)), { code: "permission-denied" });
   await assert.rejects(setDoc(doc(runnerDb, `quests/${id}/messages/forged`), { senderId: "requester", text: "forged" }), { code: "permission-denied" });
   const replyReceived = waitForMessage(requesterDb, "On my way");
   assert.equal((await request(runner, `/${id}/messages`, { text: "On my way" })).status, 201);
   await replyReceived;
+  // A newer message replaces the inbox entry, so it shows as unread again.
+  await pause(1100);
+  const followUp = await request("requester", `/${id}/messages`, { text: "See you there" });
+  assert.equal(followUp.status, 201);
+  const unreadAgain = (await getDoc(doc(runnerDb, inboxPath))).data();
+  assert.equal(unreadAgain.messageId, followUp.body.id);
+  assert.equal(unreadAgain.readMessageId, undefined);
   assert.equal((await request(runner, `/${id}`, { action: "start" })).status, 200);
   assert.equal((await request("requester", `/${id}`, { action: "complete" })).status, 403);
   assert.equal((await request(runner, `/${id}`, { action: "request-completion" })).status, 409);
