@@ -118,3 +118,19 @@ test("abandonment closes quiet quests after two hours and escalates committed on
   for (const status of ["available", "completed", "cancelled", "settlement", "expired"]) assert.equal(abandonedChanges({ ...quest, status }, 0, now), null);
   assert.equal(abandonedChanges({ ...quest, updatedAt: undefined }, 0, now), null);
 });
+
+import { attachmentExpired, ATTACHMENT_RETENTION_MS } from "../src/lib/quests/files.ts";
+
+test("printing files are kept until the quest has been closed for seven days", () => {
+  const now = 100 * ATTACHMENT_RETENTION_MS;
+  const at = (ms) => ({ toMillis: () => ms });
+  const old = at(now - ATTACHMENT_RETENTION_MS - 1);
+  assert.equal(attachmentExpired({ status: "cancelled", createdAt: old, updatedAt: old, cancelledAt: old }, now), true);
+  assert.equal(attachmentExpired({ status: "completed", createdAt: old, updatedAt: old }, now), true);
+  assert.equal(attachmentExpired({ status: "expired", createdAt: old }, now), true);
+  // The most recent timestamp decides, so a freshly updated closed quest keeps its file.
+  assert.equal(attachmentExpired({ status: "cancelled", createdAt: old, updatedAt: at(now - 1000) }, now), false);
+  // Open, unclaimed and settlement quests never lose their file; unknown timing is never treated as old.
+  for (const status of ["available", "accepted", "in_progress", "settlement"]) assert.equal(attachmentExpired({ status, createdAt: old, updatedAt: old }, now), false);
+  assert.equal(attachmentExpired({ status: "cancelled" }, now), false);
+});

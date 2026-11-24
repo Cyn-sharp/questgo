@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { initializeApp as adminApp, deleteApp as deleteAdminApp } from "firebase-admin/app";
 import { getAuth as adminAuth } from "firebase-admin/auth";
 import { getFirestore as adminFirestore, Timestamp } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { initializeApp, deleteApp } from "firebase/app";
 import { count, sum, getAggregateFromServer, getDocs, where, orderBy, limit, startAfter, collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
@@ -562,4 +563,48 @@ test("the sweep closes quests with no activity for two hours, but chat counts as
   assert.equal(closed.closedReason, "abandoned_no_activity");
   assert.equal((await db.doc("quests/" + chatty).get()).data().status, "accepted");
   assert.equal((await db.collection("quests/" + quiet + "/events").where("action", "==", "abandoned").get()).size, 1);
+});
+
+test("printing files are deleted after retention, but never while a reposted quest still uses them", { timeout: 60000 }, async () => {
+  const uid = "at-requester";
+  await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+  const login = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+  tokens[uid] = (await login.json()).idToken;
+  const printing = { ...input, fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Requester pays the campus print shop directly", category: "Printing", title: "Print my retention module",
+    requirements: { paperSize: "A4", copies: "1", pages: "All", color: "Black and white", sides: "Single-sided" } };
+  const body = new FormData(); body.set("quest", JSON.stringify(printing));
+  body.set("file", new Blob([Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXZkAAAAASUVORK5CYII=", "base64")], { type: "image/png" }), "page.png");
+  const created = await fetch(endpoint + "/api/quests", { method: "POST", headers: { Authorization: "Bearer " + tokens[uid] }, body });
+  assert.equal(created.status, 201);
+  const first = (await created.json()).id;
+  const path = (await db.doc("quests/" + first).get()).data().attachment.path;
+  const fileExists = async () => (await getStorage(admin).bucket("demo-questgo-test.appspot.com").file(path).exists())[0];
+  const sweep = async () => { const r = await fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers: { Authorization: "Bearer test-cron-secret" } }); assert.equal(r.status, 200); return r.json(); };
+  const age = (id) => { const old = Timestamp.fromMillis(Date.now() - 8 * 24 * 60 * 60 * 1000); return db.doc("quests/" + id).update({ createdAt: old, updatedAt: old, cancelledAt: old }); };
+
+  // A recently closed quest keeps its file.
+  assert.equal((await request(uid, "/" + first, { action: "cancel" })).status, 200);
+  await sweep();
+  assert.equal(await fileExists(), true);
+
+  // Reposting shares the file, so aging the first quest alone must not delete it.
+  const second = (await request(uid, "/" + first, { action: "repost" })).body.id;
+  assert.equal((await db.doc("quests/" + second).get()).data().attachment.path, path);
+  await age(first);
+  await sweep();
+  assert.equal(await fileExists(), true);
+  assert.ok((await db.doc("quests/" + first).get()).data().attachment);
+
+  // Once every quest using the file is old and closed, the file and references are removed.
+  assert.equal((await request(uid, "/" + second, { action: "cancel" })).status, 200);
+  await age(second);
+  assert.ok((await sweep()).attachmentsRemoved >= 1);
+  assert.equal(await fileExists(), false);
+  for (const id of [first, second]) {
+    const data = (await db.doc("quests/" + id).get()).data();
+    assert.equal(data.attachment, undefined);
+    assert.ok(data.attachmentRemovedAt);
+  }
+  const download = await fetch(`${endpoint}/api/quests/${first}/file`, { headers: { Authorization: "Bearer " + tokens[uid] } });
+  assert.equal(download.status, 410);
 });

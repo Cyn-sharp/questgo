@@ -4,9 +4,12 @@ import { QuestError } from "./policy";
 import { questService } from "./service";
 import { safetyService } from "./safety-service";
 import { rateLimiter } from "./ratelimit";
+import { questBucket } from "./storage";
 
 export const safety = safetyService(adminDb);
-export const quests = questService(adminDb, safety);
+export const quests = questService(adminDb, safety, {
+  remove: async (path) => { await questBucket().file(path).delete({ ignoreNotFound: true }); },
+});
 export const limiter = rateLimiter(adminDb);
 
 export async function verifiedActor(request: Request) {

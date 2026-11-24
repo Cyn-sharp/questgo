@@ -1,5 +1,6 @@
 import { abandonedChanges, recoveryChanges, suspensionChanges } from "./recovery";
 import { ABANDON_AFTER_MS } from "./recovery";
+import { attachmentExpired } from "./files";
 import { nextAggregate, validateRating } from "./ratings";
 import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
@@ -16,7 +17,7 @@ function closingChanges(outcome: { status: string; closedReason: string }) {
   };
 }
 
-export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safetyService>, "eitherBlocked">) {
+export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safetyService>, "eitherBlocked">, files?: { remove(path: string): Promise<void> }) {
   return {
     async create(uid: string, name: string, input: unknown, attachment?: { path: string; name: string; size: number; contentType: string }) {
       const data = validateQuest(input, Boolean(attachment));
@@ -122,6 +123,33 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         });
       }
       return closed;
+    },
+    // Deletes printing files of quests closed for the retention period. A reposted quest shares its predecessor's file,
+    // so a file is only removed when every quest that references it is old enough.
+    async cleanAttachments(pageSize = 200, maxPages = 5) {
+      if (!files) return 0;
+      let removed = 0, cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
+      const handled = new Set<string>();
+      for (let page = 0; page < maxPages; page++) {
+        let query = db.collection("quests").where("attachment.path", ">", "").orderBy("attachment.path").limit(pageSize);
+        if (cursor) query = query.startAfter(cursor);
+        const snapshot = await query.get();
+        for (const doc of snapshot.docs) {
+          const path = String(doc.data().attachment?.path ?? "");
+          if (!path || handled.has(path)) continue;
+          handled.add(path);
+          const sharing = await db.collection("quests").where("attachment.path", "==", path).get();
+          const now = Date.now();
+          if (!sharing.docs.every((record) => attachmentExpired(record.data() as Parameters<typeof attachmentExpired>[0], now))) continue;
+          try { await files.remove(path); }
+          catch (error) { console.error("Could not delete a printing file", path, error); continue; }
+          for (const record of sharing.docs) await record.ref.update({ attachment: FieldValue.delete(), attachmentRemovedAt: FieldValue.serverTimestamp() });
+          removed++;
+        }
+        if (snapshot.size < pageSize) break;
+        cursor = snapshot.docs.at(-1);
+      }
+      return removed;
     },
     // Marks unclaimed quests past their window as expired so history and queries stay accurate without client help.
     async expireStale(limit = 200) {

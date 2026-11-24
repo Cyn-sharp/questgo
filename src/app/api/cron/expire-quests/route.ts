@@ -12,7 +12,8 @@ async function run(request: Request) {
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new QuestError("Unauthorized.", 401);
     const expired = await quests.expireStale();
     const abandoned = await quests.abandonStale();
-    return Response.json({ expired, abandoned });
+    const attachmentsRemoved = await quests.cleanAttachments();
+    return Response.json({ expired, abandoned, attachmentsRemoved });
   } catch (error) { return apiError(error); }
 }
 export const GET = run;
