@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Home, Search, PlusCircle, ClipboardList, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { UnreadBadge } from "@/components/ui/UnreadBadge";
+import { useQuestNotifications } from "@/components/quest/QuestNotifications";
+import { unreadLabel } from "@/lib/quests/conversations";
 
 type TabItem = {
   label: string;
@@ -23,6 +26,7 @@ const tabs: TabItem[] = [
 
 export function DashboardBottomNav() {
   const pathname = usePathname();
+  const { unreadCount } = useQuestNotifications();
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -143,11 +147,12 @@ export function DashboardBottomNav() {
             }
 
             /* ── Regular Tabs ── */
+            const badge = tab.href === "/requests" ? unreadCount : 0;
             return (
               <li key={tab.href} className="flex-1">
                 <Link
                   href={tab.href}
-                  aria-label={tab.label}
+                  aria-label={unreadLabel(tab.label, badge)}
                   aria-current={active ? "page" : undefined}
                   className="
                     relative flex flex-col items-center justify-center
@@ -210,6 +215,7 @@ export function DashboardBottomNav() {
                       className="h-5 w-5"
                       strokeWidth={active ? 2.4 : 1.8}
                     />
+                    <UnreadBadge count={badge} className="absolute -right-3 -top-2" />
                   </motion.div>
 
                   <span

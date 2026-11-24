@@ -3,18 +3,18 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { MessageCircle, X } from "lucide-react";
-import { collection, onSnapshot, type Timestamp } from "firebase/firestore";
+import { collection, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/auth/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationQuests } from "@/hooks/useQuests";
-import { conversationPriority, selectConversations } from "@/lib/quests/conversations";
+import { conversationPriority, isUnread, selectConversations, unreadQuestIds, type InboxEntry } from "@/lib/quests/conversations";
 import { questUpdate } from "@/lib/quests/progress";
 import type { Quest } from "@/types/quest";
 import { InboxSkeleton } from "@/components/skeletons/PageSkeletons";
 
-type Inbox = { questId: string; title: string; messageId: string; sentAt: Timestamp };
+type Inbox = InboxEntry & { title: string; sentAt: Timestamp };
 type Notice = { id: number; text: string; href: string };
-const Context = createContext<{ openChat: (id: string | null) => void }>({ openChat: () => {} });
+const Context = createContext<{ openChat: (id: string | null) => void; unreadCount: number }>({ openChat: () => {}, unreadCount: 0 });
 export const useQuestNotifications = () => useContext(Context);
 
 export function QuestNotifications({ children }: { children: ReactNode }) {
@@ -23,10 +23,19 @@ export function QuestNotifications({ children }: { children: ReactNode }) {
   return user ? <NotificationsForUser key={user.uid} uid={user.uid}>{children}</NotificationsForUser> : <>{children}</>;
 }
 
+// Read markers from before read state moved to Firestore were kept per browser.
+// Honor them so conversations already read here do not show as unread again.
+function legacyReadMarkers(uid: string): Record<string, string> {
+  try {
+    const value = JSON.parse(localStorage.getItem(`questgo:read-messages:${uid}`) || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  } catch { return {}; } // No storage during server rendering or when disabled.
+}
+
 function NotificationsForUser({ uid, children }: { uid: string; children: ReactNode }) {
   const { posted, running, loading, error: questError } = useNotificationQuests();
   const [inbox, setInbox] = useState<Inbox[]>([]);
-  const [seen, setSeen] = useState<Record<string, string>>({});
+  const [legacySeen] = useState(() => legacyReadMarkers(uid));
   const [panel, setPanel] = useState(false);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [error, setError] = useState("");
@@ -35,40 +44,33 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
   const previous = useRef<Map<string, Quest> | null>(null);
   const inboxRef = useRef<Inbox[]>([]);
   const serial = useRef(0);
-  const storageKey = `questgo:read-messages:${uid}`;
+  const marking = useRef(new Set<string>());
   const announce = useCallback((text: string, href: string) => {
     setNotices((items) => [...items, { id: ++serial.current, text, href }].slice(-20));
   }, []);
+  // Read state lives on the inbox document, so opening a chat on one device
+  // clears the badge on every device signed in to this account.
   const markOpenRead = useCallback(() => {
     if (document.visibilityState !== "visible" || !document.hasFocus()) return;
     const item = inboxRef.current.find((entry) => entry.questId === activeChat.current);
-    if (!item) return;
-    setSeen((current) => {
-      const next = { ...current, [item.questId]: item.messageId };
-      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* Memory still works when storage is disabled. */ }
-      return next;
-    });
-  }, [storageKey]);
+    if (!item || item.readMessageId === item.messageId || marking.current.has(item.messageId)) return;
+    marking.current.add(item.messageId);
+    // The rules reject the write if a newer message arrived first; the next
+    // snapshot then marks that newer message instead.
+    updateDoc(doc(db, "users", uid, "questInbox", item.questId), { readMessageId: item.messageId, readAt: serverTimestamp() })
+      .catch(() => { /* Retried on the next focus or snapshot. */ })
+      .finally(() => marking.current.delete(item.messageId));
+  }, [uid]);
   const openChat = useCallback((id: string | null) => { activeChat.current = id; markOpenRead(); }, [markOpenRead]);
 
   useEffect(() => {
-    const load = () => {
-      try {
-        const value = JSON.parse(localStorage.getItem(storageKey) || "{}");
-        if (value && typeof value === "object" && !Array.isArray(value)) setSeen(value);
-      } catch { /* Use in-memory read state. */ }
-    };
-    load();
-    const sync = (event: StorageEvent) => { if (event.key === storageKey) load(); };
-    window.addEventListener("storage", sync);
     window.addEventListener("focus", markOpenRead);
     document.addEventListener("visibilitychange", markOpenRead);
     return () => {
-      window.removeEventListener("storage", sync);
       window.removeEventListener("focus", markOpenRead);
       document.removeEventListener("visibilitychange", markOpenRead);
     };
-  }, [storageKey, markOpenRead]);
+  }, [markOpenRead]);
 
   useEffect(() => {
     let initialized = false;
@@ -80,6 +82,8 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
       if (initialized) for (const change of snapshot.docChanges()) {
         if (change.type === "removed") continue;
         const item = change.doc.data() as Inbox;
+        // Marking a message read also changes this document; only a new message is news.
+        if (!isUnread(item, legacySeen)) continue;
         if (activeChat.current !== item.questId || document.visibilityState !== "visible" || !document.hasFocus()) {
           announce(`New message about “${item.title}”`, `/messenger?id=${encodeURIComponent(item.questId)}`);
         }
@@ -87,7 +91,7 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
       initialized = true;
       markOpenRead();
     }, () => { setInboxLoaded(true); setError("Message alerts could not connect. Open My Quests to check your chats."); });
-  }, [uid, announce, markOpenRead]);
+  }, [uid, announce, markOpenRead, legacySeen]);
 
   useEffect(() => {
     if (!panel) return;
@@ -121,27 +125,27 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
     const timer = window.setTimeout(() => setNotices((items) => items.filter((item) => item.id !== notice.id)), 3000);
     return () => window.clearTimeout(timer);
   }, [notice]);
-  const unread = inbox.filter((item) => conversations.some((quest) => quest.id === item.questId) && seen[item.questId] !== item.messageId);
+  const unread = unreadQuestIds(inbox, conversations.map((quest) => quest.id), legacySeen);
 
-  return <Context.Provider value={{ openChat }}>
+  return <Context.Provider value={{ openChat, unreadCount: unread.size }}>
     {children}
     <div className="fixed right-4 bottom-28 md:bottom-6 z-[60]">
       {panel && <section aria-label="Messages" className="mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border bg-white p-4 text-gray-900 shadow-xl">
-        <div className="flex justify-between items-center"><h2 className="font-bold">Messages {unread.length > 0 && `(${unread.length} unread)`}</h2><button aria-label="Close messages" onClick={() => setPanel(false)} className="p-2"><X size={18} /></button></div>
+        <div className="flex justify-between items-center"><h2 className="font-bold">Messages {unread.size > 0 && `(${unread.size} unread)`}</h2><button aria-label="Close messages" onClick={() => setPanel(false)} className="p-2"><X size={18} /></button></div>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
         {questError && <p role="alert" className="text-sm text-red-700">Quest updates could not connect. Refresh to retry.</p>}
         {(loading && !questError) || !inboxLoaded ? <InboxSkeleton /> : <div className="max-h-72 overflow-y-auto">{[{ label: "Ongoing quests", records: active, muted: false }, { label: "Last 3 closed conversations", records: closed, muted: true }].map((group) => <div key={group.label}>
           <h3 className="mt-3 text-xs font-bold uppercase text-gray-500">{group.label}</h3>
           {!group.records.length && <p className="py-2 text-sm text-gray-500">None yet.</p>}
           {group.records.map((quest) => <Link key={quest.id} href={`/messenger?id=${encodeURIComponent(quest.id)}`} onClick={() => setPanel(false)} className={`my-1 flex items-center justify-between gap-3 rounded-lg p-3 text-sm ${group.muted ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-amber-50 text-gray-900 hover:bg-amber-100"}`}>
-            <span className="min-w-0 break-words"><span className="block font-semibold">{quest.title}</span><span className="text-xs capitalize">{quest.status.replaceAll("_", " ")}{group.muted && " ? Read-only"}</span></span>
-            {unread.some((item) => item.questId === quest.id) && <span className="shrink-0 text-xs font-bold text-red-600">New</span>}
+            <span className="min-w-0 break-words"><span className="block font-semibold">{quest.title}</span><span className="text-xs capitalize">{quest.status.replaceAll("_", " ")}{group.muted && " · Read-only"}</span></span>
+            {unread.has(quest.id) && <span className="shrink-0 text-xs font-bold text-red-600">New</span>}
           </Link>)}
         </div>)}</div>}
         <Link href="/profile/archive" onClick={() => setPanel(false)} className="mt-3 block text-sm font-semibold text-maroon underline">Open message archive</Link>
         <Link href="/requests" onClick={() => setPanel(false)} className="mt-3 block text-sm font-semibold text-maroon underline">View all my quests</Link>
       </section>}
-      <button type="button" aria-label={`Messages${unread.length ? `, ${unread.length} unread conversations` : ""}`} aria-expanded={panel} onClick={() => setPanel((open) => !open)} className="relative ml-auto flex items-center gap-2 rounded-full bg-[#7a1f32] px-5 py-3 text-white shadow-xl border border-white/30"><MessageCircle size={22} /><span>Messages</span>{unread.length > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-white bg-red-500" />}</button>
+      <button type="button" aria-label={`Messages${unread.size ? `, ${unread.size} unread conversations` : ""}`} aria-expanded={panel} onClick={() => setPanel((open) => !open)} className="relative ml-auto flex items-center gap-2 rounded-full bg-[#7a1f32] px-5 py-3 text-white shadow-xl border border-white/30"><MessageCircle size={22} /><span>Messages</span>{unread.size > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-white bg-red-500" />}</button>
     </div>
     <div className="fixed top-4 left-4 right-4 z-[70] mx-auto max-w-md" role="status" aria-live="polite" aria-atomic="true">{notice && <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-white p-4 text-gray-900 shadow-xl"><Link className="flex-1 text-sm font-semibold" href={notice.href}>{notice.text}</Link><button aria-label="Dismiss notification" onClick={() => setNotices((items) => items.filter((item) => item.id !== notice.id))}><X size={18} /></button></div>}</div>
   </Context.Provider>;
