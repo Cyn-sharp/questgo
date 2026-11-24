@@ -1,5 +1,7 @@
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
 import { isAllowedEmail } from "@/lib/auth/email-policy";
+import { idLockedMessage, type IdLockedAction } from "@/lib/auth/id-check";
+import { readIdCheck } from "@/lib/auth/id-check-server";
 import { QuestError } from "./policy";
 import { questService } from "./service";
 import { safetyService } from "./safety-service";
@@ -20,6 +22,12 @@ export async function verifiedActor(request: Request) {
     if (error instanceof QuestError) throw error;
     throw new QuestError("Your session is invalid. Please log in again.", 401);
   }
+}
+
+/** Posting and accepting quests need an admin-approved CIT-U ID. Admins always pass. */
+export async function requireApprovedId(uid: string, action: IdLockedAction) {
+  const idCheck = await readIdCheck(uid);
+  if (!idCheck.canPostAndAccept) throw new QuestError(idLockedMessage(idCheck.state, action), 403);
 }
 
 export function questId(value: string) {
