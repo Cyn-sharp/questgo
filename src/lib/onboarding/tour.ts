@@ -17,6 +17,12 @@ export const GUIDE_FACE = "/mascot/guide-face.png";
 export const TOUR_HOME = "/dashboard";
 /** Raise this number when the steps change a lot, so everyone sees the new tour once. */
 export const TOUR_VERSION = 1;
+/**
+ * Only accounts created on or after this date get the tour by themselves, so
+ * existing users aren't interrupted. Anyone can still open it with Kit's
+ * button on Home. Philippine time (+08:00).
+ */
+export const NEW_ACCOUNTS_SINCE = "2026-11-24T00:00:00+08:00";
 
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -80,7 +86,13 @@ export function tourStorageKey(uid: string): string {
   return `questgo:tour:v${TOUR_VERSION}:${uid}`;
 }
 
-/** Start by itself only on Home, and only if this account hasn't finished or skipped it. */
-export function shouldAutoStart(pathname: string | null, seen: boolean): boolean {
-  return pathname === TOUR_HOME && !seen;
+/** True when the account was created on or after NEW_ACCOUNTS_SINCE. */
+export function isNewAccount(creationTime: string | null | undefined): boolean {
+  const created = Date.parse(creationTime ?? "");
+  return Number.isFinite(created) && created >= Date.parse(NEW_ACCOUNTS_SINCE);
+}
+
+/** Start by itself only on Home, only for new accounts, and only if this account hasn't finished or skipped it. */
+export function shouldAutoStart(pathname: string | null, seen: boolean, creationTime: string | null | undefined): boolean {
+  return pathname === TOUR_HOME && !seen && isNewAccount(creationTime);
 }
