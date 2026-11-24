@@ -4,6 +4,14 @@
       "collectionGroup": "quests",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quests",
+      "queryScope": "COLLECTION",
+      "fields": [
         {
           "fieldPath": "requesterId",
           "order": "ASCENDING"

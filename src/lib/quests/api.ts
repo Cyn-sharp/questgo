@@ -3,9 +3,11 @@ import { isAllowedEmail } from "@/lib/auth/email-policy";
 import { QuestError } from "./policy";
 import { questService } from "./service";
 import { safetyService } from "./safety-service";
+import { rateLimiter } from "./ratelimit";
 
 export const safety = safetyService(adminDb);
 export const quests = questService(adminDb, safety);
+export const limiter = rateLimiter(adminDb);
 
 export async function verifiedActor(request: Request) {
   const bearer = request.headers.get("authorization");

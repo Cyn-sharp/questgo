@@ -1,4 +1,5 @@
-import { recoveryChanges } from "./recovery";
+import { recoveryChanges, suspensionChanges } from "./recovery";
+import { nextAggregate, validateRating } from "./ratings";
 import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest, validateQuest, type WorkflowQuest } from "./policy";
@@ -69,12 +70,68 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         tx.create(ref.collection("events").doc(), { actorId: uid, actorName: name, action, fromStatus: quest.status, toStatus: status, reason: typeof input.reason === "string" ? input.reason.trim() : "", ...(["record-expense", "record-receipt"].includes(action) ? { amount: changes.actualExpense, evidence: changes.expenseEvidence } : {}), createdAt: FieldValue.serverTimestamp() });
       });
     },
+    // Closes or escalates every open quest of a suspended user. Idempotent: each quest is re-read in its own transaction.
+    async suspendUser(adminId: string, uid: string) {
+      const [asRequester, asRunner] = await Promise.all([
+        db.collection("quests").where("requesterId", "==", uid).get(),
+        db.collection("quests").where("questRunnerId", "==", uid).get(),
+      ]);
+      const ids = [...new Set([...asRequester.docs, ...asRunner.docs].map((d) => d.id))];
+      let changed = 0;
+      for (const id of ids) {
+        const ref = db.collection("quests").doc(id);
+        await db.runTransaction(async (tx) => {
+          const quest = (await tx.get(ref)).data() as WorkflowQuest | undefined;
+          const outcome = quest && suspensionChanges(quest, uid);
+          if (!quest || !outcome) return;
+          tx.update(ref, {
+            status: outcome.status, closedReason: outcome.closedReason, updatedAt: FieldValue.serverTimestamp(),
+            cancellationRequestedBy: FieldValue.delete(), cancellationRequestedAt: FieldValue.delete(),
+            issueRequestedBy: FieldValue.delete(), issueDeadline: FieldValue.delete(),
+            ...(outcome.status === "cancelled" ? { cancelledAt: FieldValue.serverTimestamp() } : { reviewRequestedAt: FieldValue.serverTimestamp() }),
+          });
+          tx.delete(ref.collection("tracking").doc("runner"));
+          tx.create(ref.collection("events").doc(), { actorId: adminId, action: "account-suspended", suspendedId: uid, fromStatus: quest.status, toStatus: outcome.status, createdAt: FieldValue.serverTimestamp() });
+          changed++;
+        });
+      }
+      return changed;
+    },
+    // Marks unclaimed quests past their window as expired so history and queries stay accurate without client help.
+    async expireStale(limit = 200) {
+      const stale = await db.collection("quests").where("status", "==", "available").where("expiresAt", "<=", Timestamp.now()).limit(limit).get();
+      let expired = 0;
+      for (const doc of stale.docs) {
+        await db.runTransaction(async (tx) => {
+          const quest = (await tx.get(doc.ref)).data() as WorkflowQuest | undefined;
+          if (!quest || quest.status !== "available" || quest.questRunnerId || !quest.expiresAt || quest.expiresAt.toMillis() > Date.now()) return;
+          tx.update(doc.ref, { status: "expired", expiredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+          tx.create(doc.ref.collection("events").doc(), { actorId: "system", action: "expire", fromStatus: "available", toStatus: "expired", createdAt: FieldValue.serverTimestamp() });
+          expired++;
+        });
+      }
+      return expired;
+    },
+    async rate(uid: string, id: string, input: unknown) {
+      const { rating, comment } = validateRating(input);
+      await db.runTransaction(async (tx) => {
+        const questRef = db.collection("quests").doc(id);
+        const quest = (await tx.get(questRef)).data();
+        if (!quest || quest.status !== "completed" || ![quest.requesterId, quest.questRunnerId].includes(uid)) throw new QuestError("Only participants can rate a completed quest.", 403);
+        const revieweeId = uid === quest.requesterId ? quest.questRunnerId : quest.requesterId;
+        const ratingRef = questRef.collection("ratings").doc(uid), userRef = db.doc(`users/${revieweeId}`);
+        const [existing, user] = await Promise.all([tx.get(ratingRef), tx.get(userRef)]);
+        if (existing.exists) throw new QuestError("You already rated this quest.", 409);
+        tx.create(ratingRef, { questId: id, reviewerId: uid, revieweeId, rating, comment, createdAt: FieldValue.serverTimestamp() });
+        tx.set(userRef, { ...nextAggregate(user.data(), rating), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      });
+    },
     async repost(uid: string, id: string) {
       const source = db.collection("quests").doc(id), target = db.collection("quests").doc(), lock = db.collection("requesterLocks").doc(uid);
       await db.runTransaction(async (tx) => {
         const [snapshot, , existing] = await Promise.all([tx.get(source), tx.get(lock), tx.get(db.collection("quests").where("requesterId", "==", uid))]);
         const old = snapshot.data();
-        if (!old || old.requesterId !== uid || !["cancelled", "available"].includes(old.status) || old.workflowVersion !== 2 || old.committedAt || old.replacementQuestId) throw new QuestError("Only an uncommitted closed or expired quest can be posted again.", 409);
+        if (!old || old.requesterId !== uid || !["cancelled", "available", "expired"].includes(old.status) || old.workflowVersion !== 2 || old.committedAt || old.replacementQuestId) throw new QuestError("Only an uncommitted closed or expired quest can be posted again.", 409);
         const now = Timestamp.now();
         if (old.status === "available" && old.expiresAt?.toMillis() > now.toMillis()) throw new QuestError("This quest is still available.", 409);
         if (existing.docs.some((record) => isActiveQuest(record.data() as WorkflowQuest, now.toMillis()))) throw new QuestError("Manage your current active quest before posting again.", 409);
@@ -96,13 +153,15 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         const [snapshot, limit] = await Promise.all([tx.get(questRef), tx.get(limitRef)]);
         if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
         if (!canMessage(snapshot.data() as WorkflowQuest, uid)) throw new QuestError("Only participants in an accepted or ongoing quest can send messages.", 403);
+        const quest = snapshot.data() as WorkflowQuest & { title: string };
+        const recipient = quest.requesterId === uid ? quest.questRunnerId : quest.requesterId;
+        // Reads must finish before any write in a transaction. Deliberately vague, like accept.
+        if (recipient && safety && await safety.eitherBlocked(tx, uid, recipient)) throw new QuestError("You can't message this user.", 403);
         const now = Timestamp.now();
         const lastSent = limit.data()?.sentAt as Timestamp | undefined;
         if (lastSent && now.toMillis() - lastSent.toMillis() < 1000) throw new QuestError("Please wait a moment before sending another message.", 429);
         tx.create(messageRef, { senderId: uid, text: input.trim(), createdAt: now });
         tx.set(limitRef, { sentAt: now });
-        const quest = snapshot.data() as WorkflowQuest & { title: string };
-        const recipient = quest.requesterId === uid ? quest.questRunnerId : quest.requesterId;
         if (recipient) tx.set(db.doc(`users/${recipient}/questInbox/${id}`), {
           questId: id, title: quest.title, messageId: messageRef.id, sentAt: now,
         });

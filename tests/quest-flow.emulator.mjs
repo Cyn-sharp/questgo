@@ -49,7 +49,7 @@ before(async () => {
     assert.ok(body.idToken); tokens[uid] = body.idToken;
   }
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", "3105"], {
-    env: { ...process.env, FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId, FIREBASE_STORAGE_BUCKET: "demo-questgo-test.appspot.com" }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+    env: { ...process.env, CRON_SECRET: "test-cron-secret", FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId, FIREBASE_STORAGE_BUCKET: "demo-questgo-test.appspot.com" }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
   });
   server.stdout.on("data", (data) => { serverOutput += data; });
   server.stderr.on("data", (data) => { serverOutput += data; });
@@ -449,4 +449,72 @@ test("runner location is private to participants, rate-limited, and deleted when
   assert.equal((await request(runner, "/" + id, { action: "leave", reason: "I can no longer do this quest" })).status, 200);
   assert.equal((await db.doc(`quests/${id}/tracking/runner`).get()).exists, false);
   assert.equal(await locate(runner, id, here), 403);
+});
+
+test("blocks stop chat, suspension closes the user's quests, and the expiry sweep is secured and accurate", { timeout: 90000 }, async () => {
+  const ids = { req: "hx-requester", run: "hx-runner", run2: "hx-runner2", other: "hx-other", admin: "hx-admin" };
+  for (const uid of Object.values(ids)) {
+    await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    if (uid === ids.admin) await auth.setCustomUserClaims(uid, { admin: true });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[uid] = (await response.json()).idToken;
+  }
+  async function call(uid, url, method = "POST", body) {
+    const response = await fetch(endpoint + url, { method, headers: { Authorization: "Bearer " + tokens[uid], "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, body: await response.json() };
+  }
+  async function suspend(reporter, questId) {
+    const report = await request(reporter, "/" + questId + "/report", { reason: "no_show", details: "Stopped responding after accepting" });
+    assert.equal(report.status, 201);
+    const resolved = await call(ids.admin, "/api/admin/reports", "POST", { id: report.body.id, outcome: "suspended", note: "Confirmed abandonment in the chat" });
+    assert.equal(resolved.status, 200);
+    assert.notEqual(resolved.body.cleanupFailed, true);
+  }
+
+  // 1. A block ends chat in both directions, with a deliberately vague message.
+  const first = (await request(ids.req, "", input)).body.id;
+  assert.equal((await request(ids.run, "/" + first, { action: "accept" })).status, 200);
+  assert.equal((await request(ids.req, "/" + first + "/messages", { text: "hello" })).status, 201);
+  assert.equal((await call(ids.run, "/api/users/" + ids.req + "/block")).status, 200);
+  const blockedChat = await request(ids.req, "/" + first + "/messages", { text: "are you there" });
+  assert.equal(blockedChat.status, 403);
+  assert.equal(blockedChat.body.message, "You can't message this user.");
+  assert.equal((await request(ids.run, "/" + first + "/messages", { text: "no" })).status, 403);
+
+  // 2. Suspending the runner cancels the uncommitted quest and frees the requester to post again.
+  await suspend(ids.req, first);
+  const cancelled = (await db.doc("quests/" + first).get()).data();
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.closedReason, "runner_suspended");
+  assert.ok((await db.collection("quests/" + first + "/events").where("action", "==", "account-suspended").get()).size === 1);
+
+  // 3. Committed work goes to administrator settlement instead of being cancelled outright.
+  const second = (await request(ids.req, "", input)).body.id;
+  assert.equal((await request(ids.run2, "/" + second, { action: "accept" })).status, 200);
+  assert.equal((await request(ids.run2, "/" + second, { action: "start" })).status, 200);
+  assert.equal((await request(ids.run2, "/" + second, { action: "commit" })).status, 200);
+  await suspend(ids.req, second);
+  const settlement = (await db.doc("quests/" + second).get()).data();
+  assert.equal(settlement.status, "settlement");
+  assert.equal(settlement.closedReason, "runner_suspended");
+  assert.ok(settlement.reviewRequestedAt);
+
+  // 4. The expiry sweep rejects strangers and only expires unclaimed quests past their window.
+  const stale = (await request(ids.req, "", input)).body.id;
+  const live = (await request(ids.other, "", input)).body.id;
+  await db.doc("quests/" + stale).update({ expiresAt: Timestamp.fromMillis(Date.now() - 60000) });
+  const cron = (headers) => fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers });
+  assert.equal((await cron({})).status, 401);
+  assert.equal((await cron({ Authorization: "Bearer wrong-secret" })).status, 401);
+  const sweep = await cron({ Authorization: "Bearer test-cron-secret" });
+  assert.equal(sweep.status, 200);
+  assert.ok((await sweep.json()).expired >= 1);
+  assert.equal((await db.doc("quests/" + stale).get()).data().status, "expired");
+  assert.equal((await db.doc("quests/" + live).get()).data().status, "available");
+  assert.equal((await db.doc("quests/" + second).get()).data().status, "settlement");
+
+  // 5. An expired quest can be posted again.
+  const reposted = await request(ids.req, "/" + stale, { action: "repost" });
+  assert.equal(reposted.status, 200);
+  assert.equal((await db.doc("quests/" + reposted.body.id).get()).data().status, "available");
 });

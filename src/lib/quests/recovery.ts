@@ -49,3 +49,16 @@ export function recoveryChanges(q: RecoveryQuest, uid: string, action: string, i
   }
   throw new QuestError("This action is unavailable at the current quest stage.", 409);
 }
+
+// What happens to a quest when one of its participants is suspended by an admin.
+// Returns null when the quest needs no change. Uncommitted work closes outright;
+// anything that may involve money or purchased items goes to admin settlement.
+export function suspensionChanges(q: RecoveryQuest, suspendedId: string): { status: "cancelled" | "settlement"; closedReason: string } | null {
+  const requester = suspendedId === q.requesterId, runner = suspendedId === q.questRunnerId;
+  if (q.status === "available" && requester) return { status: "cancelled", closedReason: "requester_suspended" };
+  if (["accepted", "in_progress"].includes(q.status) && (requester || runner)) {
+    const clean = q.workflowVersion === 2 && !q.committedAt && !q.completionRequestedAt;
+    return { status: clean ? "cancelled" : "settlement", closedReason: requester ? "requester_suspended" : "runner_suspended" };
+  }
+  return null;
+}
