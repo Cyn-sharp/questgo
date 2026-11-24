@@ -1,7 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
 import { ProfileError, validateProfile } from "@/lib/auth/profile";
-import { apiError, limiter, readBody, verifiedActor } from "@/lib/quests/api";
+import { apiError, forgetActor, limiter, readBody, verifiedActor } from "@/lib/quests/api";
 import { QuestError } from "@/lib/quests/policy";
 
 // One server call updates both the Auth display name and the Firestore profile,
@@ -21,6 +21,7 @@ export async function PATCH(request: Request) {
       await adminAuth.updateUser(actor.uid, { displayName: before.displayName ?? null }).catch(() => console.error("Could not roll back display name", actor.uid));
       throw error;
     }
+    forgetActor(actor.uid);
     return Response.json({ ok: true, ...profile });
   } catch (error) { return apiError(error); }
 }

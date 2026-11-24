@@ -144,3 +144,19 @@ test("audit entries carry who did what to which target, with bounded text", () =
   const long = auditEntry({ uid: "a", name: "n".repeat(500) }, "a".repeat(500), { type: "quest", id: "i".repeat(500) }, "d".repeat(5000));
   assert.deepEqual([long.actorName.length, long.action.length, long.targetId.length, long.details.length], [100, 60, 260, 500]);
 });
+
+import { createActorCache } from "../src/lib/quests/actor-cache.ts";
+
+test("actor cache expires entries, can forget one, and stays bounded", () => {
+  let now = 1000;
+  const cache = createActorCache(30000, () => now, 2);
+  const actor = (uid) => ({ uid, name: uid, emailVerified: true, disabled: false });
+  assert.equal(cache.get("a"), undefined);
+  cache.set(actor("a"));
+  assert.equal(cache.get("a").name, "a");
+  now += 29999; assert.ok(cache.get("a"));
+  now += 1; assert.equal(cache.get("a"), undefined);
+  cache.set(actor("a")); cache.forget("a"); assert.equal(cache.get("a"), undefined);
+  cache.set(actor("a")); cache.set(actor("b")); cache.set(actor("c"));
+  assert.equal(cache.get("a"), undefined); assert.ok(cache.get("c"));
+});
