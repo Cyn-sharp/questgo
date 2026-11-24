@@ -538,3 +538,28 @@ test("profile API validates input and updates Auth and Firestore together", { ti
   await assert.rejects(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria Santos", rating: 5 }), { code: "permission-denied" });
   await assert.doesNotReject(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria S." }));
 });
+
+test("the sweep closes quests with no activity for two hours, but chat counts as activity", { timeout: 60000 }, async () => {
+  const ids = ["ab-requester", "ab-requester2", "ab-runner"];
+  for (const uid of ids) {
+    await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[uid] = (await response.json()).idToken;
+  }
+  const quiet = (await request("ab-requester", "", input)).body.id;
+  const chatty = (await request("ab-requester2", "", input)).body.id;
+  assert.equal((await request("ab-runner", "/" + quiet, { action: "accept" })).status, 200);
+  assert.equal((await request("ab-runner", "/" + chatty, { action: "accept" })).status, 200);
+  // A message is recent activity even when the quest document itself is old.
+  assert.equal((await request("ab-requester2", "/" + chatty + "/messages", { text: "On my way?" })).status, 201);
+  const old = Timestamp.fromMillis(Date.now() - 3 * 60 * 60 * 1000);
+  for (const id of [quiet, chatty]) await db.doc("quests/" + id).update({ updatedAt: old, acceptedAt: old });
+  const sweep = await fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers: { Authorization: "Bearer test-cron-secret" } });
+  assert.equal(sweep.status, 200);
+  assert.ok((await sweep.json()).abandoned >= 1);
+  const closed = (await db.doc("quests/" + quiet).get()).data();
+  assert.equal(closed.status, "cancelled");
+  assert.equal(closed.closedReason, "abandoned_no_activity");
+  assert.equal((await db.doc("quests/" + chatty).get()).data().status, "accepted");
+  assert.equal((await db.collection("quests/" + quiet + "/events").where("action", "==", "abandoned").get()).size, 1);
+});

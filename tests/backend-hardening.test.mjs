@@ -100,3 +100,21 @@ test("meet-up time must be a real clock time", () => {
   assert.equal(validateQuest({ ...quest, preferredTime: "12:05 AM" }).preferredTime, "12:05 AM");
   for (const bad of ["25:00 PM", "0:30 PM", "4:60 PM", "4:30", "soon", "4:30 pm"]) assert.throws(() => validateQuest({ ...quest, preferredTime: bad }), /meet-up time/);
 });
+
+import { abandonedChanges, ABANDON_AFTER_MS } from "../src/lib/quests/recovery.ts";
+
+test("abandonment closes quiet quests after two hours and escalates committed ones", () => {
+  const now = 10 * ABANDON_AFTER_MS;
+  const at = (ms) => ({ toMillis: () => ms });
+  const quest = { requesterId: "req", questRunnerId: "run", workflowVersion: 2, status: "accepted", updatedAt: at(now - ABANDON_AFTER_MS - 1) };
+  assert.deepEqual(abandonedChanges(quest, 0, now), { status: "cancelled", closedReason: "abandoned_no_activity" });
+  assert.equal(abandonedChanges({ ...quest, status: "in_progress", committedAt: {} }, 0, now)?.status, "settlement");
+  assert.equal(abandonedChanges({ ...quest, status: "in_progress", completionRequestedAt: {} }, 0, now)?.status, "settlement");
+  // Recent status change, acceptance or chat message all count as activity.
+  assert.equal(abandonedChanges({ ...quest, updatedAt: at(now - 1000) }, 0, now), null);
+  assert.equal(abandonedChanges(quest, now - 1000, now), null);
+  assert.equal(abandonedChanges({ ...quest, updatedAt: undefined, acceptedAt: at(now - 1000) }, 0, now), null);
+  // Closed or unclaimed quests are never touched; unknown timing is never treated as abandoned.
+  for (const status of ["available", "completed", "cancelled", "settlement", "expired"]) assert.equal(abandonedChanges({ ...quest, status }, 0, now), null);
+  assert.equal(abandonedChanges({ ...quest, updatedAt: undefined }, 0, now), null);
+});

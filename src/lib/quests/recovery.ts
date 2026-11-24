@@ -62,3 +62,19 @@ export function suspensionChanges(q: RecoveryQuest, suspendedId: string): { stat
   }
   return null;
 }
+
+export const ABANDON_AFTER_MS = 2 * 60 * 60 * 1000;
+
+// A quest is abandoned when it is underway but nothing has happened (status change or chat message) for two hours.
+// Clean (uncommitted) quests close outright; anything that may involve money or purchased items goes to settlement.
+export function abandonedChanges(
+  q: RecoveryQuest & { updatedAt?: { toMillis(): number }; acceptedAt?: { toMillis(): number } },
+  lastMessageMillis: number,
+  now: number,
+): { status: "cancelled" | "settlement"; closedReason: string } | null {
+  if (!["accepted", "in_progress"].includes(q.status)) return null;
+  const lastActivity = Math.max(q.updatedAt?.toMillis() ?? 0, q.acceptedAt?.toMillis() ?? 0, lastMessageMillis);
+  if (!lastActivity || now - lastActivity < ABANDON_AFTER_MS) return null;
+  const clean = q.workflowVersion === 2 && !q.committedAt && !q.completionRequestedAt;
+  return { status: clean ? "cancelled" : "settlement", closedReason: "abandoned_no_activity" };
+}

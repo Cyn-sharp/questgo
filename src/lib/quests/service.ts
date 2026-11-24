@@ -1,9 +1,20 @@
-import { recoveryChanges, suspensionChanges } from "./recovery";
+import { abandonedChanges, recoveryChanges, suspensionChanges } from "./recovery";
+import { ABANDON_AFTER_MS } from "./recovery";
 import { nextAggregate, validateRating } from "./ratings";
 import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest, validateQuest, type WorkflowQuest } from "./policy";
 import { canShareLocation, MIN_LOCATION_INTERVAL_MS, TRACKING_STATUSES, validateLocation } from "./tracking";
+
+// Fields written when a quest is closed or escalated by the system (suspension, abandonment).
+function closingChanges(outcome: { status: string; closedReason: string }) {
+  return {
+    status: outcome.status, closedReason: outcome.closedReason, updatedAt: FieldValue.serverTimestamp(),
+    cancellationRequestedBy: FieldValue.delete(), cancellationRequestedAt: FieldValue.delete(),
+    issueRequestedBy: FieldValue.delete(), issueDeadline: FieldValue.delete(),
+    ...(outcome.status === "cancelled" ? { cancelledAt: FieldValue.serverTimestamp() } : { reviewRequestedAt: FieldValue.serverTimestamp() }),
+  };
+}
 
 export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safetyService>, "eitherBlocked">) {
   return {
@@ -84,18 +95,33 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
           const quest = (await tx.get(ref)).data() as WorkflowQuest | undefined;
           const outcome = quest && suspensionChanges(quest, uid);
           if (!quest || !outcome) return;
-          tx.update(ref, {
-            status: outcome.status, closedReason: outcome.closedReason, updatedAt: FieldValue.serverTimestamp(),
-            cancellationRequestedBy: FieldValue.delete(), cancellationRequestedAt: FieldValue.delete(),
-            issueRequestedBy: FieldValue.delete(), issueDeadline: FieldValue.delete(),
-            ...(outcome.status === "cancelled" ? { cancelledAt: FieldValue.serverTimestamp() } : { reviewRequestedAt: FieldValue.serverTimestamp() }),
-          });
+          tx.update(ref, closingChanges(outcome));
           tx.delete(ref.collection("tracking").doc("runner"));
           tx.create(ref.collection("events").doc(), { actorId: adminId, action: "account-suspended", suspendedId: uid, fromStatus: quest.status, toStatus: outcome.status, createdAt: FieldValue.serverTimestamp() });
           changed++;
         });
       }
       return changed;
+    },
+    // Closes accepted or in-progress quests with no activity for two hours so nobody waits on a silent counterpart.
+    async abandonStale(limit = 100) {
+      const cutoff = Timestamp.fromMillis(Date.now() - ABANDON_AFTER_MS);
+      const candidates = await db.collection("quests").where("status", "in", ["accepted", "in_progress"]).where("updatedAt", "<=", cutoff).limit(limit).get();
+      let closed = 0;
+      for (const doc of candidates.docs) {
+        const latest = await doc.ref.collection("messages").orderBy("createdAt", "desc").limit(1).get();
+        const lastMessage = (latest.docs[0]?.data().createdAt as Timestamp | undefined)?.toMillis() ?? 0;
+        await db.runTransaction(async (tx) => {
+          const quest = (await tx.get(doc.ref)).data() as Parameters<typeof abandonedChanges>[0] | undefined;
+          const outcome = quest && abandonedChanges(quest, lastMessage, Date.now());
+          if (!quest || !outcome) return;
+          tx.update(doc.ref, closingChanges(outcome));
+          tx.delete(doc.ref.collection("tracking").doc("runner"));
+          tx.create(doc.ref.collection("events").doc(), { actorId: "system", action: "abandoned", fromStatus: quest.status, toStatus: outcome.status, createdAt: FieldValue.serverTimestamp() });
+          closed++;
+        });
+      }
+      return closed;
     },
     // Marks unclaimed quests past their window as expired so history and queries stay accurate without client help.
     async expireStale(limit = 200) {
