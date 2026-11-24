@@ -5,6 +5,8 @@ import { collection, getDocs, limit, onSnapshot, orderBy, query, startAfter, typ
 import Link from "next/link";
 import { db } from "@/lib/auth/firebase";
 import { useQuest } from "@/hooks/useQuests";
+import { MessengerSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import { questRequest } from "@/lib/quests/client";
 import { useQuestNotifications } from "./QuestNotifications";
 import { Button } from "@/components/ui/Button";
@@ -77,7 +79,8 @@ export function QuestMessenger({ id }: { id: string }) {
     catch (error) { setSendError(error instanceof Error ? error.message : "Unable to send message."); }
     finally { setSending(false); }
   }
-  if (loading) return <p className="page-container py-8 text-white">Loading conversation…</p>;
+  const showSkeleton = useMinimumLoading(loading || (readable && feed?.key !== key)) && !error;
+  if (showSkeleton) return <MessengerSkeleton />;
   if (error || !readable || !quest) return <div className="page-container py-8 text-white"><p role="alert">{error || "Messaging opens after acceptance and is private to the requester and assigned runner."}</p><Link href="/requests" className="underline">Choose a quest in My Quests</Link></div>;
   const current = feed?.key === key ? feed : undefined;
   const other = quest.requesterId === user?.uid ? quest.runnerName : quest.requesterName;

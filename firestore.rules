@@ -10,7 +10,13 @@ service cloud.firestore {
     match /users/{userId} {
       match /questInbox/{questId} {
         allow read: if verified() && request.auth.uid == userId;
-        allow write: if false;
+        // The server writes new messages here. The owner may only mark the
+        // latest received message as read; nothing else can change.
+        allow update: if verified() && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readMessageId', 'readAt'])
+          && request.resource.data.readMessageId == resource.data.messageId
+          && request.resource.data.readAt == request.time;
+        allow create, delete: if false;
       }
       // Each user sees only their own block list; the server writes it.
       match /blocks/{blockedId} {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +32,7 @@ import {
   getProfileQuestStats,
 } from "@/lib/db/quests";
 import type { User as UserProfile } from "@/types/user";
+import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -260,8 +262,9 @@ export default function ProfilePage() {
     }
   }
 
-  if (isAuthLoading || isLoading) {
-    return <div className="page-container py-12 text-center text-white">Loading profile...</div>;
+  const showSkeleton = useMinimumLoading(isAuthLoading || isLoading) && !loadError;
+  if (showSkeleton) {
+    return <ProfileSkeleton />;
   }
 
   if (!user || !profile) {

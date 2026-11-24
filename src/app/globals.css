@@ -385,3 +385,67 @@ input:-webkit-autofill:active {
     transparent 100%
   );
 }
+
+/* =========================================================
+   SKELETON LOADING — shimmering placeholders shown while data loads
+   (kept in @layer components so Tailwind classes like rounded-full can override them)
+   ========================================================= */
+
+@layer components {
+  .skeleton {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    isolation: isolate;
+    border-radius: 0.5rem;
+    background-color: #e9e2d6;
+  }
+
+  /* The moving highlight. --skeleton-delay staggers it so cards shimmer in a wave. */
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%);
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+    animation-delay: var(--skeleton-delay, 0ms);
+  }
+
+  /* Tones that hint at what is coming: gold prices, maroon buttons, and blocks on the maroon page. */
+  .skeleton-gold {
+    background-color: #f1e3b5;
+  }
+
+  .skeleton-maroon {
+    background-color: rgba(122, 31, 50, 0.16);
+  }
+
+  .skeleton-dark {
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .skeleton-dark::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(246, 236, 200, 0.22) 50%, transparent 100%);
+  }
+
+  /* Fade the placeholder in smoothly. */
+  .skeleton-enter {
+    animation: skeleton-enter 0.4s ease-out both;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes skeleton-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Accessibility — no shimmer or slide for people who turn off animations */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { display: none; }
+  .skeleton-enter { animation: none; }
+}

@@ -14,16 +14,19 @@ import { QuestRecovery } from "./QuestRecovery";
 import { PrintingFile } from "./PrintingFile";
 import { SafetyActions } from "./SafetyActions";
 import { RunnerMap } from "./RunnerMap";
+import { QuestDetailSkeleton } from "@/components/skeletons/PageSkeletons";
+import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
 export function LiveQuest({ id, participantsOnly = false }: { id: string; participantsOnly?: boolean }) {
-  const { user, quest, loading, error } = useQuest(id);
+  const { user, quest, loading: dataLoading, error } = useQuest(id);
+  const loading = useMinimumLoading(dataLoading) && !error;
   const now = useQuestClock();
   const router = useRouter();
   const [receiptConfirmed, setReceiptConfirmed] = useState(false);
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState("");
-  if (loading) return <p className="page-container py-10 text-white">Loading quest…</p>;
+  if (loading) return <QuestDetailSkeleton />;
   if (error || !quest || !user) return <div className="page-container py-10 text-white"><p role="alert">{error || "Quest not found or you are signed out."}</p><Link href="/requests">Back to My Quests</Link></div>;
   const requester = user.uid === quest.requesterId;
   const runner = user.uid === quest.questRunnerId;

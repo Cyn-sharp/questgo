@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getQuestById } from "@/lib/db/quests";
 import { submitQuestRating } from "@/lib/db/ratings";
 import type { Quest } from "@/types/quest";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -168,7 +169,11 @@ export default function RateQuestPage() {
               </h1>
               <p className="text-sm text-[#4a4340] mb-8">
                 How was your experience with{" "}
-                <span className="font-bold text-[#161414]">{revieweeName}</span>?
+                {quest || pageError ? (
+                  <span className="font-bold text-[#161414]">{revieweeName}</span>
+                ) : (
+                  <Skeleton className="inline-block h-4 w-28 align-middle" />
+                )}?
               </p>
 
               {/* Interactive Star Rating */}

@@ -20,7 +20,7 @@ export const Footer = () => {
         <div className="flex flex-col gap-4 max-w-sm">
           <Link href="/#home" className="inline-flex items-center gap-3">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="QuestGo logo"
               width={36}
               height={36}

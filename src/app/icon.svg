@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- QuestGo tab icon: same logo, bigger and bolder so it stays clear at 16px -->
+  <rect width="1024" height="1024" rx="232" fill="#7A1F32"/>
+  <g fill="none" stroke="#C9A227" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ring (the Q) -->
+    <circle cx="506" cy="508" r="319" stroke-width="138"/>
+    <!-- check -->
+    <path d="M 409 502 L 478 570 L 598 417" stroke-width="118"/>
+  </g>
+  <!-- tail (pin tip), exactly 45 degrees -->
+  <path d="M 783 682 L 867 868 L 680 785 Z" fill="#C9A227" stroke="#C9A227" stroke-width="8" stroke-linejoin="round"/>
+</svg>

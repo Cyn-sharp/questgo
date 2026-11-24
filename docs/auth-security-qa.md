@@ -1,5 +1,20 @@
 # Authentication and quest security QA
 
+## S3-05 in-app notifications update (#41)
+
+- Read state for chats is now stored on the recipient's
+  `users/{uid}/questInbox/{questId}` document (`readMessageId`, `readAt`), so
+  opening a conversation on one device clears its unread indicator everywhere.
+  Read markers saved in a browser before this update are still honored there.
+- Firestore rules let the owner change only `readMessageId` and `readAt`, only
+  to the latest received message id, with `readAt` set to the server time.
+  Create and delete stay server-only. A new message replaces the inbox entry and
+  makes the conversation unread again.
+- "My Quests" in the header and the mobile bottom bar shows a red count of
+  unread conversations (9+ above nine), announced in the link's accessible name.
+- Deploy the updated `firestore.rules` together with the app; without them the
+  read marker write is rejected and chats stay unread.
+
 ## Message priority, archive and query improvements
 
 - Messages puts In Progress ahead of Accepted, followed by up to three recent
@@ -24,8 +39,8 @@
 ## October 1 in-app alerts update
 
 - Dashboard-wide Messages button lists incoming conversations with a red unread
-  indicator. Read markers are stored per account in this browser and shared
-  between its tabs, not across devices. Opening a visible, focused chat clears
+  indicator. (Superseded by S3-05 above: read markers are now stored in
+  Firestore and shared across devices.) Opening a visible, focused chat clears
   its marker. New alerts begin with messages sent after this update.
 - Accepted, started, ready, completed, and cancellation changes show queued
   three-second notices while the dashboard is open. Initial quest snapshots do

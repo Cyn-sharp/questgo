@@ -12,6 +12,9 @@ import { getProfileName } from "@/lib/auth/profile-name";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { NavLink } from "@/components/navigation/NavLink";
+import { UnreadBadge } from "@/components/ui/UnreadBadge";
+import { useQuestNotifications } from "@/components/quest/QuestNotifications";
+import { unreadLabel } from "@/lib/quests/conversations";
 
 // --- MARKETING NAVBAR (Unauthenticated / Public Landing Page) ---
 // Anchors use /#path so they work from every subroute.
@@ -170,6 +173,7 @@ export const Navbar = (): ReactElement => {
   const headerName = getProfileName(firebaseUser?.displayName, currentProfile?.fullName);
   const firstName = headerName.split(/\s+/)[0];
   const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href));
+  const { unreadCount } = useQuestNotifications();
 
   useEffect(() => {
     if (!firebaseUser) {
@@ -205,7 +209,14 @@ export const Navbar = (): ReactElement => {
           <ul className="flex items-center gap-0.5 lg:gap-1">
             {dashboardNavItems.map((item) => (
               <li key={item.href}>
-                <NavLink href={item.href} active={isActive(item.href)}>{item.label}</NavLink>
+                {item.href === "/requests" ? (
+                  <NavLink href={item.href} active={isActive(item.href)} label={unreadLabel(item.label, unreadCount)}>
+                    {item.label}
+                    <UnreadBadge count={unreadCount} className="ml-1.5 ring-[#161414]" />
+                  </NavLink>
+                ) : (
+                  <NavLink href={item.href} active={isActive(item.href)}>{item.label}</NavLink>
+                )}
               </li>
             ))}
           </ul>

@@ -1,5 +1,6 @@
 import Navbar from "@/components/layout/Navbar";
 import { DashboardBottomNav } from "@/components/layout/DashboardBottomNav";
+import { GuideTour } from "@/components/onboarding/GuideTour";
 
 // Template: the signed-in app frame. Header on top, page content, and the
 // bottom tab bar on phones (the header carries the links from tablet width up).
@@ -9,6 +10,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Navbar />
       <main className="flex-grow pb-28 md:pb-10">{children}</main>
       <DashboardBottomNav />
+      <GuideTour />
     </div>
   );
 }

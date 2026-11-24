@@ -12,7 +12,7 @@ export function LoginWelcomeSection() {
           role="img"
           aria-label="QuestGo logo"
         >
-          <Image src="/logo.png" alt="" fill sizes="60px" className="object-contain" />
+          <Image src="/logo.svg" alt="" fill sizes="60px" className="object-contain" />
         </div>
         <div className="inline-flex flex-col gap-0.5">
           <span className="font-outfit text-2xl font-extrabold text-white">QuestGo</span>
