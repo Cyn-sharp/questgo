@@ -624,3 +624,19 @@ test("chat history pages backwards past the live window for participants only", 
   assert.deepEqual([older.size, older.docs[0].data().text, older.docs.at(-1).data().text], [20, "m19", "m0"]);
   await assert.rejects(getDocs(query(collection(client("outsider"), "quests", qid, "messages"), orderBy("createdAt", "desc"), limit(50))), { code: "permission-denied" });
 });
+
+test("administrator decisions are written to an admin-only audit log", { timeout: 30000 }, async () => {
+  const get = (uid) => fetch(endpoint + "/api/admin/audit", { headers: { Authorization: "Bearer " + tokens[uid] } });
+  assert.equal((await get("hx-requester")).status, 403);
+  const response = await get("hx-admin");
+  assert.equal(response.status, 200);
+  const { entries } = await response.json();
+  const actions = entries.map((entry) => entry.action);
+  for (const expected of ["report-suspended", "quests-closed-on-suspension"]) assert.ok(actions.includes(expected), "missing " + expected);
+  const suspended = entries.find((entry) => entry.action === "report-suspended");
+  assert.equal(suspended.actorId, "hx-admin");
+  assert.ok(suspended.details.includes("Confirmed abandonment"));
+  // Clients can never read or write the log directly.
+  await assert.rejects(getDocs(collection(client("hx-admin"), "auditLog")), { code: "permission-denied" });
+  await assert.rejects(setDoc(doc(client("hx-requester"), "auditLog", "forged"), { action: "x" }), { code: "permission-denied" });
+});

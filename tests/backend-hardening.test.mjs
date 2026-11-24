@@ -134,3 +134,13 @@ test("printing files are kept until the quest has been closed for seven days", (
   for (const status of ["available", "accepted", "in_progress", "settlement"]) assert.equal(attachmentExpired({ status, createdAt: old, updatedAt: old }, now), false);
   assert.equal(attachmentExpired({ status: "cancelled" }, now), false);
 });
+
+import { auditEntry } from "../src/lib/quests/audit.ts";
+
+test("audit entries carry who did what to which target, with bounded text", () => {
+  const entry = auditEntry({ uid: "admin1", name: "  Ana  " }, "report-suspended", { type: "report", id: "q_u" }, "  reason  ");
+  assert.deepEqual(entry, { actorId: "admin1", actorName: "Ana", action: "report-suspended", targetType: "report", targetId: "q_u", details: "reason" });
+  assert.equal(auditEntry({ uid: "a", name: "" }, "x", { type: "user", id: "u" }).actorName, "Administrator");
+  const long = auditEntry({ uid: "a", name: "n".repeat(500) }, "a".repeat(500), { type: "quest", id: "i".repeat(500) }, "d".repeat(5000));
+  assert.deepEqual([long.actorName.length, long.action.length, long.targetId.length, long.details.length], [100, 60, 260, 500]);
+});
