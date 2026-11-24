@@ -5,8 +5,7 @@ import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import {
   Star,
   CheckCircle2,
@@ -28,6 +27,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { auth, db } from "@/lib/auth/firebase";
 import { endSession } from "@/lib/auth/logout";
 import { getProfileName } from "@/lib/auth/profile-name";
+import { COURSES } from "@/lib/auth/courses";
+import { updateMyProfile } from "@/lib/quests/client";
 import {
   getProfileQuestStats,
 } from "@/lib/db/quests";
@@ -79,25 +80,12 @@ function ScrollReveal({
   );
 }
 
-const COURSES = [
-  "BS Computer Engineering Student",
-  "BS Computer Science Student",
-  "BS Information Technology Student",
-  "BS Information Systems Student",
-  "BS Civil Engineering Student",
-  "BS Electrical Engineering Student",
-  "BS Mechanical Engineering Student",
-  "BS Architecture Student",
-  "BS Accountancy Student",
-  "BS Business Administration Student",
-  "BS Hospitality Management Student",
-];
 
 const MENU_ITEMS = [
   {
     id: "verification",
     title: "Verification",
-    description: "Verified via CIT-U ID",
+    description: "Verified via your CIT-U email",
     href: "/profile/verification",
     icon: ShieldCheck,
     iconBg: "bg-[#f6f0e8]",
@@ -244,19 +232,13 @@ export default function ProfilePage() {
     setIsSaving(true);
     setSaveError("");
     try {
-      // Auth owns the displayed name; write it before notifying Firestore
-      // subscribers so the header and profile resolve the same identity.
-      await updateProfile(user, { displayName: fullName });
-      setProfile((current) => current ? { ...current, fullName } : current);
-      await updateDoc(doc(db, "users", user.uid), {
-        fullName,
-        course: editCourse,
-        updatedAt: serverTimestamp(),
-      });
-      setProfile((current) => current ? { ...current, fullName, course: editCourse } : current);
+      // One server call updates both the Auth name and the Firestore profile.
+      const saved = await updateMyProfile(fullName, editCourse);
+      await user.reload();
+      setProfile((current) => current ? { ...current, fullName: saved.fullName, course: saved.course } : current);
       setEditOpen(false);
-    } catch {
-      setSaveError("Could not save all profile changes. Please retry to finish syncing them.");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save your profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -549,7 +531,7 @@ export default function ProfilePage() {
                   </label>
                   <input
                     type="text"
-                    id="profile-name"
+                    id="profile-name" maxLength={100}
                     value={editName}
                     onChange={(event) => setEditName(event.target.value)}
                     disabled={isSaving}

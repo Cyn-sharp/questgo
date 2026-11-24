@@ -518,3 +518,23 @@ test("blocks stop chat, suspension closes the user's quests, and the expiry swee
   assert.equal(reposted.status, 200);
   assert.equal((await db.doc("quests/" + reposted.body.id).get()).data().status, "available");
 });
+
+test("profile API validates input and updates Auth and Firestore together", { timeout: 30000 }, async () => {
+  const patch = async (uid, body) => {
+    const response = await fetch(`${endpoint}/api/users/me`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(tokens[uid] ? { Authorization: `Bearer ${tokens[uid]}` } : {}) }, body: JSON.stringify(body) });
+    return { status: response.status, body: await response.json() };
+  };
+  assert.equal((await patch("missing", { fullName: "Anyone" })).status, 401);
+  assert.equal((await patch("outsider", { fullName: "A" })).status, 400);
+  assert.equal((await patch("outsider", { fullName: "Valid Name", course: "BS Wizardry" })).status, 400);
+  const saved = await patch("outsider", { fullName: "  Maria   Santos ", course: "BS Information Technology Student" });
+  assert.equal(saved.status, 200);
+  assert.equal((await auth.getUser("outsider")).displayName, "Maria Santos");
+  const profile = (await db.doc("users/outsider").get()).data();
+  assert.deepEqual([profile.fullName, profile.course], ["Maria Santos", "BS Information Technology Student"]);
+  // Direct client writes are bounded by the Firestore rules too.
+  const store = client("outsider");
+  await assert.rejects(updateDoc(doc(store, "users", "outsider"), { fullName: "x".repeat(101) }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria Santos", rating: 5 }), { code: "permission-denied" });
+  await assert.doesNotReject(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria S." }));
+});

@@ -52,3 +52,51 @@ test("profile photos must be https Firebase Storage URLs", () => {
   assert.equal(isAllowedPhotoUrl("https://x.firebasestorage.app/o/a"), true);
   for (const bad of ["http://firebasestorage.googleapis.com/a", "https://evil.com/a.png", "javascript:alert(1)", "https://firebasestorage.googleapis.com.evil.com/a", "", 5, "x".repeat(700)]) assert.equal(isAllowedPhotoUrl(bad), false);
 });
+
+import { validateProfile } from "../src/lib/auth/profile.ts";
+
+test("profile names are trimmed, bounded and must contain a letter", () => {
+  assert.deepEqual(validateProfile({ fullName: "  Juan   dela  Cruz ", course: "BS Computer Science Student" }), { fullName: "Juan dela Cruz", course: "BS Computer Science Student" });
+  assert.deepEqual(validateProfile({ fullName: "Ana" }), { fullName: "Ana", course: "" });
+  for (const bad of ["", " ", "A", "x".repeat(101), "1234", "Bad\u0000Name", null, 5]) assert.throws(() => validateProfile({ fullName: bad }));
+  assert.throws(() => validateProfile(null));
+});
+
+test("profile course must come from the known list", () => {
+  assert.throws(() => validateProfile({ fullName: "Juan", course: "BS Wizardry" }));
+  assert.equal(validateProfile({ fullName: "Juan", course: 5 }).course, ""); // non-strings are ignored, never stored
+});
+
+import { requirementError } from "../src/lib/quests/requirements.ts";
+import { fundingErrors } from "../src/lib/quests/funding.ts";
+import { validateQuest } from "../src/lib/quests/policy.ts";
+
+test("requirement errors are reported per field", () => {
+  assert.equal(requirementError("Printing", "copies", "2"), null);
+  for (const bad of ["0", "101", "1.5", "", "abc"]) assert.match(requirementError("Printing", "copies", bad), /valid number of copies/);
+  assert.equal(requirementError("Printing", "color", "Color"), null);
+  assert.equal(requirementError("Printing", "color", ""), "Select a print color.");
+  assert.equal(requirementError("Printing", "sides", "Both"), "Select single-sided or double-sided printing.");
+  assert.match(requirementError("Pickup", "items", "n/a"), /items to collect/);
+  assert.equal(requirementError("Pickup", "unknown", ""), null);
+});
+
+test("funding errors point at the right field", () => {
+  assert.deepEqual(fundingErrors({ fundingMethod: "no_purchase" }, "Pickup"), {});
+  assert.ok(fundingErrors({}, "Pickup").fundingMethod);
+  assert.ok(fundingErrors({ fundingMethod: "no_purchase" }, "Printing").fundingMethod);
+  assert.ok(fundingErrors({ fundingMethod: "abono", purchaseBudget: 0 }, "Pickup").purchaseBudget);
+  assert.ok(fundingErrors({ fundingMethod: "prepaid", purchaseBudget: 50, vendorInstructions: "hi" }, "Pickup").vendorInstructions);
+  assert.deepEqual(fundingErrors({ fundingMethod: "prepaid", purchaseBudget: 50, vendorInstructions: "Pay at the counter" }, "Pickup"), {});
+  const shopping = (budget) => fundingErrors({ fundingMethod: "abono", purchaseBudget: 100, requirements: { budget } }, "Shopping");
+  assert.deepEqual(shopping("100"), {});
+  assert.ok(shopping("90").purchaseBudget);
+});
+
+test("meet-up time must be a real clock time", () => {
+  const quest = { fundingMethod: "no_purchase", purchaseBudget: 0, title: "Pick up my notes", description: "Meet at the main entrance please.", category: "Pickup", reward: 30,
+    requirements: { items: "Class notes", collection: "Library desk" }, location: "Library", meetUpPoint: "Main Entrance", preferredTime: "4:30 PM" };
+  assert.equal(validateQuest(quest).preferredTime, "4:30 PM");
+  assert.equal(validateQuest({ ...quest, preferredTime: "12:05 AM" }).preferredTime, "12:05 AM");
+  for (const bad of ["25:00 PM", "0:30 PM", "4:60 PM", "4:30", "soon", "4:30 pm"]) assert.throws(() => validateQuest({ ...quest, preferredTime: bad }), /meet-up time/);
+});
