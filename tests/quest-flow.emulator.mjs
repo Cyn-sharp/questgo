@@ -608,3 +608,19 @@ test("printing files are deleted after retention, but never while a reposted que
   const download = await fetch(`${endpoint}/api/quests/${first}/file`, { headers: { Authorization: "Bearer " + tokens[uid] } });
   assert.equal(download.status, 410);
 });
+
+test("chat history pages backwards past the live window for participants only", { timeout: 60000 }, async () => {
+  const qid = "paging-quest", base = Date.now() - 1000 * 1000;
+  await db.doc("quests/" + qid).set({ requesterId: "pg-a", questRunnerId: "pg-b", status: "accepted", title: "Paging" });
+  const batch = db.batch();
+  for (let i = 0; i < 120; i++) batch.set(db.doc(`quests/${qid}/messages/m${String(i).padStart(3, "0")}`), { senderId: "pg-a", text: "m" + i, createdAt: Timestamp.fromMillis(base + i * 1000) });
+  await batch.commit();
+  const store = client("pg-a");
+  const messages = collection(store, "quests", qid, "messages");
+  const live = await getDocs(query(messages, orderBy("createdAt", "desc"), limit(100)));
+  assert.equal(live.size, 100);
+  assert.equal(live.docs[0].data().text, "m119");
+  const older = await getDocs(query(messages, orderBy("createdAt", "desc"), startAfter(live.docs.at(-1)), limit(50)));
+  assert.deepEqual([older.size, older.docs[0].data().text, older.docs.at(-1).data().text], [20, "m19", "m0"]);
+  await assert.rejects(getDocs(query(collection(client("outsider"), "quests", qid, "messages"), orderBy("createdAt", "desc"), limit(50))), { code: "permission-denied" });
+});
