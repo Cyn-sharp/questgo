@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
 import { isAllowedPhotoUrl } from "@/lib/auth/profile-photo";
 import { EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
+import { isCourse } from "@/lib/auth/courses";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
       fullName?: string;
       email?: string;
       profilePhotoUrl?: string;
+      course?: unknown;
     };
     const fullName = body.fullName?.trim();
     const email = body.email?.trim().toLowerCase();
@@ -30,6 +32,10 @@ export async function POST(request: Request) {
     if (body.profilePhotoUrl && !isAllowedPhotoUrl(body.profilePhotoUrl)) {
       return NextResponse.json({ message: "Invalid profile photo." }, { status: 400 });
     }
+    // The course is picked from the list at sign-up. Anything else is refused.
+    if (body.course !== undefined && body.course !== "" && !isCourse(body.course)) {
+      return NextResponse.json({ message: "Choose a course from the list." }, { status: 400 });
+    }
 
     const userRef = adminDb.collection("users").doc(decodedToken.uid);
     await adminDb.runTransaction(async (tx) => {
@@ -42,6 +48,7 @@ export async function POST(request: Request) {
           fullName,
           isVerified: decodedToken.email_verified === true,
           ...(body.profilePhotoUrl ? { profilePhotoUrl: body.profilePhotoUrl } : {}),
+          ...(isCourse(body.course) ? { course: body.course } : {}),
           // Re-running setup must not rewrite the original signup time.
           ...(existing.exists && existing.data()?.createdAt ? {} : { createdAt: FieldValue.serverTimestamp() }),
           updatedAt: FieldValue.serverTimestamp(),

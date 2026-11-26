@@ -24,7 +24,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
 
           <div
-            className="relative flex h-[calc(100vh-2rem)] max-h-[760px] min-h-[620px] w-full overflow-hidden rounded-2xl border border-white/40 bg-cream shadow-[0_24px_70px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.08)] max-lg:h-auto max-lg:min-h-0 max-lg:rounded-xl max-lg:flex-col max-lg:overflow-visible"
+            className="relative flex h-[calc(100vh-2rem)] max-h-[760px] min-h-[620px] w-full overflow-hidden rounded-2xl border border-white/40 bg-cream shadow-[0_24px_70px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.08)] max-lg:h-auto max-lg:max-h-none max-lg:min-h-0 max-lg:rounded-xl max-lg:flex-col max-lg:overflow-visible"
           >
             <AuthPromoPanel />
             <AnimatePresence mode="wait" initial={false}>

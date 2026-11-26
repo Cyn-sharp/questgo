@@ -11,9 +11,12 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import { EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 import { STUDENT_ID_ACCEPT, shrinkStudentIdPhoto, studentIdPickProblem, uploadStudentId } from "@/lib/auth/student-id";
+import { COURSES, courseLabel, isCourse } from "@/lib/auth/courses";
+import { ChevronDown } from "lucide-react";
 
 type FormValues = {
   fullName: string;
+  course: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -21,6 +24,7 @@ type FormValues = {
 
 const initialFormValues: FormValues = {
   fullName: "",
+  course: "",
   email: "",
   password: "",
   confirmPassword: "",
@@ -109,6 +113,10 @@ export function RegisterForm() {
       setFormMessage("Please complete your name and CIT-U email.");
       return;
     }
+    if (!isCourse(formValues.course)) {
+      setFormMessage("Please choose your course.");
+      return;
+    }
     const normalizedEmail = formValues.email.trim().toLowerCase();
     if (!isAllowedEmail(normalizedEmail)) {
       setFormMessage(EMAIL_POLICY_MESSAGE);
@@ -148,6 +156,7 @@ export function RegisterForm() {
           id: user.uid,
           email: normalizedEmail,
           fullName: displayName,
+          course: formValues.course,
           isVerified: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -167,6 +176,7 @@ export function RegisterForm() {
           body: JSON.stringify({
             idToken: await user.getIdToken(),
             fullName: displayName,
+            course: formValues.course,
             email: normalizedEmail,
           }),
         });
@@ -199,10 +209,10 @@ export function RegisterForm() {
 
   return (
     <section
-      className="flex w-full min-w-0 items-center justify-center bg-cream p-4 sm:p-8 lg:p-10"
+      className="flex w-full min-w-0 justify-center bg-cream p-4 [scrollbar-width:thin] sm:p-8 lg:overflow-y-auto lg:p-10"
       aria-labelledby="registration-heading"
     >
-      <div className="flex w-full max-w-[440px] flex-col gap-4">
+      <div className="my-auto flex w-full max-w-[440px] flex-col gap-4">
         <header className="flex flex-col gap-1.5">
           <h1
             id="registration-heading"
@@ -235,6 +245,30 @@ export function RegisterForm() {
                 className="h-11 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-normal outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
                 required
               />
+            </label>
+
+            <label className="flex flex-col gap-1.5 font-inter text-sm font-semibold text-dark">
+              Course
+              <span className="relative flex">
+                <select
+                  id="course"
+                  name="course"
+                  value={formValues.course}
+                  onChange={(event) => updateField("course", event.target.value)}
+                  className={`h-11 w-full appearance-none rounded-xl border border-[#e8e7e3] bg-cream pl-3.5 pr-10 font-normal outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233] ${formValues.course ? "text-dark" : "text-gray-500"}`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select your course
+                  </option>
+                  {COURSES.map((course) => (
+                    <option key={course} value={course} className="text-dark">
+                      {courseLabel(course)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+              </span>
             </label>
 
             <label className="flex flex-col gap-1.5 font-inter text-sm font-semibold text-dark">
