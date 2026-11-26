@@ -42,7 +42,8 @@ export async function POST(request: Request) {
       maxAge: SESSION_DURATION_MS / 1000,
     });
 
-    return NextResponse.json({ ok: true });
+      // Admins start in the admin console; everyone else starts on Home.
+    return NextResponse.json({ ok: true, home: account.customClaims?.admin === true ? "/admin" : "/dashboard" });
   } catch (error) {
     console.error("Session creation failed:", error);
     return NextResponse.json({ message: "Unable to create a secure session." }, { status: 401 });
