@@ -13,6 +13,7 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { Avatar } from "@/components/ui/Avatar";
 import { NavLink } from "@/components/navigation/NavLink";
 import { UnreadBadge } from "@/components/ui/UnreadBadge";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useQuestNotifications } from "@/components/quest/QuestNotifications";
 import { unreadLabel } from "@/lib/quests/conversations";
 
@@ -227,6 +228,7 @@ export const Navbar = (): ReactElement => {
             <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
             CIT-U Verified
           </span>
+          <NotificationBell />
           <Link
             href="/profile"
             aria-label={`Your profile, ${headerName}`}

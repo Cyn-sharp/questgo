@@ -18,6 +18,22 @@ service cloud.firestore {
           && request.resource.data.readAt == request.time;
         allow create, delete: if false;
       }
+      // Notification settings: the owner reads and replaces one document with
+      // exactly these fields. Category names are checked by the app on read.
+      match /preferences/{prefId} {
+        allow read: if verified() && request.auth.uid == userId;
+        allow create, update: if verified() && request.auth.uid == userId
+          && prefId == 'notifications'
+          && request.resource.data.keys().hasOnly(['messages', 'questUpdates', 'newQuests', 'newQuestCategories', 'updatedAt'])
+          && request.resource.data.keys().hasAll(['messages', 'questUpdates', 'newQuests', 'newQuestCategories', 'updatedAt'])
+          && request.resource.data.messages is bool
+          && request.resource.data.questUpdates is bool
+          && request.resource.data.newQuests is bool
+          && request.resource.data.newQuestCategories is list
+          && request.resource.data.newQuestCategories.size() <= 10
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
       // Each user sees only their own block list; the server writes it.
       match /blocks/{blockedId} {
         allow read: if verified() && request.auth.uid == userId;
