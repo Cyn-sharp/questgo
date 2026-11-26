@@ -11,7 +11,7 @@ export function NavLink({ href, active = false, label, children }: { href: strin
       className={cn(
         "relative inline-flex h-9 items-center whitespace-nowrap rounded-full px-3 text-[14px] font-medium transition-colors lg:px-3.5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
-        active ? "text-gold" : "text-white/75 hover:bg-white/[0.06] hover:text-white",
+        active ? "text-gold-bright" : "text-white/75 hover:bg-white/[0.06] hover:text-white",
       )}
     >
       {children}

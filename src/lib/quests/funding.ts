@@ -8,16 +8,29 @@ export function fundingSummary(quest: FundingQuest) {
     reimbursement: quest.fundingMethod === "abono" ? quest.actualExpense ?? 0 : 0,
     totalDue: quest.reward + (quest.fundingMethod === "abono" ? quest.actualExpense ?? 0 : 0) };
 }
-export function validateFunding(data: Record<string, unknown>, category: string) {
+type FundingField = "fundingMethod" | "purchaseBudget" | "vendorInstructions";
+const validMoney = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 10000 && Math.abs(value * 100 - Math.round(value * 100)) <= 0.00001;
+
+// Per-field problems, in the order the server reports them. Shared by the form and validateFunding.
+export function fundingErrors(data: Record<string, unknown>, category: string) {
+  const errors: Partial<Record<FundingField, string>> = {};
   const method = data.fundingMethod;
-  if (!method) throw new Error("Choose who pays the purchase cost before posting.");
-  if (!["no_purchase", "prepaid", "abono"].includes(String(method))) throw new Error("Invalid funding method.");
-  if (["Printing", "Shopping"].includes(category) && method === "no_purchase") throw new Error("Printing and Shopping require direct vendor payment or optional abono.");
-  const budget = data.purchaseBudget;
-  if (method === "no_purchase") return { fundingMethod: method as FundingMethod, purchaseBudget: 0, vendorInstructions: "" };
-  if (typeof budget !== "number" || !Number.isFinite(budget) || budget <= 0 || budget > 10000 || Math.abs(budget * 100 - Math.round(budget * 100)) > 0.00001) throw new Error("Purchase cost must be ₱0.01–₱10,000, with up to two decimal places.");
+  if (!method) return { fundingMethod: "Choose who pays the purchase cost before posting." } as typeof errors;
+  if (!["no_purchase", "prepaid", "abono"].includes(String(method))) return { fundingMethod: "Invalid funding method." } as typeof errors;
+  if (["Printing", "Shopping"].includes(category) && method === "no_purchase") return { fundingMethod: "Printing and Shopping require direct vendor payment or optional abono." } as typeof errors;
+  if (method === "no_purchase") return errors;
+  if (!validMoney(data.purchaseBudget)) errors.purchaseBudget = "Purchase cost must be ₱0.01–₱10,000, with up to two decimal places.";
   const instructions = typeof data.vendorInstructions === "string" ? data.vendorInstructions.trim() : "";
-  if (method === "prepaid" && (instructions.length < 5 || instructions.length > 500)) throw new Error("Provide vendor payment and collection instructions (5–500 characters). Do not include passwords or payment secrets.");
-  if (category === "Shopping" && Number((data.requirements as Record<string, string>)?.budget) !== budget) throw new Error("The shopping item budget must match the purchase cost limit.");
-  return { fundingMethod: method as FundingMethod, purchaseBudget: budget, vendorInstructions: method === "prepaid" ? instructions : "" };
+  if (method === "prepaid" && (instructions.length < 5 || instructions.length > 500)) errors.vendorInstructions = "Provide vendor payment and collection instructions (5–500 characters). Do not include passwords or payment secrets.";
+  if (!errors.purchaseBudget && category === "Shopping" && Number((data.requirements as Record<string, string>)?.budget) !== data.purchaseBudget) errors.purchaseBudget = "The shopping item budget must match the purchase cost limit.";
+  return errors;
+}
+
+export function validateFunding(data: Record<string, unknown>, category: string) {
+  const problem = Object.values(fundingErrors(data, category))[0];
+  if (problem) throw new Error(problem);
+  const method = data.fundingMethod as FundingMethod;
+  if (method === "no_purchase") return { fundingMethod: method, purchaseBudget: 0, vendorInstructions: "" };
+  const instructions = typeof data.vendorInstructions === "string" ? data.vendorInstructions.trim() : "";
+  return { fundingMethod: method, purchaseBudget: data.purchaseBudget as number, vendorInstructions: method === "prepaid" ? instructions : "" };
 }

@@ -71,7 +71,7 @@ export const TrustSection = () => {
           >
             Built for the CIT-U Student Community
           </h2>
-          <p className="font-normal text-base text-[#f6ecc8]/85 max-w-2xl">
+          <p className="font-normal text-base text-parchment/85 max-w-2xl">
             Safer, local peer-to-peer exchanges designed around university life
           </p>
         </header>
@@ -99,9 +99,9 @@ export const TrustSection = () => {
                   className="
                     group shine-wrap card-interactive
                     flex h-full flex-col items-start gap-4 p-6
-                    rounded-2xl border border-white/15 bg-white/95 backdrop-blur-md
+                    rounded-2xl border border-white/15 bg-white
                     shadow-[0_12px_32px_rgba(0,0,0,0.25)]
-                    hover:bg-[#5f1727] hover:border-[#c9a227]/50
+                    hover:bg-maroon-dark hover:border-gold/50
                     hover:shadow-[0_18px_44px_rgba(0,0,0,0.45)]
                   "
                 >
@@ -109,10 +109,10 @@ export const TrustSection = () => {
                     className="
                       relative z-[1]
                       w-12 h-12 flex items-center justify-center rounded-xl
-                      bg-[#7a1f32]/10 text-[#7a1f32]
+                      bg-maroon/10 text-maroon
                       transition-all duration-500
                       group-hover:bg-white/10
-                      group-hover:text-[#c9a227]
+                      group-hover:text-gold-bright
                       group-hover:scale-110
                     "
                     aria-hidden="true"
@@ -123,7 +123,7 @@ export const TrustSection = () => {
                   <h3
                     className="
                       relative z-[1]
-                      font-bold text-xl tracking-tight text-[#161414]
+                      font-bold text-xl tracking-tight text-dark
                       transition-colors duration-500
                       group-hover:text-white
                     "
@@ -134,7 +134,7 @@ export const TrustSection = () => {
                   <p
                     className="
                       relative z-[1]
-                      self-stretch font-normal text-sm leading-relaxed text-[#4a4340]
+                      self-stretch font-normal text-sm leading-relaxed text-muted
                       transition-colors duration-500
                       group-hover:text-white/90
                     "

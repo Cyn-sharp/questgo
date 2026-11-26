@@ -28,7 +28,7 @@ export function SegmentedControl<T extends string>({ label, options, value, onCh
           >
             {option.label}
             {option.count !== undefined && (
-              <span className={cn("min-w-5 rounded-full px-1.5 text-center text-[11px] font-bold tabular-nums leading-5",
+              <span className={cn("min-w-5 rounded-full px-1.5 text-center text-xs font-bold tabular-nums leading-5",
                 selected ? "bg-maroon text-white" : "bg-white/10 text-white/80")}>
                 {option.count}
               </span>

@@ -8,7 +8,7 @@ export function LoginWelcomeSection() {
     >
       <header className="inline-flex items-center gap-4">
         <div
-          className="relative h-[60px] w-[60px] overflow-hidden rounded-xl bg-[#7a1f32]"
+          className="relative h-[60px] w-[60px] overflow-hidden rounded-xl bg-maroon"
           role="img"
           aria-label="QuestGo logo"
         >
@@ -27,16 +27,16 @@ export function LoginWelcomeSection() {
           <span className="text-white">Welcome Back to </span>
           <span className="text-[#d9aa28]">QuestGo.</span>
         </h1>
-        <p className="font-inter text-lg leading-relaxed text-[#fbf8f0]">
+        <p className="font-inter text-lg leading-relaxed text-cream">
           Your next Quest is waiting. Hop on to resolve pending tasks, deliver favors, or post something you need completed today.
         </p>
       </section>
 
       <footer className="inline-flex flex-wrap items-center gap-3">
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#f6ecc8] bg-[#fdf9eb] px-2 py-1 font-inter text-[11px] font-semibold tracking-[0.06px] text-[#7a1f32]">
+        <span className="inline-flex items-center gap-1 rounded-full border border-parchment bg-[#fdf9eb] px-2 py-1 font-inter text-xs font-semibold tracking-[0.06px] text-maroon">
           <span aria-hidden="true">&#10003;</span> CIT-U VERIFIED
         </span>
-        <p className="font-inter text-[13px] text-[#f6ecc8]">Safer peer-to-peer campus platform</p>
+        <p className="font-inter text-[13px] text-parchment">Safer peer-to-peer campus platform</p>
       </footer>
     </aside>
   );

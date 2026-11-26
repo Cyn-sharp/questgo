@@ -67,7 +67,7 @@ export default function AvailableQuests() {
               <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">
                 Available Quests Near You
               </h2>
-              <p className="text-xs sm:text-sm text-[#f6ecc8]/85">
+              <p className="text-xs sm:text-sm text-parchment/85">
                 Active quests on campus waiting for a runner
               </p>
             </div>
@@ -76,7 +76,7 @@ export default function AvailableQuests() {
           <ScrollReveal delayMs={100}>
             <Link
               href="/quests"
-              className="text-[#c9a227] font-semibold text-sm inline-flex items-center gap-1 hover:underline shrink-0 transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
+              className="text-gold-bright font-semibold text-sm inline-flex items-center gap-1 hover:underline shrink-0 transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
             >
               See All Quests
               <ArrowRight className="w-4 h-4" />
@@ -88,7 +88,7 @@ export default function AvailableQuests() {
           <QuestGridSkeleton count={3}/>
         ) : quests.length === 0 ? (
           <div className="text-center py-16 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
-            <p className="text-[#f6ecc8]/85 text-sm sm:text-base">
+            <p className="text-parchment/85 text-sm sm:text-base">
               No available quests right now. Check back soon!
             </p>
           </div>

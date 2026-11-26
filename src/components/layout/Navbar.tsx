@@ -54,7 +54,7 @@ export const HeaderContainer = (): ReactElement => {
   }, [isMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 flex w-full flex-col items-start border-b border-white/[0.08] bg-[#161414]/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 flex w-full flex-col items-start border-b border-white/[0.08] bg-dark/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
         <Link href="/#home" aria-label="QuestGo CIT-U Campus home" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
           <BrandMark />
@@ -91,7 +91,7 @@ export const HeaderContainer = (): ReactElement => {
           <button
             ref={menuButtonRef}
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold md:hidden"
             onClick={() => setIsMenuOpen((open) => !open)}
             aria-expanded={isMenuOpen}
             aria-controls="mobile-primary-navigation"
@@ -113,7 +113,7 @@ export const HeaderContainer = (): ReactElement => {
             animate={{ opacity: 1, height: "auto", y: 0 }}
             exit={{ opacity: 0, height: 0, y: -8 }}
             transition={{ duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-            className="w-full overflow-hidden border-t border-white/10 bg-[#161414] px-4 pb-4 pt-2 sm:px-6 md:hidden"
+            className="w-full overflow-hidden border-t border-white/10 bg-dark px-4 pb-4 pt-2 sm:px-6 md:hidden"
           >
             <ul className="flex flex-col gap-1">
               {marketingNavItems.map((item) => (
@@ -121,7 +121,7 @@ export const HeaderContainer = (): ReactElement => {
                   <Link
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-gold"
+                    className="flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-gold-bright"
                   >
                     {item.label}
                   </Link>
@@ -199,7 +199,7 @@ export const Navbar = (): ReactElement => {
   return (
     // Shown at every width: phones get the brand and avatar (links live in the bottom bar),
     // tablets and up get the full link row.
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#161414]/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-dark/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center gap-4 px-4 sm:px-6 lg:px-10">
         <Link href="/dashboard" aria-label="QuestGo home" className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
           <BrandMark />
@@ -212,7 +212,7 @@ export const Navbar = (): ReactElement => {
                 {item.href === "/requests" ? (
                   <NavLink href={item.href} active={isActive(item.href)} label={unreadLabel(item.label, unreadCount)}>
                     {item.label}
-                    <UnreadBadge count={unreadCount} className="ml-1.5 ring-[#161414]" />
+                    <UnreadBadge count={unreadCount} className="ml-1.5 ring-dark" />
                   </NavLink>
                 ) : (
                   <NavLink href={item.href} active={isActive(item.href)}>{item.label}</NavLink>
@@ -223,7 +223,7 @@ export const Navbar = (): ReactElement => {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <span className="hidden items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gold xl:inline-flex">
+          <span className="hidden items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-gold-bright xl:inline-flex">
             <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
             CIT-U Verified
           </span>

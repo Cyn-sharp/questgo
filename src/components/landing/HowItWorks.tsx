@@ -51,7 +51,7 @@ export const HowItWorks = () => {
           >
             How It Works
           </h2>
-          <p className="font-normal text-sm sm:text-base text-[#f6ecc8]/85 max-w-2xl">
+          <p className="font-normal text-sm sm:text-base text-parchment/85 max-w-2xl">
             Four simple steps to conquer your goals on campus
           </p>
         </header>
@@ -73,9 +73,9 @@ export const HowItWorks = () => {
               className="
                 group shine-wrap card-interactive
                 flex h-full flex-col items-start gap-2.5 p-5 sm:p-6
-                rounded-2xl border border-white/15 bg-white/95 backdrop-blur-md
+                rounded-2xl border border-white/15 bg-white
                 shadow-[0_8px_24px_rgba(0,0,0,0.2)]
-                hover:bg-[#5f1727] hover:border-[#c9a227]/50
+                hover:bg-maroon-dark hover:border-gold/50
                 hover:shadow-[0_18px_44px_rgba(0,0,0,0.4)]
               "
             >
@@ -83,9 +83,9 @@ export const HowItWorks = () => {
               <span
                 className="
                   relative z-[1]
-                  font-extrabold text-3xl sm:text-[40px] leading-none tracking-tight text-[#c9a227]
+                  font-extrabold text-3xl sm:text-[40px] leading-none tracking-tight text-gold-ink
                   transition-all duration-300
-                  group-hover:text-[#f6ecc8]
+                  group-hover:text-parchment
                   group-hover:scale-105
                 "
                 aria-hidden="true"
@@ -97,7 +97,7 @@ export const HowItWorks = () => {
               <h3
                 className="
                   relative z-[1]
-                  font-bold text-base sm:text-lg tracking-wide text-[#7a1f32]
+                  font-bold text-base sm:text-lg tracking-wide text-maroon
                   transition-colors duration-300
                   group-hover:text-white
                 "
@@ -109,7 +109,7 @@ export const HowItWorks = () => {
               <p
                 className="
                   relative z-[1]
-                  self-stretch font-normal text-xs sm:text-sm leading-relaxed text-[#4a4340]
+                  self-stretch font-normal text-xs sm:text-sm leading-relaxed text-muted
                   transition-colors duration-300
                   group-hover:text-white/90
                 "

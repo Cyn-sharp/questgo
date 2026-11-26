@@ -23,9 +23,9 @@ type FieldErrors = {
 };
 
 const inputBase =
-  "h-12 rounded-xl border px-3.5 font-inter text-sm font-medium text-[#161414] placeholder:text-gray-400 outline-none transition-colors";
+  "h-12 rounded-xl border px-3.5 font-inter text-sm font-medium text-dark placeholder:text-gray-500 outline-none transition-colors";
 const inputOk =
-  "border-[#e8e7e3] bg-[#fbf8f0] focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]";
+  "border-field bg-cream focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]";
 const inputBad =
   "border-red-400 bg-red-50/70 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-200";
 
@@ -253,11 +253,11 @@ export function LoginForm() {
               <p className="font-inter text-sm font-bold text-maroon">
                 {errorTitle || "Login error"}
               </p>
-              <p className="mt-1 font-inter text-[13px] leading-relaxed text-[#7a1f32]/90">
+              <p className="mt-1 font-inter text-[13px] leading-relaxed text-maroon/90">
                 {error}
               </p>
               {failedAttempts > 0 ? (
-                <p className="mt-2 font-inter text-[12px] text-[#7a1f32]/80">
+                <p className="mt-2 font-inter text-[12px] text-maroon/80">
                   Failed attempts: <strong>{failedAttempts}</strong>
                   {failedAttempts < 5
                     ? ` • ${attemptsLeft} tries left`
@@ -309,7 +309,7 @@ export function LoginForm() {
                 className={`flex h-12 items-center rounded-xl border transition-colors focus-within:bg-white focus-within:ring-2 ${
                   passwordHasError
                     ? "border-red-400 bg-red-50/70 focus-within:border-red-500 focus-within:ring-red-200"
-                    : "border-[#e8e7e3] bg-[#fbf8f0] focus-within:border-maroon focus-within:ring-[#7a1f3233]"
+                    : "border-[#e8e7e3] bg-cream focus-within:border-maroon focus-within:ring-[#7a1f3233]"
                 }`}
               >
                 <input
@@ -323,7 +323,7 @@ export function LoginForm() {
                     setPassword(e.target.value);
                     if (error || fieldErrors.password) clearErrors();
                   }}
-                  className="h-full min-w-0 flex-1 bg-transparent px-3.5 font-inter text-sm font-medium text-[#161414] placeholder:text-gray-400 outline-none"
+                  className="h-full min-w-0 flex-1 bg-transparent px-3.5 font-inter text-sm font-medium text-dark placeholder:text-gray-500 outline-none"
                   aria-invalid={passwordHasError}
                   required
                 />

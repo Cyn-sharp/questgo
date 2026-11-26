@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
+import { isAllowedPhotoUrl } from "@/lib/auth/profile-photo";
 import { EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
 
 export async function POST(request: Request) {
@@ -23,18 +24,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "Registration details do not match the authenticated account." }, { status: 401 });
     }
 
-    await adminDb.collection("users").doc(decodedToken.uid).set(
-      {
-        id: decodedToken.uid,
-        email,
-        fullName,
-        isVerified: decodedToken.email_verified === true,
-        ...(body.profilePhotoUrl ? { profilePhotoUrl: body.profilePhotoUrl } : {}),
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    if (fullName.length > 100) {
+      return NextResponse.json({ message: "Full name must be 100 characters or fewer." }, { status: 400 });
+    }
+    if (body.profilePhotoUrl && !isAllowedPhotoUrl(body.profilePhotoUrl)) {
+      return NextResponse.json({ message: "Invalid profile photo." }, { status: 400 });
+    }
+
+    const userRef = adminDb.collection("users").doc(decodedToken.uid);
+    await adminDb.runTransaction(async (tx) => {
+      const existing = await tx.get(userRef);
+      tx.set(
+        userRef,
+        {
+          id: decodedToken.uid,
+          email,
+          fullName,
+          isVerified: decodedToken.email_verified === true,
+          ...(body.profilePhotoUrl ? { profilePhotoUrl: body.profilePhotoUrl } : {}),
+          // Re-running setup must not rewrite the original signup time.
+          ...(existing.exists && existing.data()?.createdAt ? {} : { createdAt: FieldValue.serverTimestamp() }),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
 
     return NextResponse.json({ ok: true, emailVerified: decodedToken.email_verified === true });
   } catch (error) {

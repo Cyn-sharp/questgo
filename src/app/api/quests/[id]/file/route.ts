@@ -11,7 +11,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const quest = snapshot.data();
     if (!quest) throw new QuestError("Quest not found.", 404);
     if (quest.requesterId !== actor.uid && quest.questRunnerId !== actor.uid) throw new QuestError("Only the requester and assigned runner can open this file.", 403);
-    if (!quest.attachment) throw new QuestError("No printing file is attached.", 404);
+    if (!quest.attachment) throw new QuestError(quest.attachmentRemovedAt ? "This printing file was deleted after the 7-day retention period." : "No printing file is attached.", quest.attachmentRemovedAt ? 410 : 404);
     const [buffer] = await questBucket().file(quest.attachment.path).download();
     return new Response(new Uint8Array(buffer), { headers: {
       "Content-Type": quest.attachment.contentType,

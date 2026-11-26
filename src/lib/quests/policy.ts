@@ -30,6 +30,9 @@ export function validateQuest(input: unknown, hasAttachment = false) {
   if (!QUEST_CATEGORIES.includes(category)) throw new QuestError("Invalid category.");
   if (!meaningfulText(data.title, 5, 120)) throw new QuestError("Write a clear quest title (5–120 characters), not a placeholder.");
   if (!meaningfulText(data.description, 20, 3000)) throw new QuestError("Describe the task in 20–3,000 characters, not a placeholder.");
+  // The meet-up time is optional; when given it must be a real clock time.
+  const meetupTime = optionalText("preferredTime", 100);
+  if (meetupTime && !/^(1[0-2]|[1-9]):[0-5]\d (AM|PM)$/.test(meetupTime)) throw new QuestError("Choose a valid meet-up time.");
   let requirements: Record<string, string>;
   try { requirements = validateRequirements(category, data.requirements); }
   catch (error) { throw new QuestError(error instanceof Error ? error.message : "Invalid requirements."); }

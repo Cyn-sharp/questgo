@@ -20,7 +20,7 @@ const tabs: TabItem[] = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Find", href: "/quests", icon: Search },
   { label: "Post", href: "/post-quest", icon: PlusCircle, isCenter: true },
-  { label: "My Quests", href: "/requests", icon: ClipboardList },
+  { label: "Quests", href: "/requests", icon: ClipboardList },
   { label: "Profile", href: "/profile", icon: User },
 ];
 
@@ -89,7 +89,7 @@ export function DashboardBottomNav() {
                     <div
                       className="
                         absolute -inset-3
-                        bg-[#c9a227]/20 rounded-full
+                        bg-gold/20 rounded-full
                         blur-xl pointer-events-none
                         transition-opacity duration-300
                         opacity-60 group-hover:opacity-100
@@ -107,7 +107,7 @@ export function DashboardBottomNav() {
                       className="
                         relative flex h-14 w-14 items-center justify-center
                         rounded-full
-                        bg-gradient-to-br from-[#e0c353] via-[#c9a227] to-[#9a7d14]
+                        bg-gradient-to-br from-[#e0c353] via-gold to-[#9a7d14]
                         shadow-[0_6px_24px_rgba(201,162,39,0.5),0_2px_8px_rgba(201,162,39,0.3)]
                         border-[3px] border-white
                         transition-shadow duration-300
@@ -130,12 +130,12 @@ export function DashboardBottomNav() {
 
                     <span
                       className={`
-                        mt-2 text-[9px] font-extrabold tracking-[0.08em] uppercase leading-none
+                        mt-2 whitespace-nowrap text-xs font-extrabold tracking-[0.04em] uppercase leading-none
                         transition-colors duration-300
                         ${
                           active
-                            ? "text-[#c9a227]"
-                            : "text-[#4a4340]/70 group-hover:text-[#7a1f32]"
+                            ? "text-gold-ink"
+                            : "text-muted/70 group-hover:text-maroon"
                         }
                       `}
                     >
@@ -185,7 +185,7 @@ export function DashboardBottomNav() {
                   {active && (
                     <motion.span
                       layoutId="floating-nav-indicator"
-                      className="absolute top-0 h-[3px] w-6 rounded-full bg-[#c9a227]"
+                      className="absolute top-0 h-[3px] w-6 rounded-full bg-gold"
                       transition={{
                         type: "spring",
                         stiffness: 380,
@@ -206,8 +206,8 @@ export function DashboardBottomNav() {
                       transition-all duration-300
                       ${
                         active
-                          ? "text-[#7a1f32] drop-shadow-[0_1px_4px_rgba(122,31,50,0.15)]"
-                          : "text-[#4a4340]/55 group-hover:text-[#7a1f32]"
+                          ? "text-maroon drop-shadow-[0_1px_4px_rgba(122,31,50,0.15)]"
+                          : "text-muted/55 group-hover:text-maroon"
                       }
                     `}
                   >
@@ -220,12 +220,12 @@ export function DashboardBottomNav() {
 
                   <span
                     className={`
-                      text-[9px] font-bold tracking-[0.05em] uppercase leading-none
+                      whitespace-nowrap text-xs font-bold tracking-[0.04em] uppercase leading-none
                       transition-all duration-300
                       ${
                         active
-                          ? "text-[#7a1f32]"
-                          : "text-[#4a4340]/50 group-hover:text-[#7a1f32]"
+                          ? "text-maroon"
+                          : "text-muted/50 group-hover:text-maroon"
                       }
                     `}
                   >

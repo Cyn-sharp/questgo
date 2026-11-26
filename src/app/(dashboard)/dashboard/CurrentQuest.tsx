@@ -35,22 +35,22 @@ export default function CurrentQuest() {
   const href = `/quests/active?id=${encodeURIComponent(quest.id)}`;
 
   return (
-    <article className="flex flex-col gap-4 rounded-2xl border border-[#c9a227]/40 bg-white p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)] sm:flex-row sm:items-center sm:p-6">
+    <article className="flex flex-col gap-4 rounded-2xl border border-gold/40 bg-white p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)] sm:flex-row sm:items-center sm:p-6">
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-          <span className="text-[#7a1f32]">{requester ? "Your request" : "You're running"}</span>
-          <span className="rounded-full bg-[#f6ecc8] px-2.5 py-0.5 text-[#8a6a1f]">{STATUS_LABEL[quest.status] ?? quest.status}</span>
+          <span className="text-maroon">{requester ? "Your request" : "You're running"}</span>
+          <span className="rounded-full bg-parchment px-2.5 py-0.5 text-[#8a6a1f]">{STATUS_LABEL[quest.status] ?? quest.status}</span>
         </div>
-        <h2 className="truncate text-lg font-bold text-[#161414] sm:text-xl">{quest.title}</h2>
-        <p className="text-sm text-[#4a4340]">{questNextStep(quest, requester)}</p>
+        <h2 className="truncate text-lg font-bold text-dark sm:text-xl">{quest.title}</h2>
+        <p className="text-sm text-muted">{questNextStep(quest, requester)}</p>
       </div>
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
         {trackable && (
-          <Link href={`${href}#runner-map`} className="inline-flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#7a1f32] px-4 py-2.5 text-sm font-semibold text-[#7a1f32] hover:bg-[#fbf8f0]">
+          <Link href={`${href}#runner-map`} className="inline-flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-maroon px-4 py-2.5 text-sm font-semibold text-maroon hover:bg-cream">
             <MapPin className="h-4 w-4" /> Track runner
           </Link>
         )}
-        <Link href={href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#7a1f32] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95">
+        <Link href={href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-maroon px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95">
           Open quest <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

@@ -1,4 +1,4 @@
-import { apiError, quests, readBody, requireApprovedId, verifiedActor } from "@/lib/quests/api";
+import { apiError, limiter, quests, readBody, requireApprovedId, verifiedActor } from "@/lib/quests/api";
 import { randomUUID } from "node:crypto";
 import { QuestError, validateQuest } from "@/lib/quests/policy";
 import { MAX_PRINT_FILE_BYTES, validatePrintFile } from "@/lib/quests/files";
@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const actor = await verifiedActor(request);
     // Posting a quest needs an admin-approved CIT-U ID (checked before any file is read).
     await requireApprovedId(actor.uid, "post");
+    await limiter.hit(actor.uid, "create-quest", 10, 60 * 60 * 1000);
     if (!request.headers.get("content-type")?.startsWith("multipart/form-data")) {
       const id = await quests.create(actor.uid, actor.name, await readBody(request));
       return Response.json({ id }, { status: 201 });

@@ -138,9 +138,9 @@ function QuestCard({ quest }: { quest: Quest }) {
     <article
       className="
         group shine-wrap card-interactive h-full rounded-2xl border border-white/15
-        bg-white/95 backdrop-blur-md p-5 sm:p-6 shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col
+        bg-white p-5 sm:p-6 shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col
         hover:shadow-[0_18px_44px_rgba(0,0,0,0.35)]
-        hover:bg-[#5f1727] hover:border-[#c9a227]/50
+        hover:bg-maroon-dark hover:border-gold/50
       "
     >
       <div className="relative z-[1] flex flex-col h-full">
@@ -148,17 +148,17 @@ function QuestCard({ quest }: { quest: Quest }) {
         <div className="flex justify-between items-center mb-3 sm:mb-4">
           <span
             className="
-              bg-[#fdf0f2] text-[#7a1f32] text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-md
+              bg-[#fdf0f2] text-maroon text-xs sm:text-xs font-bold px-2.5 py-1 rounded-md
               tracking-wide uppercase transition-colors duration-500
-              group-hover:bg-white/15 group-hover:text-[#c9a227]
+              group-hover:bg-white/15 group-hover:text-gold-bright
             "
           >
             {quest.category}
           </span>
           <div
             className="
-              flex items-center text-[#7a1f32] text-xs sm:text-sm font-semibold gap-1.5
-              transition-colors duration-500 group-hover:text-[#c9a227]
+              flex items-center text-maroon text-xs sm:text-sm font-semibold gap-1.5
+              transition-colors duration-500 group-hover:text-gold-bright
             "
           >
             <Clock className="w-3.5 h-3.5" />
@@ -167,56 +167,56 @@ function QuestCard({ quest }: { quest: Quest }) {
         </div>
 
         {/* Title & Description */}
-        <h3 className="text-base sm:text-lg font-bold text-[#161414] mb-1.5 transition-colors duration-500 group-hover:text-white">
+        <h3 className="text-base sm:text-lg font-bold text-dark mb-1.5 transition-colors duration-500 group-hover:text-white">
           {quest.title}
         </h3>
-        <p className="text-xs sm:text-sm text-[#4a4340] leading-relaxed mb-4 line-clamp-2 transition-colors duration-500 group-hover:text-white/75">
+        <p className="text-xs sm:text-sm text-muted leading-relaxed mb-4 line-clamp-2 transition-colors duration-500 group-hover:text-white/75">
           {quest.description}
         </p>
 
         {/* Price */}
         <div className="flex items-end gap-2 mb-4 sm:mb-5">
-          <span className="text-2xl sm:text-3xl font-extrabold text-[#c9a227]">₱{quest.price}</span>
-          <span className="text-[11px] sm:text-xs text-[#4a4340] mb-1 font-medium transition-colors duration-500 group-hover:text-white/70">
+          <span className="text-2xl sm:text-3xl font-extrabold text-gold-ink group-hover:text-gold-bright">₱{quest.price}</span>
+          <span className="text-xs sm:text-xs text-muted mb-1 font-medium transition-colors duration-500 group-hover:text-white/70">
             Runner earnings
           </span>
         </div>
 
-        <p className="mb-4 text-sm text-[#7a1f32] group-hover:text-white">{quest.fundingLabel}<br />{quest.upfront === null ? "Upfront cost not recorded" : quest.upfront === 0 ? "₱0 upfront — earn without advancing money" : "Advance up to " + money(quest.upfront)}</p>
+        <p className="mb-4 text-sm text-maroon group-hover:text-white">{quest.fundingLabel}<br />{quest.upfront === null ? "Upfront cost not recorded" : quest.upfront === 0 ? "₱0 upfront — earn without advancing money" : "Advance up to " + money(quest.upfront)}</p>
         {/* Location & Details */}
-        <div className="flex flex-col gap-2 text-[11px] sm:text-xs text-[#4a4340] mb-4 sm:mb-5 flex-grow transition-colors duration-500 group-hover:text-white/80">
+        <div className="flex flex-col gap-2 text-xs sm:text-xs text-muted mb-4 sm:mb-5 flex-grow transition-colors duration-500 group-hover:text-white/80">
           <div className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-[#d8d3cc] group-hover:text-[#c9a227] transition-colors duration-500" />
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-subtle group-hover:text-gold-bright transition-colors duration-500" />
             <span className="truncate">{quest.location}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5">
-              <Navigation className="w-3.5 h-3.5 shrink-0 text-[#d8d3cc] group-hover:text-[#c9a227] transition-colors duration-500" />
+              <Navigation className="w-3.5 h-3.5 shrink-0 text-subtle group-hover:text-gold-bright transition-colors duration-500" />
               {quest.distance}
             </div>
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 shrink-0 text-[#d8d3cc] group-hover:text-[#c9a227] transition-colors duration-500" />
+              <Calendar className="w-3.5 h-3.5 shrink-0 text-subtle group-hover:text-gold-bright transition-colors duration-500" />
               {quest.time}
             </div>
           </div>
-          <div className="flex items-center justify-end gap-1 text-[#161414] font-bold text-xs sm:text-sm pt-1 transition-colors duration-500 group-hover:text-white">
-            <Star className="w-3.5 h-3.5 text-[#c9a227] fill-[#c9a227]" />
+          <div className="flex items-center justify-end gap-1 text-dark font-bold text-xs sm:text-sm pt-1 transition-colors duration-500 group-hover:text-white">
+            <Star className="w-3.5 h-3.5 text-gold-star fill-gold-star group-hover:text-gold-bright group-hover:fill-gold-bright" />
             {quest.rating}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 mt-auto pt-3 sm:pt-4 border-t border-[#e5e0d8] transition-colors duration-500 group-hover:border-white/20">
-          <span className="badge-gold gap-1 text-[9px] sm:text-[10px] transition-colors duration-500 group-hover:bg-white/15 group-hover:text-[#c9a227]">
+        <div className="flex items-center justify-between gap-2 mt-auto pt-3 sm:pt-4 border-t border-border transition-colors duration-500 group-hover:border-white/20">
+          <span className="badge-gold gap-1 text-xs sm:text-xs transition-colors duration-500 group-hover:bg-white/15 group-hover:text-gold-bright">
             <CheckCircle2 className="w-3 h-3" />
             CIT-U VERIFIED
           </span>
           <Link
             href={`/quests/viewquest?id=${encodeURIComponent(quest.id)}`}
             className="
-              bg-[#7a1f32] text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-lg
+              bg-maroon text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-2 rounded-lg
               transition-all duration-300 active:scale-95
-              group-hover:bg-white group-hover:text-[#7a1f32]
+              group-hover:bg-white group-hover:text-maroon
             "
           >
             View Quest
@@ -271,20 +271,20 @@ export function QuestsMarketplace() {
 
         {/* Search & Category Filter Card */}
         <ScrollReveal delayMs={80}>
-          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-4 sm:p-5 mb-6 sm:mb-8 shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+          <div className="rounded-2xl bg-white border border-white/40 p-4 sm:p-5 mb-6 sm:mb-8 shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
             {/* Search Input */}
             <div className="relative mb-4">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#4a4340]/60" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted/60" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search quests, categories, or tasks..."
                 className="
-                  w-full rounded-full border border-[#e5e0d8] bg-[#fbf8f0]
-                  pl-12 pr-4 py-3 text-sm text-[#161414] placeholder:text-[#4a4340]/60
+                  w-full rounded-full border border-field bg-cream
+                  pl-12 pr-4 py-3 text-sm text-dark placeholder:text-muted/80
                   outline-none transition-all duration-300
-                  focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/25
+                  focus:border-gold focus:ring-2 focus:ring-gold/25
                 "
               />
             </div>
@@ -303,8 +303,8 @@ export function QuestsMarketplace() {
                       px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all duration-300 active:scale-95
                       ${
                         isActive
-                          ? "bg-[#7a1f32] text-white shadow-[0_8px_18px_rgba(122,31,50,0.25)]"
-                          : "bg-white text-[#4a4340] border border-[#e5e0d8] hover:border-[#7a1f32] hover:text-[#7a1f32]"
+                          ? "bg-maroon text-white shadow-[0_8px_18px_rgba(122,31,50,0.25)]"
+                          : "bg-white text-muted border border-border hover:border-maroon hover:text-maroon"
                       }
                     `}
                   >
@@ -320,15 +320,15 @@ export function QuestsMarketplace() {
         {isLoading ? (
           <QuestGridSkeleton count={6} withDescription />
         ) : hasError ? (
-          <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
-            <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">
+          <div className="rounded-2xl bg-white border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+            <p className="text-base sm:text-lg font-bold text-dark mb-2">
               Unable to load quests right now.
             </p>
-            <p className="text-sm text-[#4a4340] mb-5">Please try again.</p>
+            <p className="text-sm text-muted mb-5">Please try again.</p>
             <button
               type="button"
               onClick={() => void loadQuests()}
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
             >
               Try again
             </button>
@@ -348,11 +348,11 @@ export function QuestsMarketplace() {
           </div>
         ) : (
           <ScrollReveal>
-            <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
-              <p className="text-base sm:text-lg font-bold text-[#161414] mb-2">
+            <div className="rounded-2xl bg-white border border-white/40 p-10 text-center shadow-[0_12px_32px_rgba(0,0,0,0.15)]">
+              <p className="text-base sm:text-lg font-bold text-dark mb-2">
                 No quests available right now.
               </p>
-              <p className="text-sm text-[#4a4340] mb-5">
+              <p className="text-sm text-muted mb-5">
                 Check back later for new opportunities.
               </p>
               <button
@@ -362,7 +362,7 @@ export function QuestsMarketplace() {
                   setZeroUpfront(false);
                   setActiveCategory("All");
                 }}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white text-sm font-bold active:scale-95 transition-all shadow-[0_4px_12px_rgba(122,31,50,0.2)]"
               >
                 Clear filters
               </button>

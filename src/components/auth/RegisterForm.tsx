@@ -299,12 +299,12 @@ export function RegisterForm() {
                   <span className="block truncate font-inter text-[13px] font-semibold">
                     {idPhoto ? idPhoto.name : "Click to upload your CIT-U ID"}
                   </span>
-                  <span className="block font-inter text-[11px] font-normal text-muted">
+                  <span className="block font-inter text-xs font-normal text-muted">
                     Front side, JPG or PNG. Your name and photo must be clear.
                   </span>
                 </span>
               </button>
-              <p id="student-id-help" className="font-inter text-[11px] leading-4 text-muted">
+              <p id="student-id-help" className="font-inter text-xs leading-4 text-muted">
                 An admin checks your ID to confirm you&apos;re a CIT-U student. Only QuestGo admins can see it.
               </p>
             </div>
