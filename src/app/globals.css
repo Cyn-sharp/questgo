@@ -493,6 +493,8 @@ select:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
 /* Notification bell: a short ring when something new arrives. */
 @keyframes bell-ring {
   0%, 100% { transform: rotate(0); }

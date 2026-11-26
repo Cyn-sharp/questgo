@@ -673,6 +673,8 @@ test("administrator decisions are written to an admin-only audit log", { timeout
   // Clients can never read or write the log directly.
   await assert.rejects(getDocs(collection(client("hx-admin"), "auditLog")), { code: "permission-denied" });
   await assert.rejects(setDoc(doc(client("hx-requester"), "auditLog", "forged"), { action: "x" }), { code: "permission-denied" });
+});
+
 test("notification settings are private to their owner and accept only valid fields", { timeout: 30000 }, async () => {
   const owner = "requester";
   const path = ["users", owner, "preferences", "notifications"];
