@@ -673,4 +673,26 @@ test("administrator decisions are written to an admin-only audit log", { timeout
   // Clients can never read or write the log directly.
   await assert.rejects(getDocs(collection(client("hx-admin"), "auditLog")), { code: "permission-denied" });
   await assert.rejects(setDoc(doc(client("hx-requester"), "auditLog", "forged"), { action: "x" }), { code: "permission-denied" });
+test("notification settings are private to their owner and accept only valid fields", { timeout: 30000 }, async () => {
+  const owner = "requester";
+  const path = ["users", owner, "preferences", "notifications"];
+  const valid = { messages: false, questUpdates: true, newQuests: true, newQuestCategories: ["Printing"] };
+  const mine = client(owner);
+  await setDoc(doc(mine, ...path), { ...valid, updatedAt: serverTimestamp() });
+  const stored = (await getDoc(doc(mine, ...path))).data();
+  assert.ok(stored.updatedAt);
+  assert.deepEqual({ ...stored, updatedAt: undefined }, { ...valid, updatedAt: undefined });
+  await setDoc(doc(mine, ...path), { ...valid, messages: true, updatedAt: serverTimestamp() });
+
+  await assert.rejects(getDoc(doc(client("outsider"), ...path)), "others cannot read");
+  await assert.rejects(setDoc(doc(client("outsider"), ...path), { ...valid, updatedAt: serverTimestamp() }), "others cannot write");
+  await assert.rejects(setDoc(doc(client("unverified", false), "users", "unverified", "preferences", "notifications"), { ...valid, updatedAt: serverTimestamp() }), "unverified");
+  await assert.rejects(setDoc(doc(mine, "users", owner, "preferences", "other"), { ...valid, updatedAt: serverTimestamp() }), "only the notifications document");
+  await assert.rejects(setDoc(doc(mine, ...path), { ...valid, extra: true, updatedAt: serverTimestamp() }), "extra field");
+  await assert.rejects(setDoc(doc(mine, ...path), { messages: true, updatedAt: serverTimestamp() }), "missing fields");
+  await assert.rejects(setDoc(doc(mine, ...path), { ...valid, messages: "yes", updatedAt: serverTimestamp() }), "non-boolean");
+  await assert.rejects(setDoc(doc(mine, ...path), { ...valid, newQuestCategories: Array(11).fill("Other"), updatedAt: serverTimestamp() }), "too many categories");
+  await assert.rejects(setDoc(doc(mine, ...path), { ...valid, updatedAt: new Date(0) }), "client-chosen time");
+  await assert.rejects(deleteDoc(doc(mine, ...path)), "no deletes");
+  assert.equal((await db.doc(path.join("/")).get()).data().messages, true);
 });

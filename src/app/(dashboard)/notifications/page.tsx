@@ -27,4 +27,8 @@ export default function NotificationsPage() {
       </Panel>
     </SubPage>
   );
+import { NotificationSettings } from "@/components/notifications/NotificationSettings";
+
+export default function Page() {
+  return <NotificationSettings />;
 }

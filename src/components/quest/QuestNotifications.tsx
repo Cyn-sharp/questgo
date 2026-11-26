@@ -2,19 +2,33 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MessageCircle, X } from "lucide-react";
-import { collection, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from "firebase/firestore";
 import { db } from "@/lib/auth/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import { useNotificationQuests } from "@/hooks/useQuests";
+import { useBlockedUsers, useNotificationQuests } from "@/hooks/useQuests";
 import { conversationPriority, isUnread, selectConversations, unreadQuestIds, type InboxEntry } from "@/lib/quests/conversations";
 import { questUpdate } from "@/lib/quests/progress";
 import type { Quest } from "@/types/quest";
 import { InboxSkeleton } from "@/components/skeletons/PageSkeletons";
+import { alertEnabled, DEFAULT_NOTIFICATION_PREFS, newQuestText, parsePrefs, wantsNewQuest, type AlertKind, type NotificationPrefs } from "@/lib/notifications/preferences";
+import { showDeviceAlert } from "@/lib/notifications/device";
+import { alertId } from "@/lib/notifications/history";
+import { recordAlert } from "@/lib/notifications/history-store";
 
 type Inbox = InboxEntry & { title: string; sentAt: Timestamp };
 type Notice = { id: number; text: string; href: string };
-const Context = createContext<{ openChat: (id: string | null) => void; unreadCount: number }>({ openChat: () => {}, unreadCount: 0 });
+type NotificationContext = {
+  openChat: (id: string | null) => void;
+  unreadCount: number;
+  prefs: NotificationPrefs;
+  prefsLoaded: boolean;
+  prefsError: string;
+  savePrefs: (prefs: NotificationPrefs) => Promise<void>;
+};
+const Context = createContext<NotificationContext>({ openChat: () => {}, unreadCount: 0, prefs: DEFAULT_NOTIFICATION_PREFS, prefsLoaded: false, prefsError: "",
+  savePrefs: async () => { throw new Error("Sign in to change notification settings."); } });
 export const useQuestNotifications = () => useContext(Context);
 
 export function QuestNotifications({ children }: { children: ReactNode }) {
@@ -40,6 +54,13 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
   const [notices, setNotices] = useState<Notice[]>([]);
   const [error, setError] = useState("");
   const [inboxLoaded, setInboxLoaded] = useState(false);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [prefsError, setPrefsError] = useState("");
+  const prefsRef = useRef<NotificationPrefs>(DEFAULT_NOTIFICATION_PREFS);
+  const blocked = useBlockedUsers();
+  const blockedRef = useRef<ReadonlySet<string>>(new Set());
+  const router = useRouter();
   const activeChat = useRef<string | null>(null);
   const previous = useRef<Map<string, Quest> | null>(null);
   const inboxRef = useRef<Inbox[]>([]);
@@ -48,6 +69,18 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
   const announce = useCallback((text: string, href: string) => {
     setNotices((items) => [...items, { id: ++serial.current, text, href }].slice(-20));
   }, []);
+  // Settings decide whether an event interrupts the user. The bell's list,
+  // unread badges and "New" tags are not interruptions, so they always stay
+  // accurate. Chats are listed by the Messages button, not the bell.
+  const notify = useCallback((kind: AlertKind, text: string, href: string) => {
+    if (kind !== "message") recordAlert(uid, { id: alertId(kind, href, text), kind, text, href, at: Date.now() });
+    if (!alertEnabled(prefsRef.current, kind)) return;
+    announce(text, href);
+    if (document.visibilityState !== "visible" || !document.hasFocus()) showDeviceAlert(text, href, () => router.push(href));
+  }, [announce, router, uid]);
+  const savePrefs = useCallback(async (next: NotificationPrefs) => {
+    await setDoc(doc(db, "users", uid, "preferences", "notifications"), { ...next, updatedAt: serverTimestamp() });
+  }, [uid]);
   // Read state lives on the inbox document, so opening a chat on one device
   // clears the badge on every device signed in to this account.
   const markOpenRead = useCallback(() => {
@@ -72,6 +105,32 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
     };
   }, [markOpenRead]);
 
+  useEffect(() => onSnapshot(doc(db, "users", uid, "preferences", "notifications"), (snapshot) => {
+    prefsRef.current = parsePrefs(snapshot.data());
+    setPrefs(prefsRef.current);
+    setPrefsLoaded(true);
+    setPrefsError("");
+  }, () => { setPrefsLoaded(true); setPrefsError("Notification settings could not load. Default alerts are on."); }), [uid]);
+
+  useEffect(() => { blockedRef.current = new Set(blocked.map((entry) => entry.id)); }, [blocked]);
+
+  // New marketplace quests: listen only while the user has asked for them.
+  useEffect(() => {
+    if (!prefs.newQuests) return;
+    let seen: Set<string> | null = null;
+    return onSnapshot(query(collection(db, "quests"), where("status", "==", "available")), (snapshot) => {
+      // The first snapshot is what was already posted; only later arrivals are news.
+      if (seen) for (const change of snapshot.docChanges()) {
+        if (change.type !== "added" || seen.has(change.doc.id)) continue;
+        const quest = { ...change.doc.data(), id: change.doc.id } as Quest & { expiresAt?: Timestamp };
+        if (wantsNewQuest(quest, uid, prefsRef.current, blockedRef.current, Date.now())) {
+          notify("newQuest", newQuestText(quest), `/quests/viewquest?id=${encodeURIComponent(quest.id)}`);
+        }
+      }
+      seen = new Set([...(seen || []), ...snapshot.docs.map((record) => record.id)]);
+    }, () => { /* The marketplace page reports its own connection errors. */ });
+  }, [prefs.newQuests, uid, notify]);
+
   useEffect(() => {
     let initialized = false;
     return onSnapshot(collection(db, "users", uid, "questInbox"), (snapshot) => {
@@ -85,13 +144,13 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
         // Marking a message read also changes this document; only a new message is news.
         if (!isUnread(item, legacySeen)) continue;
         if (activeChat.current !== item.questId || document.visibilityState !== "visible" || !document.hasFocus()) {
-          announce(`New message about “${item.title}”`, `/messenger?id=${encodeURIComponent(item.questId)}`);
+          notify("message", `New message about “${item.title}”`, `/messenger?id=${encodeURIComponent(item.questId)}`);
         }
       }
       initialized = true;
       markOpenRead();
     }, () => { setInboxLoaded(true); setError("Message alerts could not connect. Open My Quests to check your chats."); });
-  }, [uid, announce, markOpenRead, legacySeen]);
+  }, [uid, notify, markOpenRead, legacySeen]);
 
   useEffect(() => {
     if (!panel) return;
@@ -108,12 +167,12 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
       // A newly assigned runner did not have this quest in their previous list.
       const text = before ? questUpdate(before, quest, quest.requesterId === uid)
         : quest.status === "accepted" ? (quest.requesterId === uid ? "Your quest was accepted! Open chat to arrange the details." : "Quest accepted! Message the requester before you start.") : null;
-      if (text) announce(text, `/quests/active?id=${encodeURIComponent(id)}`);
+      if (text) notify("questUpdate", text, `/quests/active?id=${encodeURIComponent(id)}`);
     }
     // A quest can leave the active query before it enters the closed query.
     // Keep a small transition baseline so that completion is still announced.
     previous.current = new Map([...previous.current || [], ...quests].slice(-100));
-  }, [posted, running, loading, uid, announce]);
+  }, [posted, running, loading, uid, notify]);
 
   const { active, closed } = selectConversations([...posted, ...running]);
   const conversations = [...active, ...closed];
@@ -127,7 +186,7 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
   }, [notice]);
   const unread = unreadQuestIds(inbox, conversations.map((quest) => quest.id), legacySeen);
 
-  return <Context.Provider value={{ openChat, unreadCount: unread.size }}>
+  return <Context.Provider value={{ openChat, unreadCount: unread.size, prefs, prefsLoaded, prefsError, savePrefs }}>
     {children}
     <div className="fixed right-4 bottom-28 md:bottom-6 z-[60]">
       {panel && <section aria-label="Messages" className="mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border bg-white p-4 text-gray-900 shadow-xl">
