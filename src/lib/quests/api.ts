@@ -5,6 +5,7 @@ import { questService } from "./service";
 import { safetyService } from "./safety-service";
 import { rateLimiter } from "./ratelimit";
 import { auditService } from "./audit";
+import { runnerService } from "./runner-service";
 import { createActorCache } from "./actor-cache";
 import { questBucket } from "./storage";
 
@@ -13,6 +14,7 @@ export const safety = safetyService(adminDb, audit);
 export const quests = questService(adminDb, safety, {
   remove: async (path) => { await questBucket().file(path).delete({ ignoreNotFound: true }); },
 });
+export const runners = runnerService(adminDb, audit);
 export const limiter = rateLimiter(adminDb);
 
 const actors = createActorCache(30_000);

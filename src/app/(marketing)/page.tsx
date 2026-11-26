@@ -4,6 +4,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { SafetyChecklist } from "@/components/landing/SafetyChecklist";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { FinalCta } from "@/components/landing/FinalCta";
+import { RunnerCta } from "@/components/landing/RunnerCta";
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
       <TrustSection />
       <HowItWorks />
       <SafetyChecklist />
+      <RunnerCta />
       
       {/* 
         This acts as the final emotional validation. 

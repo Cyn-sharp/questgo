@@ -43,6 +43,7 @@ const input = { fundingMethod: "no_purchase", purchaseBudget: 0, title: "Pick up
 before(async () => {
   for (const uid of ["requester", "runner1", "runner2", "outsider", "unverified"]) {
     await auth.createUser({ uid, email: `${uid}@cit.edu`, displayName: uid, emailVerified: uid !== "unverified", password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: `${uid}@cit.edu`, password: "Emulator-only-123!", returnSecureToken: true }),
     });
@@ -196,6 +197,7 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
 test("S2-10 acceptance contract: missing quests, audit timestamp, marketplace removal, role views, and Accepted -> In Progress guards", { timeout: 60000 }, async () => {
   for (const id of ["s2-requester", "s2-runner", "s2-outsider"]) {
     await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
   }
@@ -284,6 +286,7 @@ test("printing upload is required, preserved, and private to participants", asyn
 test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings and administrator boundaries", { timeout: 90000 }, async () => {
   for (const id of ["recovery-requester", "recovery-runner", "recovery-next", "recovery-admin"]) {
     await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     if (id === "recovery-admin") await auth.setCustomUserClaims(id, { admin: true });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
@@ -355,6 +358,7 @@ test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings a
 test("reports are deduplicated and admin-only; blocks hide quests, stop acceptance both ways, and stay private", { timeout: 90000 }, async () => {
   for (const id of ["safety-requester", "safety-runner", "safety-other", "safety-admin"]) {
     await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     if (id === "safety-admin") await auth.setCustomUserClaims(id, { admin: true });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
@@ -418,6 +422,7 @@ test("reports are deduplicated and admin-only; blocks hide quests, stop acceptan
 test("runner location is private to participants, rate-limited, and deleted when the quest ends", { timeout: 60000 }, async () => {
   for (const id of ["map-requester", "map-runner", "map-outsider"]) {
     await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
   }
@@ -456,6 +461,7 @@ test("blocks stop chat, suspension closes the user's quests, and the expiry swee
   const ids = { req: "hx-requester", run: "hx-runner", run2: "hx-runner2", other: "hx-other", admin: "hx-admin" };
   for (const uid of Object.values(ids)) {
     await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
     if (uid === ids.admin) await auth.setCustomUserClaims(uid, { admin: true });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[uid] = (await response.json()).idToken;
@@ -544,6 +550,7 @@ test("the sweep closes quests with no activity for two hours, but chat counts as
   const ids = ["ab-requester", "ab-requester2", "ab-runner"];
   for (const uid of ids) {
     await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[uid] = (await response.json()).idToken;
   }
@@ -568,6 +575,7 @@ test("the sweep closes quests with no activity for two hours, but chat counts as
 test("printing files are deleted after retention, but never while a reposted quest still uses them", { timeout: 60000 }, async () => {
   const uid = "at-requester";
   await auth.createUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
   const login = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
   tokens[uid] = (await login.json()).idToken;
   const printing = { ...input, fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Requester pays the campus print shop directly", category: "Printing", title: "Print my retention module",
