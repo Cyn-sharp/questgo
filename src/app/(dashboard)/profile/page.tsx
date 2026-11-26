@@ -36,6 +36,7 @@ import type { User as UserProfile } from "@/types/user";
 import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons";
 import { VerifiedRunnerBadge } from "@/components/runner/VerifiedRunnerBadge";
 import { useRunnerStatus } from "@/hooks/useRunnerStatus";
+import { useIdStatus } from "@/hooks/useIdStatus";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -83,11 +84,20 @@ function ScrollReveal({
 }
 
 
+// What the Verification row says, from the admin's decision on the student's CIT-U ID.
+const ID_STATUS_TEXT = {
+  loading: "Checking your CIT-U ID status",
+  approved: "Your CIT-U ID is verified",
+  pending: "Your ID is waiting for admin review",
+  rejected: "Your ID photo needs to be sent again",
+  missing: "Verify your CIT-U ID to post and accept quests",
+} as const;
+
 const MENU_ITEMS = [
   {
     id: "verification",
     title: "Verification",
-    description: "Verified via your CIT-U email",
+    description: "Check your CIT-U ID status",
     href: "/profile/verification",
     icon: ShieldCheck,
     iconBg: "bg-[#f6f0e8]",
@@ -147,6 +157,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
   const { status: runnerStatus } = useRunnerStatus();
+  const { status: idStatus, approved: idApproved } = useIdStatus();
   const [editOpen, setEditOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState({ completed: 0, posted: 0, earnings: 0 });
@@ -296,7 +307,7 @@ export default function ProfilePage() {
                         className="rounded-full bg-white border-4 border-white shadow-[0_8px_20px_rgba(0,0,0,0.2)] w-20 h-20 sm:w-24 sm:h-24"
                         unoptimized
                       />
-                      {profile.isVerified && (
+                      {idApproved && (
                         <span className="absolute bottom-0 right-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gold border-[3px] border-white flex items-center justify-center shadow-md">
                           <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                         </span>
@@ -314,10 +325,10 @@ export default function ProfilePage() {
                         {runnerStatus === "approved" ? (
                           <VerifiedRunnerBadge />
                         ) : (
-                          profile.isVerified && (
+                          idApproved && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-parchment text-maroon px-2 py-0.5 text-xs sm:text-xs font-bold tracking-wide uppercase shrink-0">
                               <CheckCircle2 className="w-3 h-3" />
-                              Verified
+                              ID Verified
                             </span>
                           )
                         )}
@@ -452,7 +463,7 @@ export default function ProfilePage() {
                           {item.title}
                         </p>
                         <p className="text-xs sm:text-sm text-muted truncate">
-                          {item.description}
+                          {item.id === "verification" ? ID_STATUS_TEXT[idStatus] : item.description}
                         </p>
                       </div>
 

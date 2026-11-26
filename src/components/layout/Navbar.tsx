@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { BadgeCheck } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
+import { useIdStatus } from "@/hooks/useIdStatus";
 import { db } from "@/lib/auth/firebase";
 import { getProfileName } from "@/lib/auth/profile-name";
 import { BrandMark } from "@/components/ui/BrandMark";
@@ -167,6 +168,7 @@ const dashboardNavItems = [
 export const Navbar = (): ReactElement => {
   const pathname = usePathname();
   const { user: firebaseUser } = useAuth();
+  const { approved: idApproved } = useIdStatus();
   const [savedProfile, setSavedProfile] = useState<{
     uid: string; fullName?: string; profilePhotoUrl?: string;
   } | null>(null);
@@ -224,10 +226,12 @@ export const Navbar = (): ReactElement => {
         </nav>
 
         <div className="ml-auto flex items-center gap-3 md:ml-0">
-          <span className="hidden items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-gold-bright xl:inline-flex">
-            <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-            CIT-U Verified
-          </span>
+          {idApproved && (
+            <span className="hidden items-center gap-1.5 rounded-full border border-gold/25 bg-gold/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-gold-bright xl:inline-flex">
+              <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+              CIT-U Verified
+            </span>
+          )}
           <NotificationBell />
           <Link
             href="/profile"
