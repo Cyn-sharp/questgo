@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
+// One check for everyone: an approved CIT-U ID lets a student both post and run quests.
 const STEPS = [
-  { n: "1", title: "Apply", body: "Tell us when you're free and confirm a short health and fitness self-declaration." },
-  { n: "2", title: "Get approved", body: "An administrator reviews your application. Only approved runners can accept quests." },
-  { n: "3", title: "Start earning", body: "Take quests from classmates, get a Verified Runner badge on your profile." },
+  { n: "1", title: "Sign up", body: "Create your QuestGo account and send a photo of your CIT-U ID." },
+  { n: "2", title: "Get verified", body: "An administrator checks your ID. Once it's approved, you can post and run quests." },
+  { n: "3", title: "Start earning", body: "Pick quests from classmates that fit your free time between classes." },
 ];
 
 export function RunnerCta() {
@@ -15,13 +16,13 @@ export function RunnerCta() {
           <div className="max-w-xl">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-gold-bright">For runners</p>
             <h2 id="runner-heading" className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">
-              Want to earn on campus? Become a Verified Runner
+              Free between classes? Run quests and earn on campus
             </h2>
             <p className="mt-4 text-base text-parchment/85">
-              Quests are taken by students who have been reviewed and approved. It takes a few minutes to apply.
+              Every verified CIT-U student can run quests. There&apos;s no separate application: once your ID is approved, you&apos;re ready.
             </p>
-            <Link href="/runner/apply" className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-gold-bright px-6 py-3 text-[15px] font-semibold text-dark hover:brightness-95">
-              Apply as a runner
+            <Link href="/register" className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-gold-bright px-6 py-3 text-[15px] font-semibold text-dark hover:brightness-95">
+              Create your account
             </Link>
             <p className="mt-3 text-xs text-parchment/75">
               Read the <Link href="/runner-terms" className="underline">Runner Terms</Link> first.

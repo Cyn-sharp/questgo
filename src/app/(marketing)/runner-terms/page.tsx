@@ -1,37 +1,31 @@
 import type { Metadata } from "next";
 import { LegalPageShell, LegalSection } from "@/components/landing/LegalPageShell";
-import { RUNNER_TERMS_VERSION } from "@/lib/quests/runner";
 
 export const metadata: Metadata = {
   title: "Runner Terms | QuestGo",
-  description: "Terms for students who apply to run quests as a Verified Runner on QuestGo.",
+  description: "Terms for verified CIT-U students who run quests on QuestGo.",
 };
 
 export default function RunnerTermsPage() {
   return (
     <LegalPageShell
       title="Runner Terms"
-      subtitle={`These terms apply to every student who applies to become a Verified Runner. Version ${RUNNER_TERMS_VERSION}.`}
+      subtitle="These terms apply every time a student accepts and runs a quest."
       updatedAt="November 26, 2026"
     >
-      <LegalSection title="1. Becoming a Verified Runner">
+      <LegalSection title="1. Who can run quests">
         <p>
-          Only Verified Runners can accept quests. To apply you must hold a verified QuestGo account, complete the application and accept these terms.
-          An administrator reviews each application and may approve or decline it. Approval can be withdrawn at any time, for example after a
-          report, a breach of these terms or the Terms &amp; Conditions.
+          Any student whose CIT-U ID has been approved by an administrator can accept quests. There is no separate runner application.
+          The same approval lets you post quests. An administrator can withdraw it at any time, for example after a report, a breach of
+          these terms or the Terms &amp; Conditions.
         </p>
       </LegalSection>
 
-      <LegalSection title="2. Health and fitness self-declaration">
-        <p>
-          The application asks you to confirm that you are able to run errands on campus safely. This is a self-declaration. QuestGo does not
-          examine you, ask for medical records or verify your health.
-        </p>
+      <LegalSection title="2. Your health and safety">
         <ul className="list-disc pl-5 space-y-1">
-          <li>You must answer truthfully. Confirming a statement you know to be untrue is a breach of these terms.</li>
-          <li>QuestGo stores only that you confirmed each statement, together with your consent. It does not store diagnoses or medical details.</li>
-          <li>The information is used only by administrators to decide your application, and is not shown to other users.</li>
-          <li>Accept a quest only when you are well enough to finish it. If your health changes, hand the quest back or cancel it.</li>
+          <li>Accept a quest only when you are well enough to finish it safely.</li>
+          <li>If your health or plans change, hand the quest back or cancel it instead of rushing.</li>
+          <li>QuestGo does not ask for or store any medical information.</li>
         </ul>
       </LegalSection>
 
@@ -46,7 +40,7 @@ export default function RunnerTermsPage() {
 
       <LegalSection title="4. You take part voluntarily and independently">
         <p>
-          A Verified Runner is a student who chooses to take quests. You are not an employee, agent or representative of QuestGo, its
+          A runner is a student who chooses to take quests. You are not an employee, agent or representative of QuestGo, its
           administrators or its developers, and QuestGo does not direct how you carry out a quest.
         </p>
       </LegalSection>
@@ -73,8 +67,8 @@ export default function RunnerTermsPage() {
 
       <LegalSection title="7. Changes">
         <p>
-          We may update these terms. When they change, the version above changes and you may be asked to accept the new version before you
-          accept further quests.
+          We may update these terms. When they change, the date above changes. Running a quest after an update means you accept the new
+          terms.
         </p>
       </LegalSection>
     </LegalPageShell>

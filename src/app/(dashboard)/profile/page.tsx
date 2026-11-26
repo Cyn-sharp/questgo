@@ -34,8 +34,6 @@ import {
 } from "@/lib/db/quests";
 import type { User as UserProfile } from "@/types/user";
 import { ProfileSkeleton } from "@/components/skeletons/PageSkeletons";
-import { VerifiedRunnerBadge } from "@/components/runner/VerifiedRunnerBadge";
-import { useRunnerStatus } from "@/hooks/useRunnerStatus";
 import { useIdStatus } from "@/hooks/useIdStatus";
 
 /* ─────────────────────────────────────────────────────────
@@ -156,7 +154,6 @@ const MENU_ITEMS = [
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const { status: runnerStatus } = useRunnerStatus();
   const { status: idStatus, approved: idApproved } = useIdStatus();
   const [editOpen, setEditOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -321,16 +318,11 @@ export default function ProfilePage() {
                           {profileName}
                         </h1>
 
-                        {/* An approved runner's badge replaces the plain "Verified" pill. */}
-                        {runnerStatus === "approved" ? (
-                          <VerifiedRunnerBadge />
-                        ) : (
-                          idApproved && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-parchment text-maroon px-2 py-0.5 text-xs sm:text-xs font-bold tracking-wide uppercase shrink-0">
-                              <CheckCircle2 className="w-3 h-3" />
-                              ID Verified
-                            </span>
-                          )
+                        {idApproved && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-parchment text-maroon px-2 py-0.5 text-xs sm:text-xs font-bold tracking-wide uppercase shrink-0">
+                            <CheckCircle2 className="w-3 h-3" />
+                            ID Verified
+                          </span>
                         )}
                       </div>
 

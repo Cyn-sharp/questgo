@@ -1,4 +1,3 @@
-import { isApprovedRunner } from "./runner.ts";
 import { abandonedChanges, recoveryChanges, suspensionChanges } from "./recovery";
 import { ABANDON_AFTER_MS } from "./recovery";
 import { attachmentExpired } from "./files";
@@ -46,8 +45,6 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         const snapshot = await tx.get(ref);
         if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
         const quest = snapshot.data() as WorkflowQuest;
-        // Only approved Verified Runners may take quests. Read inside the transaction, before any write.
-        if (action === "accept" && !isApprovedRunner((await tx.get(db.doc(`runnerApplications/${uid}`))).data())) throw new QuestError("Only approved Verified Runners can accept quests. Apply from your home page.", 403);
         // Deliberately vague so a user cannot discover who has blocked them.
         if (action === "accept" && safety && await safety.eitherBlocked(tx, uid, quest.requesterId)) throw new QuestError("You can't accept this quest.", 403);
         if (quest.cancellationRequestedBy && ["record-expense", "record-receipt", "approve-expense", "commit"].includes(action)) throw new QuestError("Resolve cancellation before committing work.", 409);
