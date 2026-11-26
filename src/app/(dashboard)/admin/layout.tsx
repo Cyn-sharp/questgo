@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, ClipboardList, Flag, History, Menu, ShieldCheck, X } from "lucide-react";
+import { BadgeCheck, ClipboardList, Flag, History, IdCard, Menu, ShieldCheck, X } from "lucide-react";
+
 
 const SECTIONS = [
   { href: "/admin", label: "Settlement queue", Icon: ClipboardList },
   { href: "/admin/reports", label: "User reports", Icon: Flag },
+  { href: "/admin/id-checks", label: "ID checks", Icon: IdCard },
   { href: "/admin/runners", label: "Runner applications", Icon: BadgeCheck },
   { href: "/admin/audit", label: "Audit log", Icon: History },
 ];
