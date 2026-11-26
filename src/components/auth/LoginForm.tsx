@@ -173,8 +173,10 @@ export function LoginForm() {
         throw new Error("Session creation failed");
       }
 
+            // The server says where this account starts: admins go straight to the admin console.
+      const sessionInfo = (await sessionResponse.json().catch(() => ({}))) as { home?: unknown };
       setFailedAttempts(0);
-      router.push("/dashboard");
+      router.push(sessionInfo.home === "/admin" ? "/admin" : "/dashboard");
     } catch (err) {
       const code = err instanceof FirebaseError ? err.code : "";
       console.error("Firebase Login Error:", code, err instanceof Error ? err.message : err);
