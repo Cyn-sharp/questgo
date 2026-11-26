@@ -199,17 +199,17 @@ export const HeroSection = () => {
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            <span className="font-semibold text-[10px] sm:text-[11px] tracking-[0.08em] uppercase text-[#f6ecc8]">
+            <span className="font-semibold text-xs sm:text-xs tracking-[0.08em] uppercase text-parchment">
               Exclusive to verified CIT-U students
             </span>
           </div>
 
           <h1 className="animate-fade-up delay-100 font-extrabold text-3xl sm:text-5xl md:text-6xl leading-[1.1] tracking-tight text-white">
             <span>Turn Tasks Into </span>
-            <span className="text-[#c9a227]">Opportunities</span>
+            <span className="text-gold-bright">Opportunities</span>
           </h1>
 
-          <p className="animate-fade-up delay-200 font-normal text-sm sm:text-base md:text-lg leading-relaxed text-[#fbf8f0]/85 max-w-md">
+          <p className="animate-fade-up delay-200 font-normal text-sm sm:text-base md:text-lg leading-relaxed text-cream/85 max-w-md">
             Need a quick favor? Post a Quest. Want to earn extra cash? Complete
             one. QuestGo connects CIT-U students who need help with everyday
             tasks with verified students who are ready to help.
@@ -226,7 +226,7 @@ export const HeroSection = () => {
             <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2">
               <a
                 href="/login"
-                className="btn-glow inline-flex items-center justify-center gap-2 bg-[#c9a227] active:scale-95 text-[#161414] px-6 py-3.5 rounded-xl font-bold text-[15px] shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all duration-200"
+                className="btn-glow inline-flex items-center justify-center gap-2 bg-gold active:scale-95 text-dark px-6 py-3.5 rounded-xl font-bold text-[15px] shadow-[0_4px_20px_rgba(201,162,39,0.25)] transition-all duration-200"
               >
                 Find a Quest
                 <svg
@@ -266,14 +266,14 @@ export const HeroSection = () => {
               mouseY={mouse.y}
               depth={0.6}
             >
-              <p className="text-[9px] font-bold tracking-[0.06em] uppercase text-[#8a6a1f]">
+              <p className="text-xs font-bold tracking-[0.06em] uppercase text-[#8a6a1f]">
                 Quest reward
               </p>
-              <p className="mt-0.5 font-extrabold text-lg text-[#7a1f32]">
+              <p className="mt-0.5 font-extrabold text-lg text-maroon">
                 ₱250
-                <span className="text-xs font-semibold text-[#4a4340] inline-block">.00</span>
+                <span className="text-xs font-semibold text-muted inline-block">.00</span>
               </p>
-              <p className="mt-0.5 text-[11px] text-[#4a4340] font-medium leading-tight">
+              <p className="mt-0.5 text-xs text-muted font-medium leading-tight">
                 Print &amp; deliver docs
               </p>
             </FloatingCard>
@@ -291,19 +291,19 @@ export const HeroSection = () => {
               depth={0.8}
             >
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-[#7a1f32]/10 text-[#7a1f32]">
+                <div className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold bg-maroon/10 text-maroon">
                   MJ
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-[#161414] leading-tight">Abejo C.</p>
-                  <p className="text-[9px] font-semibold text-[#8a6a1f] leading-tight">BS CpE</p>
+                  <p className="text-xs font-bold text-dark leading-tight">Abejo C.</p>
+                  <p className="text-xs font-semibold text-[#8a6a1f] leading-tight">BS CpE</p>
                 </div>
               </div>
               <div className="mt-1.5 flex items-center gap-1">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="#c9a227">
                   <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 6.9L12 17.3 5.7 20.8l1.7-6.9L2 9.2l7.1-.6z" />
                 </svg>
-                <span className="text-[10px] font-bold text-[#4a4340]">4.9 · 32 quests</span>
+                <span className="text-xs font-bold text-muted">4.9 · 32 quests</span>
               </div>
             </FloatingCard>
           </div>
@@ -334,11 +334,11 @@ export const HeroSection = () => {
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </div>
-                <span className="text-[9px] font-extrabold tracking-[0.04em] uppercase text-[#1f7a4c]">
+                <span className="text-xs font-extrabold tracking-[0.04em] uppercase text-[#1f7a4c]">
                   Completed
                 </span>
               </div>
-              <p className="mt-0.5 text-[11px] font-bold leading-tight text-[#161414]">
+              <p className="mt-0.5 text-xs font-bold leading-tight text-dark">
                 Printing - GLE - BUILDING
               </p>
             </FloatingCard>

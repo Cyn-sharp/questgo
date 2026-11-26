@@ -13,7 +13,7 @@ import { getProfileName } from "@/lib/auth/profile-name";
 import { setUserBlocked, updateMyProfile } from "@/lib/quests/client";
 
 type Blocked = { id: string; name: string };
-const field = "w-full rounded-xl border border-[#e5e0d8] bg-white px-4 py-3 text-sm outline-none focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20";
+const field = "w-full rounded-xl border border-field bg-white px-4 py-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/20";
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
@@ -109,7 +109,7 @@ function SettingsForm({ user }: { user: User }) {
       <Panel title="Blocked users">
         {blockedError && <p role="alert" className="mb-3 text-sm text-red-700">{blockedError}</p>}
         {!blocked.length && !blockedError && <p className="text-sm text-stone-600">You haven&apos;t blocked anyone. Blocked users can&apos;t accept your quests or message you.</p>}
-        <ul className="divide-y divide-[#e5e0d8]">
+        <ul className="divide-y divide-border">
           {blocked.map((item) => (
             <li key={item.id} className="flex items-center justify-between gap-3 py-3">
               <span className="font-semibold">{item.name}</span>

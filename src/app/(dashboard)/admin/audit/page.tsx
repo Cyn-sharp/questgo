@@ -35,7 +35,7 @@ export default function AdminAuditPage() {
       {entries && !entries.length && <p className="rounded-xl bg-white p-4">No administrator actions recorded yet.</p>}
       <ul className="space-y-3">
         {entries?.map((entry) => (
-          <li key={entry.id} className="rounded-xl bg-white p-4 text-[#161414]">
+          <li key={entry.id} className="rounded-xl bg-white p-4 text-dark">
             <div className="flex flex-wrap justify-between gap-2">
               <p className="font-bold">{entry.action}</p>
               <time className="text-sm text-stone-600">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : ""}</time>

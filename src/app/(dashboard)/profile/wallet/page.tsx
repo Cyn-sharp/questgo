@@ -48,7 +48,7 @@ export default function WalletPage() {
           </Panel>
           <Panel title="Completed quests">
             {!rows.length && <p className="text-sm text-stone-600">No completed quests yet. Accept a quest from the <Link href="/quests" className="font-semibold text-maroon underline">marketplace</Link> to start earning.</p>}
-            <ul className="divide-y divide-[#e5e0d8]">
+            <ul className="divide-y divide-border">
               {rows.map((row) => (
                 <li key={row.id} className="flex items-center justify-between gap-3 py-3">
                   <span className="min-w-0 truncate font-semibold">{row.title}</span>

@@ -279,7 +279,7 @@ export function RegisterForm() {
                   <span className="block truncate font-inter text-[13px] font-semibold">
                     {selectedPhoto ? selectedPhoto.name : "Click to upload your photo"}
                   </span>
-                  <span className="block font-inter text-[11px] font-normal text-muted">
+                  <span className="block font-inter text-xs font-normal text-muted">
                     PNG, JPG up to 5MB
                   </span>
                 </span>
@@ -288,7 +288,7 @@ export function RegisterForm() {
           </div>
 
           {ALLOW_TEST_GMAIL ? (
-            <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">
+            <aside className="rounded-lg border border-parchment bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">
               Testing mode: CIT-U and Gmail addresses are currently accepted. Verification is sent to
               the address you enter.
             </aside>

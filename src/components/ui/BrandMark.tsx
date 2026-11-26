@@ -9,7 +9,7 @@ export function BrandMark({ subtitle = true, className }: { subtitle?: boolean; 
       <span className="flex flex-col leading-none">
         <span className="font-display text-[19px] font-bold tracking-tight text-white">QuestGo</span>
         {subtitle && (
-          <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">CIT-U Campus</span>
+          <span className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/55">CIT-U Campus</span>
         )}
       </span>
     </span>

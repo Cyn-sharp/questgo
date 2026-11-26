@@ -14,7 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="w-full max-w-[1180px]">
           <Link
             href="/"
-            className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 font-inter text-sm font-semibold text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227]"
+            className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 font-inter text-sm font-semibold text-white/90 transition-colors hover:bg-white/10 hover:text-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
             aria-label="Back to QuestGo home"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">

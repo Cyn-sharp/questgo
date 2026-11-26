@@ -68,7 +68,7 @@ export function ResetPasswordForm({ code }: { code: string }) {
           Choose a password that is easy for you to remember and hard for others to guess.
         </p>
         {isCheckingCode ? (
-          <div className="mt-5 rounded-lg bg-[#fbf8f0] px-3 py-3 text-center font-inter text-[12px] text-muted">
+          <div className="mt-5 rounded-lg bg-cream px-3 py-3 text-center font-inter text-[12px] text-muted">
             Checking your secure reset link...
           </div>
         ) : null}
@@ -83,7 +83,7 @@ export function ResetPasswordForm({ code }: { code: string }) {
         >
           <label className="block font-inter text-[12px] font-semibold text-dark">
             New Password
-            <span className="mt-1 flex h-11 items-center rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 transition-colors focus-within:border-maroon focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7a1f3233]">
+            <span className="mt-1 flex h-11 items-center rounded-lg border border-[#e8e7e3] bg-cream px-3 transition-colors focus-within:border-maroon focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7a1f3233]">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
@@ -105,7 +105,7 @@ export function ResetPasswordForm({ code }: { code: string }) {
           </label>
           <label className="block font-inter text-[12px] font-semibold text-dark">
             Confirm New Password
-            <span className="mt-1 flex h-11 items-center rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 transition-colors focus-within:border-maroon focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7a1f3233]">
+            <span className="mt-1 flex h-11 items-center rounded-lg border border-[#e8e7e3] bg-cream px-3 transition-colors focus-within:border-maroon focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7a1f3233]">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
@@ -125,7 +125,7 @@ export function ResetPasswordForm({ code }: { code: string }) {
               </button>
             </span>
           </label>
-          <div className="rounded-lg bg-[#fbf8f0] p-3 font-inter text-[11px] leading-5 text-muted">
+          <div className="rounded-lg bg-cream p-3 font-inter text-xs leading-5 text-muted">
             <p className={password.length >= 8 ? "text-[#168552]" : ""}>
               ✓ At least 8 characters <span className="text-muted">(required)</span>
             </p>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useDockDrag } from "@/hooks/useDockDrag";
 import { ARROW_SIZE, tourLayout, type Box, type TourLayout } from "@/lib/onboarding/layout";
 import {
   GUIDE_FACE,
@@ -64,6 +65,7 @@ export function GuideTour() {
   const dialogRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
+  const dock = useDockDrag();
   const current = TOUR_STEPS[step];
   const isLast = step === LAST_STEP;
   const onHome = pathname === TOUR_HOME;
@@ -151,11 +153,13 @@ export function GuideTour() {
           ref={launcherRef}
           type="button"
           onClick={openTour}
+          {...dock.handlers}
+          style={dock.style}
           aria-label={`Replay the QuestGo tour with ${GUIDE_NAME}`}
-          title="Need help? Replay the tour"
-          className="fixed bottom-28 left-4 z-[55] h-14 w-14 overflow-hidden rounded-full border-[3px] border-gold bg-cream shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/60 md:bottom-6"
+          title="Need help? Replay the tour. Drag me to move."
+          className={`fixed z-[55] h-14 w-14 overflow-hidden rounded-full border-[3px] border-gold bg-cream shadow-lg ${dock.placed ? "" : "bottom-28 left-4 md:bottom-6"} ${dock.dragging ? "shadow-2xl" : ""}`}
         >
-          <Image src={GUIDE_FACE} alt="" width={56} height={56} className="h-full w-full object-cover" />
+          <Image src={GUIDE_FACE} alt="" width={56} height={56} draggable={false} className="pointer-events-none h-full w-full object-cover" />
         </button>
       )}
 
@@ -224,7 +228,7 @@ export function GuideTour() {
               style={{ left: bubble.tailX - 7 }}
               className={`absolute h-3.5 w-3.5 rotate-45 bg-cream ${bubble.grows === "up" ? "-bottom-1.5" : "-top-1.5"}`}
             />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-gold-light">
+            <p className="text-xs font-bold uppercase tracking-wider text-gold-light">
               Step {step + 1} of {TOUR_STEPS.length}
             </p>
             <h2 id="guide-tour-title" className="font-display text-lg font-bold text-maroon">

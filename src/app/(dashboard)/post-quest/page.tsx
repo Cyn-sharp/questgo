@@ -8,6 +8,7 @@ import { getQuestExpirationMillis } from "@/lib/db/quests";
 import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 import {
   AlertCircle,
+  Clock,
   ShieldCheck,
   MapPin,
   Navigation,
@@ -23,6 +24,7 @@ import { validateQuest } from "@/lib/quests/policy";
 import { MAX_PRINT_FILE_BYTES } from "@/lib/quests/files";
 import { createQuest } from "@/lib/db/quests";
 import { useAuth } from "@/hooks/useAuth";
+import { ReviewQuestDialogBody } from "@/components/quest/ReviewQuestDialogBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PostQuestSkeleton } from "@/components/skeletons/PageSkeletons";
 
@@ -124,27 +126,40 @@ const initialForm = (): FormState => ({
   ...defaultMeetup(),
 });
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// Each step appears once the one before it is filled in, then stays put so
+// editing an earlier answer never makes later fields vanish under the user.
+function Reveal({ show, children }: { show: boolean; children: React.ReactNode }) {
+  if (!show) return null;
+  return <div className="animate-fade-up">{children}</div>;
+}
+
+const SECTION_TITLES = ["Quest details", "Reward", "Task details", "Who pays", "Location", "Schedule", "Payment"];
+
+function SectionLabel({ step, children, hint }: { step: number; children: React.ReactNode; hint?: string }) {
   return (
-    <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-[#7a1f32] mb-3">
-      {children}
-    </p>
+    <div className="mb-4">
+      <h2 className="flex items-center gap-3 font-display text-lg font-bold text-dark">
+        <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-maroon text-xs font-bold text-white">{step}</span>
+        {children}
+      </h2>
+      {hint && <p className="mt-1 text-sm text-muted">{hint}</p>}
+    </div>
   );
 }
 
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-semibold text-[#161414] mb-1.5">
+    <label htmlFor={htmlFor} className="block text-sm font-semibold text-dark mb-1.5">
       {children}
     </label>
   );
 }
 
 const inputClass = `
-  w-full rounded-xl border border-[#e5e0d8] bg-white
-  px-4 py-3 text-sm text-[#161414] placeholder:text-[#4a4340]/50
+  w-full rounded-xl border border-field bg-white
+  px-4 py-3 text-sm text-dark placeholder:text-muted/80
   outline-none transition-all duration-300
-  focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
+  focus:border-maroon focus:ring-2 focus:ring-maroon/15
 `;
 
 // Mirrors the server rules so problems appear next to the field instead of as one late error.
@@ -180,6 +195,7 @@ export default function PostQuestPage() {
   const [success, setSuccess] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
   const [showProblems, setShowProblems] = useState(false);
+  const [reached, setReached] = useState(0);
   const router = useRouter();
   const { posted, loading: requestsLoading, error: requestsError } = useMyQuests();
   const now = useQuestClock();
@@ -215,6 +231,7 @@ export default function PostQuestPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (shown < 7) return;
     setSuccess(false);
     setSubmissionError("");
 
@@ -273,15 +290,15 @@ export default function PostQuestPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center p-6">
-        <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-8 max-w-md text-center shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-          <AlertCircle className="w-12 h-12 text-[#7a1f32] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-[#161414] mb-2">Access Restricted</h2>
-          <p className="text-sm text-[#4a4340] mb-6">
+        <div className="rounded-2xl bg-white border border-white/40 p-8 max-w-md text-center shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+          <AlertCircle className="w-12 h-12 text-maroon mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-dark mb-2">Access Restricted</h2>
+          <p className="text-sm text-muted mb-6">
             You must be logged in with your verified CIT-U account to create a quest.
           </p>
           <Link
             href="/login"
-            className="inline-flex justify-center w-full items-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] transition-all active:scale-[0.98]"
+            className="inline-flex justify-center w-full items-center px-6 py-3.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white font-bold text-[15px] transition-all active:scale-[0.98]"
           >
             Log In Now
           </Link>
@@ -291,21 +308,46 @@ export default function PostQuestPage() {
   }
 
   const problems = showProblems ? fieldProblems(form, requirements, file) : {};
+  const rewardNumber = Number(form.reward);
+  const taskProblems = Object.keys(fieldProblems(form, requirements, file));
+  const stepDone = [
+    meaningfulText(form.title, 5, 120),
+    meaningfulText(form.description, 20, 3000),
+    form.reward.trim() !== "" && Number.isFinite(rewardNumber) && rewardNumber > 0 && rewardNumber <= 10000 && Math.abs(Math.round(rewardNumber * 100) - rewardNumber * 100) <= 0.00001,
+    !taskProblems.some((key) => key.startsWith("req:") || key === "file"),
+    !taskProblems.some((key) => ["funding", "budget", "vendor"].includes(key)),
+    Boolean(form.pickupLocation.trim() && form.meetupLocation.trim()),
+    Boolean(form.meetupHour && form.meetupMinute),
+  ];
+  const unlocked = stepDone.findIndex((done) => !done) === -1 ? stepDone.length : stepDone.findIndex((done) => !done);
+  if (unlocked > reached) setReached(unlocked);
+  const shown = Math.max(reached, unlocked);
+  // Section-level progress (title and description are one section): shown in the header bar.
+  const sectionDone = [stepDone[0] && stepDone[1], stepDone[2], stepDone[3], stepDone[4], stepDone[5], stepDone[6]];
+  const firstOpen = sectionDone.indexOf(false);
+  const sectionsComplete = firstOpen === -1 ? 6 : firstOpen;
+  const ready = sectionsComplete === 6;
   const previewTime = `${form.meetupHour}:${form.meetupMinute} ${form.meetupPeriod}`;
 
   return (
     <div className="bg-transparent min-h-full">
-      <dialog ref={dialog} onCancel={(event) => { if (submitting) event.preventDefault(); else setReview(false); }} aria-labelledby="review-title" className="m-auto w-[calc(100%-2rem)] max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 text-gray-900 shadow-xl backdrop:bg-black/60">
-        <h2 id="review-title" className="text-2xl font-bold">Review your quest</h2>
-        <p className="my-3">Check for typos and confirm all details before posting.</p>
-        <h3 className="font-bold break-words">{form.title}</h3><p>{form.category}</p><p className="my-3 whitespace-pre-wrap break-words">{form.description}</p>
-        <dl className="space-y-2 text-sm"><div><dt className="font-bold">Reward</dt><dd>₱{form.reward} · Cash on delivery</dd></div><div><dt className="font-bold">Task / pickup location</dt><dd>{form.pickupLocation}</dd></div><div><dt className="font-bold">Meet-up</dt><dd>{form.meetupLocation} · {form.meetupHour}:{form.meetupMinute} {form.meetupPeriod}</dd></div>
-          {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}><dt className="font-bold">{field.label}</dt><dd className="break-words">{requirements[field.key]}</dd></div>)}
-          {file && <div><dt className="font-bold">Attached file</dt><dd className="break-all">{file.name} · {(file.size / 1024).toFixed(1)} KB · {file.type}</dd></div>}
-        </dl>
-        <p className="mt-3 text-sm">Funding: {form.fundingMethod === "abono" ? "Runner advances payment" : form.fundingMethod === "prepaid" ? "Requester pays vendor directly" : "No purchase needed"}. Runner reward: ₱{form.reward}. Purchase limit: ₱{form.fundingMethod === "no_purchase" ? "0" : form.purchaseBudget}.</p>
-        {submissionError && <p role="alert" className="mt-4 text-red-700">{submissionError}</p>}
-        <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={submitting} onClick={() => setReview(false)} className="btn-outline">Go Back and Edit</button><button type="button" disabled={submitting} onClick={handleSubmit} className="btn-primary">{submitting ? "Uploading and posting…" : "Confirm and Post"}</button></div>
+      <dialog ref={dialog} onCancel={(event) => { if (submitting) event.preventDefault(); else setReview(false); }} aria-labelledby="review-title" className="m-auto w-[calc(100%-2rem)] max-w-xl max-h-[88vh] overflow-y-auto overscroll-contain rounded-2xl bg-white p-0 text-dark shadow-[0_24px_80px_rgba(0,0,0,0.4)] backdrop:bg-black/60">
+        <ReviewQuestDialogBody
+          title={form.title}
+          category={form.category}
+          description={form.description}
+          reward={form.reward}
+          pickup={form.pickupLocation}
+          meetup={form.meetupLocation}
+          time={previewTime}
+          details={(CATEGORY_FIELDS[form.category] || []).map((field) => ({ label: field.label, value: requirements[field.key] }))}
+          fileLabel={file ? `${file.name} · ${(file.size / 1024).toFixed(1)} KB` : undefined}
+          funding={{ method: form.fundingMethod === "abono" ? "Runner advances payment" : form.fundingMethod === "prepaid" ? "Requester pays vendor directly" : "No purchase needed", budget: form.fundingMethod === "no_purchase" ? "0" : form.purchaseBudget }}
+          error={submissionError}
+          submitting={submitting}
+          onBack={() => setReview(false)}
+          onConfirm={() => void handleSubmit({ preventDefault() {} } as FormEvent)}
+        />
       </dialog>
       <div className="page-container py-6 sm:py-10 lg:py-12">
         <PageHeader
@@ -320,18 +362,30 @@ export default function PostQuestPage() {
             <form
               onSubmit={handleSubmit}
               noValidate
-              className={`rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-5 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
+              className={`rounded-2xl bg-white border border-white/40 p-5 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
                 shake ? "animate-form-shake" : ""
               }`}
             >
+              <div className="mb-8">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold text-dark">{ready ? "Ready to review" : `Step ${sectionsComplete + 1} of 7`}</p>
+                  <p className="text-sm text-muted">{ready ? "Every step is complete" : SECTION_TITLES[sectionsComplete]}</p>
+                </div>
+                <div role="progressbar" aria-label="Quest form progress" aria-valuemin={0} aria-valuemax={7} aria-valuenow={ready ? 7 : sectionsComplete} className="mt-3 flex gap-1.5">
+                  {SECTION_TITLES.map((title, index) => (
+                    <span key={title} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${index < sectionsComplete || (ready && index === 6) ? "bg-maroon" : index === sectionsComplete && !ready ? "bg-maroon/35" : "bg-border"}`} />
+                  ))}
+                </div>
+              </div>
+
               {/* QUEST INFO */}
               <section className="mb-6 sm:mb-8">
-                <SectionLabel>Quest Information</SectionLabel>
+                <SectionLabel step={1} hint="What do you need done?">Quest details</SectionLabel>
                 <div className="space-y-4">
                   <div>
                     <FieldLabel htmlFor="title">Quest Title</FieldLabel>
                     <div className="relative">
-                      <Type className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45" />
+                      <Type className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/45" />
                       <input
                         id="title"
                         type="text"
@@ -346,10 +400,11 @@ export default function PostQuestPage() {
                     {errors.title && <p className="mt-1.5 text-xs text-red-600">{errors.title}</p>}
                   </div>
 
+<Reveal show={shown >= 1}>
                   <div>
                     <FieldLabel htmlFor="category">Category</FieldLabel>
                     <div className="relative">
-                      <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
+                      <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/45 pointer-events-none" />
                       <select
                         id="category"
                         value={form.category}
@@ -362,14 +417,16 @@ export default function PostQuestPage() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                     </div>
                   </div>
+</Reveal>
 
+<Reveal show={shown >= 1}>
                   <div>
                     <FieldLabel htmlFor="description">Description & Instruction</FieldLabel>
                     <div className="relative">
-                      <FileText className="absolute left-3.5 top-3.5 w-4 h-4 text-[#4a4340]/45" />
+                      <FileText className="absolute left-3.5 top-3.5 w-4 h-4 text-muted/45" />
                       <textarea
                         id="description"
                         maxLength={3000}
@@ -383,16 +440,18 @@ export default function PostQuestPage() {
                     </div>
                     {errors.description && <p className="mt-1.5 text-xs text-red-600">{errors.description}</p>}
                   </div>
+</Reveal>
                 </div>
               </section>
 
               {/* REWARD */}
+<Reveal show={shown >= 2}>
               <section className="mb-6 sm:mb-8">
-                <SectionLabel>Reward</SectionLabel>
+                <SectionLabel step={2} hint="What you'll pay the runner for their time.">Reward</SectionLabel>
                 <div>
                   <FieldLabel htmlFor="reward">Runner Reward (₱)</FieldLabel>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#c9a227]">₱</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gold-ink">₱</span>
                     <input
                       id="reward"
                       aria-invalid={Boolean(errors.reward)}
@@ -409,9 +468,11 @@ export default function PostQuestPage() {
                   {errors.reward && <p className="mt-1.5 text-xs text-red-600">{errors.reward}</p>}
                 </div>
               </section>
+</Reveal>
 
+<Reveal show={shown >= 3}>
               <section className="mb-6 space-y-4">
-                <SectionLabel>{form.category} requirements</SectionLabel>
+                <SectionLabel step={3} hint="Runners see these before they accept.">{form.category} details</SectionLabel>
                 {(CATEGORY_FIELDS[form.category] || []).map((field) => <div key={field.key}>
                   <FieldLabel htmlFor={`requirement-${field.key}`}>{field.label} *</FieldLabel>
                   {["color", "sides"].includes(field.key) ? <select id={`requirement-${field.key}`} aria-invalid={Boolean(problems[`req:${field.key}`])} className={inputClass} value={requirements[field.key] || ""} onChange={(event) => setRequirements((current) => ({ ...current, [field.key]: event.target.value }))}>
@@ -428,9 +489,11 @@ export default function PostQuestPage() {
                 </div>}
                 {form.category === "Shopping" && <p className="text-sm">The item budget is separate from the runner reward. The item budget must match the purchase cost limit below.</p>}
               </section>
+</Reveal>
 
+<Reveal show={shown >= 4}>
               <section className="mb-6 space-y-4">
-                <SectionLabel>Who pays the errand cost?</SectionLabel>
+                <SectionLabel step={4} hint="Agree up front who covers any purchase cost.">Who pays</SectionLabel>
                 <FieldLabel htmlFor="funding">Funding arrangement *</FieldLabel>
                 <select id="funding" aria-invalid={Boolean(problems.funding)} className={inputClass} value={form.fundingMethod} onChange={(event) => update("fundingMethod", event.target.value as FormState["fundingMethod"])}>
                   {!["Printing", "Shopping"].includes(form.category) && <option value="no_purchase">No purchase needed — ₱0 runner upfront</option>}
@@ -443,14 +506,16 @@ export default function PostQuestPage() {
                 {["funding", "budget", "vendor"].map((key) => problems[key] && <p key={key} role="alert" className="text-xs text-red-600">{problems[key]}</p>)}
                 <p className="text-xs text-gray-600">QuestGo records participant acknowledgements. It does not process payments, verify external transfers, or guarantee reimbursement.</p>
               </section>
+</Reveal>
               {/* LOCATION */}
+<Reveal show={shown >= 5}>
               <section className="mb-6 sm:mb-8">
-                <SectionLabel>Location</SectionLabel>
+                <SectionLabel step={5} hint="Where the runner picks up, and where you'll meet.">Location</SectionLabel>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel htmlFor="pickup">Pickup / Task Location</FieldLabel>
                     <div className="relative">
-                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
+                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/45 pointer-events-none" />
                       <select
                         id="pickup"
                         value={form.pickupLocation}
@@ -461,14 +526,14 @@ export default function PostQuestPage() {
                           <option key={loc} value={loc}>{loc}</option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                     </div>
                   </div>
 
                   <div>
                     <FieldLabel htmlFor="meetup">Meet-up Location</FieldLabel>
                     <div className="relative">
-                      <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/45 pointer-events-none" />
+                      <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/45 pointer-events-none" />
                       <select
                         id="meetup"
                         value={form.meetupLocation}
@@ -479,15 +544,17 @@ export default function PostQuestPage() {
                           <option key={`meet-${loc}`} value={loc}>{loc}</option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                     </div>
                   </div>
                 </div>
               </section>
+</Reveal>
 
               {/* SCHEDULE */}
+<Reveal show={shown >= 6}>
               <section className="mb-6 sm:mb-8">
-                <SectionLabel>Schedule</SectionLabel>
+                <SectionLabel step={6} hint="When you'd like to meet.">Schedule</SectionLabel>
                 <FieldLabel>Preferred Meet-up Time</FieldLabel>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="relative">
@@ -500,7 +567,7 @@ export default function PostQuestPage() {
                         <option key={h} value={h}>{h}</option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                   </div>
                   <div className="relative">
                     <select
@@ -512,7 +579,7 @@ export default function PostQuestPage() {
                         <option key={m} value={m}>{m}</option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                   </div>
                   <div className="relative">
                     <select
@@ -523,31 +590,34 @@ export default function PostQuestPage() {
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
                     </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a4340]/55 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                   </div>
                 </div>
                 {errors.meetupHour && <p className="mt-1.5 text-xs text-red-600">{errors.meetupHour}</p>}
-                <p className="mt-1.5 text-xs text-[#4a4340]">Suggested from the current time. Runners can accept for 30 minutes after you post.</p>
+                <p className="mt-1.5 text-xs text-muted">Suggested from the current time. Runners can accept for 30 minutes after you post.</p>
               </section>
+</Reveal>
 
               {/* PAYMENT */}
+<Reveal show={shown >= 7}>
               <section>
-                <SectionLabel>Payment</SectionLabel>
+                <SectionLabel step={7} hint="Cash on delivery, paid directly to the runner.">Payment</SectionLabel>
                 <div>
                   <FieldLabel>Payment Method</FieldLabel>
-                  <div className="w-full rounded-xl border border-[#e5e0d8] bg-[#fbf8f0] px-4 py-3 text-sm text-[#4a4340] flex items-center gap-2 cursor-not-allowed">
-                    <Banknote className="w-4 h-4 text-[#4a4340]/55 shrink-0" />
+                  <div className="w-full rounded-xl border border-field bg-cream px-4 py-3 text-sm text-muted flex items-center gap-2 cursor-not-allowed">
+                    <Banknote className="w-4 h-4 text-muted/55 shrink-0" />
                     <span className="font-medium">Cash on Delivery (COD) — Locked</span>
                   </div>
                 </div>
               </section>
+</Reveal>
 
               {/* Mobile submit */}
               <div className="mt-8 lg:hidden">
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
+                  disabled={submitting || shown < 7}
+                  className="w-full inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#e6e1d9] disabled:text-muted disabled:opacity-100 disabled:shadow-none"
                 >
                   {submitting ? "Posting..." : "Review Quest"}
                 </button>
@@ -567,42 +637,54 @@ export default function PostQuestPage() {
 
           {/* RIGHT: SIDEBAR */}
           <ScrollReveal delayMs={100} variant="scale" className="lg:col-span-4">
-            <aside className="rounded-2xl bg-white/95 backdrop-blur-md border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-6">
-              <h2 className="text-lg font-bold text-[#161414] mb-5">Quest Broadcast Rules</h2>
+            <aside aria-label="Quest summary" className="rounded-2xl bg-white border border-white/40 p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-6">
+              <h2 className="font-display text-lg font-bold text-dark">Your quest</h2>
+              <p className={`mt-2 line-clamp-2 text-sm ${form.title.trim() ? "font-semibold text-dark" : "text-muted"}`}>
+                {form.title.trim() || "Your title will appear here."}
+              </p>
 
-              <div className="rounded-xl border border-[#f0e0a8] bg-[#fbf6e4] p-4 mb-4">
-                <div className="flex items-start gap-2.5">
-                  <AlertCircle className="w-5 h-5 text-[#c9a227] shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[11px] font-bold tracking-wide uppercase text-[#8a6a1f] mb-1">30-Minute Acceptance Window</p>
-                    <p className="text-sm text-[#4a4340] leading-relaxed">
-                      If no Quest Runner accepts within 30 minutes, your quest will automatically expire.
-                    </p>
-                  </div>
+              <dl className="mt-4 space-y-2.5 border-t border-border pt-4 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Category</dt>
+                  <dd className="font-semibold text-dark">{form.category}</dd>
                 </div>
-              </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Reward</dt>
+                  <dd className="font-display text-base font-bold text-maroon">₱{form.reward || "0"}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Meet-up</dt>
+                  <dd className="text-right font-semibold text-dark">{form.meetupLocation}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Time</dt>
+                  <dd className="font-semibold text-dark">{previewTime}</dd>
+                </div>
+              </dl>
 
-              <div className="rounded-xl border border-[#e5e0d8] bg-white p-4 mb-6">
-                <div className="flex items-start gap-2.5">
-                  <ShieldCheck className="w-5 h-5 text-[#7a1f32] shrink-0 mt-0.5" />
-                  <p className="text-sm text-[#4a4340] leading-relaxed">
-                    Your safety is our top priority. Meet only at verified public campus locations.
-                  </p>
-                </div>
-              </div>
+              <ul className="mt-5 space-y-3 border-t border-border pt-4 text-sm text-muted">
+                <li className="flex gap-3">
+                  <Clock className="mt-0.5 h-4 w-4 shrink-0 text-maroon" aria-hidden="true" />
+                  Your quest expires after 30 minutes if no runner accepts it.
+                </li>
+                <li className="flex gap-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-maroon" aria-hidden="true" />
+                  Meet only at verified public campus locations.
+                </li>
+              </ul>
 
               {/* Desktop-only submit button */}
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || shown < 7}
                 onClick={handleSubmit}
-                className="hidden lg:inline-flex w-full items-center justify-center px-6 py-3.5 rounded-xl bg-[#7a1f32] hover:bg-[#5f1727] text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:opacity-60"
+                className="mt-6 hidden lg:inline-flex w-full items-center justify-center px-6 py-3.5 rounded-xl bg-maroon hover:bg-maroon-dark text-white font-bold text-[15px] shadow-[0_8px_18px_rgba(122,31,50,0.28)] transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#e6e1d9] disabled:text-muted disabled:opacity-100 disabled:shadow-none"
               >
                 {submitting ? "Posting..." : "Review Quest"}
               </button>
 
-              <p className="mt-3 text-[11px] text-center text-[#4a4340] leading-relaxed hidden lg:block">
-                By posting, you agree to fulfill the reward payment in cash upon successful meetup.
+              <p className="mt-3 hidden text-center text-xs leading-relaxed text-muted lg:block">
+                {shown < 7 ? "Finish the steps on the left to review your quest." : "By posting, you agree to fulfill the reward payment in cash upon successful meetup."}
               </p>
 
               {success && (
@@ -615,29 +697,6 @@ export default function PostQuestPage() {
                   {submissionError}
                 </p>
               )}
-
-              {/* Live preview */}
-              <div className="mt-6 pt-5 border-t border-[#e5e0d8]">
-                <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-[#4a4340] mb-3">Quick Preview</p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between gap-3">
-                    <span className="text-[#4a4340]">Category</span>
-                    <span className="font-semibold text-[#7a1f32]">{form.category}</span>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <span className="text-[#4a4340]">Reward</span>
-                    <span className="font-bold text-[#c9a227]">₱{form.reward || "0"}</span>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <span className="text-[#4a4340]">Meet-up</span>
-                    <span className="font-semibold text-[#161414] text-right">{form.meetupLocation}</span>
-                  </div>
-                  <div className="flex justify-between gap-3">
-                    <span className="text-[#4a4340]">Time</span>
-                    <span className="font-semibold text-[#161414]">{previewTime}</span>
-                  </div>
-                </div>
-              </div>
             </aside>
           </ScrollReveal>
         </div>

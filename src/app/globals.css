@@ -13,6 +13,12 @@
   --color-maroon-deep: #380913;
   --color-gold: #c9a227;
   --color-gold-light: #8a6a1f;
+  /* Gold for TEXT: bright on maroon/dark surfaces (5.7:1 on maroon), ink on white/cream (6.3:1).
+     --color-gold stays for fills, borders and decoration only. */
+  --color-gold-bright: #e3bf45;
+  --color-gold-ink: #7a5b12;
+  --color-gold-star: #a8820f;
+  --color-field: #8d8984;
   --color-parchment: #f6ecc8;
   --color-muted: #4a4340;
   --color-subtle: #d8d3cc;
@@ -48,14 +54,24 @@
     margin: 0;
     min-height: 100vh;
     overflow-x: hidden;
-    background: 
+    background-color: #4f101d;
+    color: var(--color-dark);
+    @apply font-sans font-normal text-base leading-relaxed;
+  }
+
+  /* Fixed gradient lives on a pseudo-element: background-attachment: fixed
+     forces a full repaint on every scroll frame on mobile browsers. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
       radial-gradient(circle at 10% 15%, rgba(186, 45, 73, 0.35) 0%, transparent 45%),
       radial-gradient(circle at 90% 65%, rgba(201, 162, 39, 0.18) 0%, transparent 40%),
       radial-gradient(circle at 50% 90%, rgba(122, 31, 50, 0.45) 0%, transparent 50%),
       linear-gradient(160deg, #4f101d 0%, #7a1f32 35%, #5f1727 70%, #2f0710 100%);
-    background-attachment: fixed;
-    color: var(--color-dark);
-    @apply font-sans font-normal text-base leading-relaxed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -137,7 +153,7 @@
   }
 
   .card-surface {
-    @apply rounded-2xl border bg-white/95 backdrop-blur-sm;
+    @apply rounded-2xl border bg-white;
     border-color: var(--color-border);
     box-shadow: var(--shadow-card);
   }
@@ -448,4 +464,33 @@ input:-webkit-autofill:active {
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { display: none; }
   .skeleton-enter { animation: none; }
+}
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+/* One visible keyboard focus ring everywhere. Unlayered on purpose so it
+   wins over any Tailwind outline-none left on individual controls. */
+:focus-visible {
+  outline: 3px solid var(--color-gold-bright);
+  outline-offset: 2px;
+}
+.bg-white :focus-visible,
+.bg-cream :focus-visible,
+.card-surface :focus-visible,
+.bg-white:focus-visible,
+.bg-cream:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-color: var(--color-maroon);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

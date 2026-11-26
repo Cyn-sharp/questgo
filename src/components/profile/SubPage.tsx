@@ -17,7 +17,7 @@ export function SubPage({ title, description, children }: { title: string; descr
 
 export function Panel({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/40 bg-white/95 p-5 text-[#161414] shadow-[0_12px_32px_rgba(0,0,0,0.15)] sm:p-6">
+    <section className="rounded-2xl border border-white/40 bg-white/95 p-5 text-dark shadow-[0_12px_32px_rgba(0,0,0,0.15)] sm:p-6">
       {title && <h2 className="mb-3 font-display text-lg font-bold">{title}</h2>}
       {children}
     </section>
