@@ -1,6 +1,6 @@
 import { adminDb } from "@/lib/auth/firebase-admin";
 import { verifiedAdmin } from "@/lib/quests/admin";
-import { apiError, questId, readBody } from "@/lib/quests/api";
+import { apiError, audit, questId, readBody } from "@/lib/quests/api";
 import { QuestError } from "@/lib/quests/policy";
 import { FieldValue } from "firebase-admin/firestore";
 export async function GET(request: Request) {
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       const q = (await tx.get(ref)).data();
       if (!q || q.status !== "settlement") throw new QuestError("This case is no longer awaiting review.", 409);
       tx.update(ref, { status: "cancelled", resolutionNote: body.note, resolvedBy: actor.uid, resolvedAt: FieldValue.serverTimestamp(), cancelledAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      audit.inTransaction(tx, actor, "settlement-resolved", { type: "quest", id }, body.note as string);
       tx.create(ref.collection("events").doc(), { actorId: actor.uid, actorName: actor.name, action: "admin-resolution", reason: body.note, fromStatus: "settlement", toStatus: "cancelled", createdAt: FieldValue.serverTimestamp() });
     });
     return Response.json({ ok: true });

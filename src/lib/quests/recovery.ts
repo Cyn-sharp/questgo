@@ -49,3 +49,32 @@ export function recoveryChanges(q: RecoveryQuest, uid: string, action: string, i
   }
   throw new QuestError("This action is unavailable at the current quest stage.", 409);
 }
+
+// What happens to a quest when one of its participants is suspended by an admin.
+// Returns null when the quest needs no change. Uncommitted work closes outright;
+// anything that may involve money or purchased items goes to admin settlement.
+export function suspensionChanges(q: RecoveryQuest, suspendedId: string): { status: "cancelled" | "settlement"; closedReason: string } | null {
+  const requester = suspendedId === q.requesterId, runner = suspendedId === q.questRunnerId;
+  if (q.status === "available" && requester) return { status: "cancelled", closedReason: "requester_suspended" };
+  if (["accepted", "in_progress"].includes(q.status) && (requester || runner)) {
+    const clean = q.workflowVersion === 2 && !q.committedAt && !q.completionRequestedAt;
+    return { status: clean ? "cancelled" : "settlement", closedReason: requester ? "requester_suspended" : "runner_suspended" };
+  }
+  return null;
+}
+
+export const ABANDON_AFTER_MS = 2 * 60 * 60 * 1000;
+
+// A quest is abandoned when it is underway but nothing has happened (status change or chat message) for two hours.
+// Clean (uncommitted) quests close outright; anything that may involve money or purchased items goes to settlement.
+export function abandonedChanges(
+  q: RecoveryQuest & { updatedAt?: { toMillis(): number }; acceptedAt?: { toMillis(): number } },
+  lastMessageMillis: number,
+  now: number,
+): { status: "cancelled" | "settlement"; closedReason: string } | null {
+  if (!["accepted", "in_progress"].includes(q.status)) return null;
+  const lastActivity = Math.max(q.updatedAt?.toMillis() ?? 0, q.acceptedAt?.toMillis() ?? 0, lastMessageMillis);
+  if (!lastActivity || now - lastActivity < ABANDON_AFTER_MS) return null;
+  const clean = q.workflowVersion === 2 && !q.committedAt && !q.completionRequestedAt;
+  return { status: clean ? "cancelled" : "settlement", closedReason: "abandoned_no_activity" };
+}

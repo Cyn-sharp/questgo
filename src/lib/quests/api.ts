@@ -1,11 +1,27 @@
 import { adminAuth, adminDb } from "@/lib/auth/firebase-admin";
 import { isAllowedEmail } from "@/lib/auth/email-policy";
+import { idLockedMessage, type IdLockedAction } from "@/lib/auth/id-check";
+import { readIdCheck } from "@/lib/auth/id-check-server";
 import { QuestError } from "./policy";
 import { questService } from "./service";
 import { safetyService } from "./safety-service";
+import { rateLimiter } from "./ratelimit";
+import { auditService } from "./audit";
+import { runnerService } from "./runner-service";
+import { createActorCache } from "./actor-cache";
+import { questBucket } from "./storage";
 
-export const safety = safetyService(adminDb);
-export const quests = questService(adminDb, safety);
+export const audit = auditService(adminDb);
+export const safety = safetyService(adminDb, audit);
+export const quests = questService(adminDb, safety, {
+  remove: async (path) => { await questBucket().file(path).delete({ ignoreNotFound: true }); },
+});
+export const runners = runnerService(adminDb, audit);
+export const limiter = rateLimiter(adminDb);
+
+const actors = createActorCache(30_000);
+// Call after changing an account's name so the next request sees it immediately.
+export const forgetActor = (uid: string) => actors.forget(uid);
 
 export async function verifiedActor(request: Request) {
   const bearer = request.headers.get("authorization");
@@ -13,13 +29,24 @@ export async function verifiedActor(request: Request) {
   try {
     const token = await adminAuth.verifyIdToken(bearer.slice(7), true);
     if (!token.email_verified) throw new QuestError("Verify your email first.", 403);
-    const account = await adminAuth.getUser(token.uid);
+    let account = actors.get(token.uid);
+    if (!account) {
+      const record = await adminAuth.getUser(token.uid);
+      account = { uid: record.uid, name: record.displayName?.trim() || "QuestGo User", email: record.email, emailVerified: record.emailVerified, disabled: record.disabled };
+      actors.set(account);
+    }
     if (account.disabled || !account.emailVerified || !isAllowedEmail(account.email)) throw new QuestError("This account cannot access quests.", 403);
-    return { uid: account.uid, name: account.displayName?.trim() || "QuestGo User" };
+    return { uid: account.uid, name: account.name };
   } catch (error) {
     if (error instanceof QuestError) throw error;
     throw new QuestError("Your session is invalid. Please log in again.", 401);
   }
+}
+
+/** Posting and accepting quests need an admin-approved CIT-U ID. Admins always pass. */
+export async function requireApprovedId(uid: string, action: IdLockedAction) {
+  const idCheck = await readIdCheck(uid);
+  if (!idCheck.canPostAndAccept) throw new QuestError(idLockedMessage(idCheck.state, action), 403);
 }
 
 export function questId(value: string) {

@@ -56,7 +56,15 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'fullName', 'profilePhotoUrl', 'course', 'updatedAt'
-        ]);
+        ])
+        // The profile API is the normal path; these bounds cover direct client writes.
+        && (!('fullName' in request.resource.data)
+          || (request.resource.data.fullName is string
+            && request.resource.data.fullName.size() >= 2
+            && request.resource.data.fullName.size() <= 100))
+        && (!('course' in request.resource.data)
+          || (request.resource.data.course is string
+            && request.resource.data.course.size() <= 80));
     }
 
     match /quests/{questId} {

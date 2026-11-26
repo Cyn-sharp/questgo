@@ -47,13 +47,13 @@ export default function QuestCard({
       {/* Details Grid */}
       <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs text-gray-600 mb-6 flex-grow">
         <div className="flex items-center gap-1.5 col-span-2">
-          <MapPin className="w-4 h-4 text-gray-400" /> {location}
+          <MapPin className="w-4 h-4 text-gray-500" /> {location}
         </div>
         <div className="flex items-center gap-1.5">
-          <Navigation className="w-4 h-4 text-gray-400" /> {distance}
+          <Navigation className="w-4 h-4 text-gray-500" /> {distance}
         </div>
         <div className="flex items-center gap-1.5">
-          <Calendar className="w-4 h-4 text-gray-400" /> {time}
+          <Calendar className="w-4 h-4 text-gray-500" /> {time}
         </div>
         <div className="flex items-center gap-1 col-span-2 justify-end text-gray-900 font-bold text-sm">
           <Star className="w-4 h-4 text-[#D2A02A] fill-[#D2A02A]" /> {rating}
@@ -62,7 +62,7 @@ export default function QuestCard({
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-1 bg-[#F6E8D6] text-[#A67B27] px-2.5 py-1 rounded text-[10px] font-bold">
+        <div className="flex items-center gap-1 bg-[#F6E8D6] text-[#A67B27] px-2.5 py-1 rounded text-xs font-bold">
           <CheckCircle2 className="w-3 h-3" /> CIT-U VERIFIED
         </div>
         <Link 

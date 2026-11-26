@@ -1,9 +1,10 @@
-// The SRS requires official CIT-U accounts. Gmail is accepted only when a
-// deployment explicitly opts in for testing with NEXT_PUBLIC_ALLOW_TEST_GMAIL.
+// CIT-U (@cit.edu) addresses are always accepted. Gmail is accepted only when
+// the deployment sets NEXT_PUBLIC_ALLOW_TEST_GMAIL=true. Students are then
+// confirmed by the admin ID check (a photo of their CIT-U ID) instead.
 export const ALLOW_TEST_GMAIL = process.env.NEXT_PUBLIC_ALLOW_TEST_GMAIL === "true";
 
 export const EMAIL_POLICY_MESSAGE = ALLOW_TEST_GMAIL
-  ? "Please use a CIT-U or Gmail address for testing."
+  ? "Please use your CIT-U (@cit.edu) or Gmail address."
   : "Please use your official CIT-U (@cit.edu) email.";
 
 export const EMAIL_PLACEHOLDER = ALLOW_TEST_GMAIL ? "studentname@cit.edu or Gmail" : "studentname@cit.edu";

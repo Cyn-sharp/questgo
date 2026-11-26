@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { initializeApp as adminApp, deleteApp as deleteAdminApp } from "firebase-admin/app";
 import { getAuth as adminAuth } from "firebase-admin/auth";
 import { getFirestore as adminFirestore, Timestamp } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { initializeApp, deleteApp } from "firebase/app";
 import { count, sum, getAggregateFromServer, getDocs, where, orderBy, limit, startAfter, collection, connectFirestoreEmulator, doc, getDoc, getFirestore, onSnapshot, query, setDoc, terminate, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
@@ -21,6 +22,13 @@ let server;
 let serverOutput = "";
 const endpoint = "http://127.0.0.1:3105";
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Quests need an approved CIT-U ID (admin step 3), so every test account starts approved.
+function createApprovedUser(account) {
+  return auth.createUser(account).then(async (user) => {
+    await db.doc(`users/${user.uid}`).set({ idStatus: "approved" }, { merge: true });
+    return user;
+  });
+}
 
 function client(uid, verified = true) {
   const app = initializeApp({ projectId, apiKey: "emulator-key" }, `${uid}-${clients.length}`);
@@ -41,7 +49,8 @@ const input = { fundingMethod: "no_purchase", purchaseBudget: 0, title: "Pick up
 
 before(async () => {
   for (const uid of ["requester", "runner1", "runner2", "outsider", "unverified"]) {
-    await auth.createUser({ uid, email: `${uid}@cit.edu`, displayName: uid, emailVerified: uid !== "unverified", password: "Emulator-only-123!" });
+    await createApprovedUser({ uid, email: `${uid}@cit.edu`, displayName: uid, emailVerified: uid !== "unverified", password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: `${uid}@cit.edu`, password: "Emulator-only-123!", returnSecureToken: true }),
     });
@@ -49,7 +58,7 @@ before(async () => {
     assert.ok(body.idToken); tokens[uid] = body.idToken;
   }
   server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--port", "3105"], {
-    env: { ...process.env, FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId, FIREBASE_STORAGE_BUCKET: "demo-questgo-test.appspot.com" }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+    env: { ...process.env, CRON_SECRET: "test-cron-secret", FIREBASE_PROJECT_ID: projectId, GCLOUD_PROJECT: projectId, FIREBASE_STORAGE_BUCKET: "demo-questgo-test.appspot.com" }, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
   });
   server.stdout.on("data", (data) => { serverOutput += data; });
   server.stderr.on("data", (data) => { serverOutput += data; });
@@ -167,6 +176,25 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
   const cancelledMessagePath = `quests/${cancelId}/messages/${cancelMessage.body.id}`;
   assert.equal((await getDoc(doc(requesterDb, cancelledMessagePath))).data().text, "Please cancel");
   await assert.rejects(getDoc(doc(outsiderDb, cancelledMessagePath)), { code: "permission-denied" });
+  // Message history paging: newest-first window, then startAfter pages; closed quests stay readable, outsiders stay denied.
+  const pagedBase = db.collection(`quests/${cancelId}/messages`);
+  const seedBatch = db.batch();
+  for (let i = 0; i < 120; i++) seedBatch.set(pagedBase.doc(`seed-${String(i).padStart(3, "0")}`), { senderId: "requester", text: `seed ${i}`, createdAt: Timestamp.fromMillis(1000 + Math.floor(i / 2) * 10) }); // pairs share createdAt
+  await seedBatch.commit();
+  const pagedRef = collection(requesterDb, "quests", cancelId, "messages");
+  const latest = await getDocs(query(pagedRef, orderBy("createdAt", "desc"), limit(100)));
+  let seen = latest.docs.map((record) => record.id);
+  let cursor = latest.docs.at(-1);
+  while (true) {
+    const page = await getDocs(query(pagedRef, orderBy("createdAt", "desc"), startAfter(cursor), limit(50)));
+    seen = seen.concat(page.docs.map((record) => record.id));
+    if (page.size < 50) break;
+    cursor = page.docs.at(-1);
+  }
+  assert.equal(seen.length, 121); // 120 seeded + the original "Please cancel"
+  assert.equal(new Set(seen).size, seen.length, "no duplicates across pages");
+  assert.ok(seen.includes("seed-000") && seen.includes("seed-119"), "no gaps");
+  await assert.rejects(getDocs(query(collection(outsiderDb, "quests", cancelId, "messages"), orderBy("createdAt", "desc"), startAfter(cursor), limit(50))), { code: "permission-denied" });
   const unclaimed = await request("requester", "", input);
   assert.equal(unclaimed.status, 201);
   assert.equal((await request("requester", `/${unclaimed.body.id}`, { action: "cancel" })).status, 200);
@@ -194,7 +222,8 @@ test("two-account quest lifecycle, races, live messages, and security boundaries
 
 test("S2-10 acceptance contract: missing quests, audit timestamp, marketplace removal, role views, and Accepted -> In Progress guards", { timeout: 60000 }, async () => {
   for (const id of ["s2-requester", "s2-runner", "s2-outsider"]) {
-    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await createApprovedUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
   }
@@ -282,7 +311,8 @@ test("printing upload is required, preserved, and private to participants", asyn
 
 test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings and administrator boundaries", { timeout: 90000 }, async () => {
   for (const id of ["recovery-requester", "recovery-runner", "recovery-next", "recovery-admin"]) {
-    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await createApprovedUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     if (id === "recovery-admin") await auth.setCustomUserClaims(id, { admin: true });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
@@ -353,7 +383,8 @@ test("funding, withdrawal, replacement privacy, settlement, deadlines, ratings a
 
 test("reports are deduplicated and admin-only; blocks hide quests, stop acceptance both ways, and stay private", { timeout: 90000 }, async () => {
   for (const id of ["safety-requester", "safety-runner", "safety-other", "safety-admin"]) {
-    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await createApprovedUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     if (id === "safety-admin") await auth.setCustomUserClaims(id, { admin: true });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
@@ -416,7 +447,8 @@ test("reports are deduplicated and admin-only; blocks hide quests, stop acceptan
 
 test("runner location is private to participants, rate-limited, and deleted when the quest ends", { timeout: 60000 }, async () => {
   for (const id of ["map-requester", "map-runner", "map-outsider"]) {
-    await auth.createUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await createApprovedUser({ uid: id, email: id + "@cit.edu", displayName: id, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${id}`).set({ status: "approved" });
     const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: id + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
     tokens[id] = (await response.json()).idToken;
   }
@@ -451,6 +483,196 @@ test("runner location is private to participants, rate-limited, and deleted when
   assert.equal(await locate(runner, id, here), 403);
 });
 
+test("blocks stop chat, suspension closes the user's quests, and the expiry sweep is secured and accurate", { timeout: 90000 }, async () => {
+  const ids = { req: "hx-requester", run: "hx-runner", run2: "hx-runner2", other: "hx-other", admin: "hx-admin" };
+  for (const uid of Object.values(ids)) {
+    await createApprovedUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
+    if (uid === ids.admin) await auth.setCustomUserClaims(uid, { admin: true });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[uid] = (await response.json()).idToken;
+  }
+  async function call(uid, url, method = "POST", body) {
+    const response = await fetch(endpoint + url, { method, headers: { Authorization: "Bearer " + tokens[uid], "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    return { status: response.status, body: await response.json() };
+  }
+  async function suspend(reporter, questId) {
+    const report = await request(reporter, "/" + questId + "/report", { reason: "no_show", details: "Stopped responding after accepting" });
+    assert.equal(report.status, 201);
+    const resolved = await call(ids.admin, "/api/admin/reports", "POST", { id: report.body.id, outcome: "suspended", note: "Confirmed abandonment in the chat" });
+    assert.equal(resolved.status, 200);
+    assert.notEqual(resolved.body.cleanupFailed, true);
+  }
+
+  // 1. A block ends chat in both directions, with a deliberately vague message.
+  const first = (await request(ids.req, "", input)).body.id;
+  assert.equal((await request(ids.run, "/" + first, { action: "accept" })).status, 200);
+  assert.equal((await request(ids.req, "/" + first + "/messages", { text: "hello" })).status, 201);
+  assert.equal((await call(ids.run, "/api/users/" + ids.req + "/block")).status, 200);
+  const blockedChat = await request(ids.req, "/" + first + "/messages", { text: "are you there" });
+  assert.equal(blockedChat.status, 403);
+  assert.equal(blockedChat.body.message, "You can't message this user.");
+  assert.equal((await request(ids.run, "/" + first + "/messages", { text: "no" })).status, 403);
+
+  // 2. Suspending the runner cancels the uncommitted quest and frees the requester to post again.
+  await suspend(ids.req, first);
+  const cancelled = (await db.doc("quests/" + first).get()).data();
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.closedReason, "runner_suspended");
+  assert.ok((await db.collection("quests/" + first + "/events").where("action", "==", "account-suspended").get()).size === 1);
+
+  // 3. Committed work goes to administrator settlement instead of being cancelled outright.
+  const second = (await request(ids.req, "", input)).body.id;
+  assert.equal((await request(ids.run2, "/" + second, { action: "accept" })).status, 200);
+  assert.equal((await request(ids.run2, "/" + second, { action: "start" })).status, 200);
+  assert.equal((await request(ids.run2, "/" + second, { action: "commit" })).status, 200);
+  await suspend(ids.req, second);
+  const settlement = (await db.doc("quests/" + second).get()).data();
+  assert.equal(settlement.status, "settlement");
+  assert.equal(settlement.closedReason, "runner_suspended");
+  assert.ok(settlement.reviewRequestedAt);
+
+  // 4. The expiry sweep rejects strangers and only expires unclaimed quests past their window.
+  const stale = (await request(ids.req, "", input)).body.id;
+  const live = (await request(ids.other, "", input)).body.id;
+  await db.doc("quests/" + stale).update({ expiresAt: Timestamp.fromMillis(Date.now() - 60000) });
+  const cron = (headers) => fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers });
+  assert.equal((await cron({})).status, 401);
+  assert.equal((await cron({ Authorization: "Bearer wrong-secret" })).status, 401);
+  const sweep = await cron({ Authorization: "Bearer test-cron-secret" });
+  assert.equal(sweep.status, 200);
+  assert.ok((await sweep.json()).expired >= 1);
+  assert.equal((await db.doc("quests/" + stale).get()).data().status, "expired");
+  assert.equal((await db.doc("quests/" + live).get()).data().status, "available");
+  assert.equal((await db.doc("quests/" + second).get()).data().status, "settlement");
+
+  // 5. An expired quest can be posted again.
+  const reposted = await request(ids.req, "/" + stale, { action: "repost" });
+  assert.equal(reposted.status, 200);
+  assert.equal((await db.doc("quests/" + reposted.body.id).get()).data().status, "available");
+});
+
+test("profile API validates input and updates Auth and Firestore together", { timeout: 30000 }, async () => {
+  const patch = async (uid, body) => {
+    const response = await fetch(`${endpoint}/api/users/me`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(tokens[uid] ? { Authorization: `Bearer ${tokens[uid]}` } : {}) }, body: JSON.stringify(body) });
+    return { status: response.status, body: await response.json() };
+  };
+  assert.equal((await patch("missing", { fullName: "Anyone" })).status, 401);
+  assert.equal((await patch("outsider", { fullName: "A" })).status, 400);
+  assert.equal((await patch("outsider", { fullName: "Valid Name", course: "BS Wizardry" })).status, 400);
+  const saved = await patch("outsider", { fullName: "  Maria   Santos ", course: "BS Information Technology Student" });
+  assert.equal(saved.status, 200);
+  assert.equal((await auth.getUser("outsider")).displayName, "Maria Santos");
+  const profile = (await db.doc("users/outsider").get()).data();
+  assert.deepEqual([profile.fullName, profile.course], ["Maria Santos", "BS Information Technology Student"]);
+  // Direct client writes are bounded by the Firestore rules too.
+  const store = client("outsider");
+  await assert.rejects(updateDoc(doc(store, "users", "outsider"), { fullName: "x".repeat(101) }), { code: "permission-denied" });
+  await assert.rejects(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria Santos", rating: 5 }), { code: "permission-denied" });
+  await assert.doesNotReject(updateDoc(doc(store, "users", "outsider"), { fullName: "Maria S." }));
+});
+
+test("the sweep closes quests with no activity for two hours, but chat counts as activity", { timeout: 60000 }, async () => {
+  const ids = ["ab-requester", "ab-requester2", "ab-runner"];
+  for (const uid of ids) {
+    await createApprovedUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
+    const response = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+    tokens[uid] = (await response.json()).idToken;
+  }
+  const quiet = (await request("ab-requester", "", input)).body.id;
+  const chatty = (await request("ab-requester2", "", input)).body.id;
+  assert.equal((await request("ab-runner", "/" + quiet, { action: "accept" })).status, 200);
+  assert.equal((await request("ab-runner", "/" + chatty, { action: "accept" })).status, 200);
+  // A message is recent activity even when the quest document itself is old.
+  assert.equal((await request("ab-requester2", "/" + chatty + "/messages", { text: "On my way?" })).status, 201);
+  const old = Timestamp.fromMillis(Date.now() - 3 * 60 * 60 * 1000);
+  for (const id of [quiet, chatty]) await db.doc("quests/" + id).update({ updatedAt: old, acceptedAt: old });
+  const sweep = await fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers: { Authorization: "Bearer test-cron-secret" } });
+  assert.equal(sweep.status, 200);
+  assert.ok((await sweep.json()).abandoned >= 1);
+  const closed = (await db.doc("quests/" + quiet).get()).data();
+  assert.equal(closed.status, "cancelled");
+  assert.equal(closed.closedReason, "abandoned_no_activity");
+  assert.equal((await db.doc("quests/" + chatty).get()).data().status, "accepted");
+  assert.equal((await db.collection("quests/" + quiet + "/events").where("action", "==", "abandoned").get()).size, 1);
+});
+
+test("printing files are deleted after retention, but never while a reposted quest still uses them", { timeout: 60000 }, async () => {
+  const uid = "at-requester";
+  await createApprovedUser({ uid, email: uid + "@cit.edu", displayName: uid, emailVerified: true, password: "Emulator-only-123!" });
+    await db.doc(`runnerApplications/${uid}`).set({ status: "approved" });
+  const login = await fetch("http://127.0.0.1:9095/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: uid + "@cit.edu", password: "Emulator-only-123!", returnSecureToken: true }) });
+  tokens[uid] = (await login.json()).idToken;
+  const printing = { ...input, fundingMethod: "prepaid", purchaseBudget: 65, vendorInstructions: "Requester pays the campus print shop directly", category: "Printing", title: "Print my retention module",
+    requirements: { paperSize: "A4", copies: "1", pages: "All", color: "Black and white", sides: "Single-sided" } };
+  const body = new FormData(); body.set("quest", JSON.stringify(printing));
+  body.set("file", new Blob([Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXZkAAAAASUVORK5CYII=", "base64")], { type: "image/png" }), "page.png");
+  const created = await fetch(endpoint + "/api/quests", { method: "POST", headers: { Authorization: "Bearer " + tokens[uid] }, body });
+  assert.equal(created.status, 201);
+  const first = (await created.json()).id;
+  const path = (await db.doc("quests/" + first).get()).data().attachment.path;
+  const fileExists = async () => (await getStorage(admin).bucket("demo-questgo-test.appspot.com").file(path).exists())[0];
+  const sweep = async () => { const r = await fetch(endpoint + "/api/cron/expire-quests", { method: "POST", headers: { Authorization: "Bearer test-cron-secret" } }); assert.equal(r.status, 200); return r.json(); };
+  const age = (id) => { const old = Timestamp.fromMillis(Date.now() - 8 * 24 * 60 * 60 * 1000); return db.doc("quests/" + id).update({ createdAt: old, updatedAt: old, cancelledAt: old }); };
+
+  // A recently closed quest keeps its file.
+  assert.equal((await request(uid, "/" + first, { action: "cancel" })).status, 200);
+  await sweep();
+  assert.equal(await fileExists(), true);
+
+  // Reposting shares the file, so aging the first quest alone must not delete it.
+  const second = (await request(uid, "/" + first, { action: "repost" })).body.id;
+  assert.equal((await db.doc("quests/" + second).get()).data().attachment.path, path);
+  await age(first);
+  await sweep();
+  assert.equal(await fileExists(), true);
+  assert.ok((await db.doc("quests/" + first).get()).data().attachment);
+
+  // Once every quest using the file is old and closed, the file and references are removed.
+  assert.equal((await request(uid, "/" + second, { action: "cancel" })).status, 200);
+  await age(second);
+  assert.ok((await sweep()).attachmentsRemoved >= 1);
+  assert.equal(await fileExists(), false);
+  for (const id of [first, second]) {
+    const data = (await db.doc("quests/" + id).get()).data();
+    assert.equal(data.attachment, undefined);
+    assert.ok(data.attachmentRemovedAt);
+  }
+  const download = await fetch(`${endpoint}/api/quests/${first}/file`, { headers: { Authorization: "Bearer " + tokens[uid] } });
+  assert.equal(download.status, 410);
+});
+
+test("chat history pages backwards past the live window for participants only", { timeout: 60000 }, async () => {
+  const qid = "paging-quest", base = Date.now() - 1000 * 1000;
+  await db.doc("quests/" + qid).set({ requesterId: "pg-a", questRunnerId: "pg-b", status: "accepted", title: "Paging" });
+  const batch = db.batch();
+  for (let i = 0; i < 120; i++) batch.set(db.doc(`quests/${qid}/messages/m${String(i).padStart(3, "0")}`), { senderId: "pg-a", text: "m" + i, createdAt: Timestamp.fromMillis(base + i * 1000) });
+  await batch.commit();
+  const store = client("pg-a");
+  const messages = collection(store, "quests", qid, "messages");
+  const live = await getDocs(query(messages, orderBy("createdAt", "desc"), limit(100)));
+  assert.equal(live.size, 100);
+  assert.equal(live.docs[0].data().text, "m119");
+  const older = await getDocs(query(messages, orderBy("createdAt", "desc"), startAfter(live.docs.at(-1)), limit(50)));
+  assert.deepEqual([older.size, older.docs[0].data().text, older.docs.at(-1).data().text], [20, "m19", "m0"]);
+  await assert.rejects(getDocs(query(collection(client("outsider"), "quests", qid, "messages"), orderBy("createdAt", "desc"), limit(50))), { code: "permission-denied" });
+});
+
+test("administrator decisions are written to an admin-only audit log", { timeout: 30000 }, async () => {
+  const get = (uid) => fetch(endpoint + "/api/admin/audit", { headers: { Authorization: "Bearer " + tokens[uid] } });
+  assert.equal((await get("hx-requester")).status, 403);
+  const response = await get("hx-admin");
+  assert.equal(response.status, 200);
+  const { entries } = await response.json();
+  const actions = entries.map((entry) => entry.action);
+  for (const expected of ["report-suspended", "quests-closed-on-suspension"]) assert.ok(actions.includes(expected), "missing " + expected);
+  const suspended = entries.find((entry) => entry.action === "report-suspended");
+  assert.equal(suspended.actorId, "hx-admin");
+  assert.ok(suspended.details.includes("Confirmed abandonment"));
+  // Clients can never read or write the log directly.
+  await assert.rejects(getDocs(collection(client("hx-admin"), "auditLog")), { code: "permission-denied" });
+  await assert.rejects(setDoc(doc(client("hx-requester"), "auditLog", "forged"), { action: "x" }), { code: "permission-denied" });
 test("notification settings are private to their owner and accept only valid fields", { timeout: 30000 }, async () => {
   const owner = "requester";
   const path = ["users", owner, "preferences", "notifications"];

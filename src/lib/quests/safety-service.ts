@@ -1,8 +1,9 @@
 import { FieldValue, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { QuestError, type WorkflowQuest } from "./policy";
+import type { auditService } from "./audit";
 import { reportId, reportTarget, validateReport, validateResolution } from "./safety";
 
-export function safetyService(db: Firestore) {
+export function safetyService(db: Firestore, audit?: Pick<ReturnType<typeof auditService>, "inTransaction">) {
   const blockRef = (uid: string, targetId: string) => db.doc(`users/${uid}/blocks/${targetId}`);
 
   return {
@@ -51,6 +52,7 @@ export function safetyService(db: Firestore) {
         if (!report || report.status !== "open") throw new QuestError("This report is no longer open.", 409);
         if (outcome === "suspended" && report.reportedId === adminId) throw new QuestError("You cannot suspend your own account.");
         tx.update(ref, { status: "resolved", outcome, resolutionNote: note, resolvedBy: adminId, resolvedByName: adminName, resolvedAt: FieldValue.serverTimestamp() });
+        audit?.inTransaction(tx, { uid: adminId, name: adminName }, `report-${outcome}`, { type: "report", id }, `Reported user ${report.reportedId}: ${note}`);
         return { outcome, reportedId: String(report.reportedId) };
       });
     },

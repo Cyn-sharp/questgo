@@ -52,7 +52,7 @@ function QuestCardSkeleton({ index, withDescription }: { index: number; withDesc
         </div>
         <Skeleton className="ml-auto mt-1 h-3.5 w-12" />
       </div>
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-[#e5e0d8] pt-3 sm:pt-4">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border pt-3 sm:pt-4">
         <Skeleton tone="gold" className="h-5 w-24 rounded-full" />
         <Skeleton tone="maroon" className="h-8 w-24 rounded-lg sm:h-9" />
       </div>
@@ -174,7 +174,7 @@ export function ProfileSkeleton() {
   return (
     <SkeletonRegion label="Loading your profile" className="page-container py-6 sm:py-10 lg:py-12">
       <section className="relative mb-4 rounded-2xl border border-white/40 bg-white/95 shadow-[0_20px_60px_rgba(0,0,0,0.3)] backdrop-blur-md sm:mb-5">
-        <div className="h-16 rounded-t-2xl bg-gradient-to-br from-[#7a1f32] via-[#5f1727] to-[#380913] sm:h-20" />
+        <div className="h-16 rounded-t-2xl bg-gradient-to-br from-maroon via-maroon-dark to-maroon-deep sm:h-20" />
         <div className="relative rounded-b-2xl bg-white px-5 pb-5 pt-10 sm:px-6 sm:pb-6 sm:pt-12">
           <div className="relative -mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
@@ -204,7 +204,7 @@ export function ProfileSkeleton() {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-white/40 bg-white/95 shadow-[0_12px_32px_rgba(0,0,0,0.15)] backdrop-blur-md">
-        <ul className="divide-y divide-[#e5e0d8]">
+        <ul className="divide-y divide-border">
           {Array.from({ length: 7 }, (_, i) => (
             <li key={i} style={waveDelay(i, 90)} className="flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-5 sm:py-4">
               <Skeleton className="h-10 w-10 shrink-0 rounded-xl sm:h-11 sm:w-11" />
@@ -303,7 +303,7 @@ export function PostQuestSkeleton() {
             <Skeleton tone="gold" className="h-3 w-40" />
             <SkeletonText lines={2} />
           </div>
-          <div className="space-y-2 rounded-xl border border-[#e5e0d8] bg-white p-4">
+          <div className="space-y-2 rounded-xl border border-border bg-white p-4">
             <Skeleton className="h-3 w-32" />
             <SkeletonText lines={2} />
           </div>

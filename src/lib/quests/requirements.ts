@@ -31,21 +31,29 @@ export function meaningfulText(value: unknown, min = 3, max = 500): value is str
     /[\p{L}\p{N}]/u.test(value) && !/^(null|undefined|none|n\/?a|test|testing|asdf|tbd|[-.\s]+)$/i.test(value.trim());
 }
 
+// Error for a single requirement field, or null when it is acceptable. Shared by the form (per-field messages) and the server.
+export function requirementError(category: string, key: string, raw: unknown): string | null {
+  const field = (CATEGORY_FIELDS[category] || []).find((item) => item.key === key);
+  if (!field) return null;
+  if (key === "copies" || key === "budget") {
+    const number = typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
+    const max = key === "copies" ? 100 : 10000;
+    const invalid = !Number.isFinite(number) || number <= 0 || number > max || (key === "copies" ? !Number.isInteger(number) : Math.abs(number * 100 - Math.round(number * 100)) > 0.00001);
+    return invalid ? `Enter a valid ${field.label.toLowerCase()}.` : null;
+  }
+  if (category === "Printing" && key === "color" && !["Black and white", "Color"].includes(String(raw))) return "Select a print color.";
+  if (category === "Printing" && key === "sides" && !["Single-sided", "Double-sided"].includes(String(raw))) return "Select single-sided or double-sided printing.";
+  return meaningfulText(raw, key === "paperSize" || key === "pages" ? 1 : 3) ? null : `Please provide ${field.label.toLowerCase()}.`;
+}
+
 export function validateRequirements(category: string, value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Fill in the requirements for this category.");
   const source = value as Record<string, unknown>;
   const result: Record<string, string> = {};
   for (const field of CATEGORY_FIELDS[category] || []) {
-    const raw = source[field.key];
-    if (field.key === "copies" || field.key === "budget") {
-      const number = typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
-      if (!Number.isFinite(number) || number <= 0 || number > (field.key === "copies" ? 100 : 10000) || (field.key === "copies" ? !Number.isInteger(number) : Math.abs(number * 100 - Math.round(number * 100)) > 0.00001)) throw new Error(`Enter a valid ${field.label.toLowerCase()}.`);
-    } else if (!meaningfulText(raw, field.key === "paperSize" || field.key === "pages" ? 1 : 3)) throw new Error(`Please provide ${field.label.toLowerCase()}.`);
-    result[field.key] = String(raw).trim();
-  }
-  if (category === "Printing") {
-    if (!["Black and white", "Color"].includes(result.color)) throw new Error("Select a print color.");
-    if (!["Single-sided", "Double-sided"].includes(result.sides)) throw new Error("Select single-sided or double-sided printing.");
+    const problem = requirementError(category, field.key, source[field.key]);
+    if (problem) throw new Error(problem);
+    result[field.key] = String(source[field.key]).trim();
   }
   return result;
 }

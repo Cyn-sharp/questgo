@@ -28,6 +28,7 @@ export function useMouseParallax<T extends HTMLElement = HTMLElement>(
   };
 
   const onMouseMove = (e: React.MouseEvent<T>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     

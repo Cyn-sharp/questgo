@@ -70,7 +70,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
         <div><dt className="font-semibold">Runner</dt><dd>{quest.runnerName || "Waiting for a runner"}{runner && " (you)"}</dd></div>
         <div><dt className="font-semibold">Pickup location</dt><dd>{quest.location}</dd></div>
         <div><dt className="font-semibold">Meet-up point</dt><dd>{quest.meetUpPoint}</dd></div>
-        <div><dt className="font-semibold">Preferred time</dt><dd>{quest.preferredTime}</dd></div>
+        <div><dt className="font-semibold">Preferred time</dt><dd>{quest.preferredTime || "Not set — agree it in Messenger"}</dd></div>
         {quest.status === "available" && <div><dt className="font-semibold">Time to accept</dt><dd>{expired ? "Expired" : `${Math.floor(remaining / 60000)}:${String(Math.floor(remaining / 1000) % 60).padStart(2, "0")}`}</dd></div>}
       </dl>
       {["available", "accepted", "in_progress"].includes(status) && <RunnerMap quest={quest} uid={user.uid} now={now} />}

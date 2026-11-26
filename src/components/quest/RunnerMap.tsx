@@ -41,7 +41,7 @@ export function RunnerMap({ quest, uid, now }: { quest: Quest; uid: string; now:
     <section ref={section} id="runner-map" aria-label="Campus map" className="scroll-mt-24 space-y-3 rounded-xl border p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 font-bold"><MapPin className="h-4 w-4 text-maroon" /> Campus map</h2>
-        {highlight.length > 0 && <span className="text-xs text-gray-600"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#c9a227] align-middle" /> Pickup / meet-up</span>}
+        {highlight.length > 0 && <span className="text-xs text-gray-600"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-gold align-middle" /> Pickup / meet-up</span>}
       </div>
 
       <CampusMap highlight={highlight} marker={location && { ...location, label: who, stale }} />
