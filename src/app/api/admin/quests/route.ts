@@ -3,11 +3,19 @@ import { verifiedAdmin } from "@/lib/quests/admin";
 import { apiError, audit, questId, readBody } from "@/lib/quests/api";
 import { QuestError } from "@/lib/quests/policy";
 import { FieldValue } from "firebase-admin/firestore";
+
+const time = (value: unknown) => (value as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null;
+
 export async function GET(request: Request) {
   try {
     await verifiedAdmin(request);
     const records = await adminDb.collection("quests").where("status", "==", "settlement").limit(100).get();
-    return Response.json({ quests: records.docs.map((d) => { const q = d.data(); return { id: d.id, title: q.title, issueReason: q.issueReason || "Cancellation / unresolved handover", requesterName: q.requesterName, runnerName: q.runnerName, actualExpense: q.actualExpense || 0, expenseEvidence: q.expenseEvidence || "", expenseApproved: q.expenseApproved === true, fundingMethod: q.fundingMethod || "Not recorded", reward: q.reward }; }) }, { headers: { "Cache-Control": "private, no-store" } });
+    return Response.json({ quests: records.docs.map((d) => { const q = d.data(); return {
+      id: d.id, title: q.title, closedReason: q.closedReason || "", issueReason: q.issueReason || "", requesterName: q.requesterName, runnerName: q.runnerName,
+      actualExpense: q.actualExpense || 0, expenseEvidence: q.expenseEvidence || "", expenseApproved: q.expenseApproved === true, fundingMethod: q.fundingMethod || "", reward: q.reward,
+      // When the quest stopped and started waiting for an admin (older quests: their last update).
+      createdAt: time(q.reviewRequestedAt ?? q.updatedAt ?? q.createdAt),
+    }; }) }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return apiError(error); }
 }
 export async function POST(request: Request) {

@@ -10,6 +10,7 @@ const ACTIONS: Record<string, { label: string; tone: AuditTone }> = {
   "report-warned": { label: "Warning recorded", tone: "warning" },
   "report-suspended": { label: "Account suspended", tone: "danger" },
   "quests-closed-on-suspension": { label: "Quests closed after suspension", tone: "neutral" },
+  "reports-closed-on-suspension": { label: "Other reports closed after suspension", tone: "neutral" },
   "settlement-resolved": { label: "Settlement resolved", tone: "success" },
   // Older entries, from before runner applications were removed.
   "runner-approved": { label: "Runner approved (old)", tone: "neutral" },
@@ -35,7 +36,7 @@ export function describeAuditAction(action: string): { label: string; tone: Audi
 export function auditCategory(action: string): Exclude<AuditFilter, "all"> | "other" {
   const value = String(action ?? "");
   if (value.startsWith("id-")) return "ids";
-  if (value.startsWith("report-") || value === "quests-closed-on-suspension") return "reports";
+  if (value.startsWith("report-") || value.endsWith("-closed-on-suspension")) return "reports";
   if (value.startsWith("settlement-")) return "settlements";
   return "other";
 }
