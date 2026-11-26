@@ -449,3 +449,19 @@ input:-webkit-autofill:active {
   .skeleton::after { display: none; }
   .skeleton-enter { animation: none; }
 }
+/* Notification bell: a short ring when something new arrives, and a soft drop-in for its panel. */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-5deg); }
+  75% { transform: rotate(2deg); }
+}
+@keyframes bell-panel {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[bell-"] { animation: none !important; }
+}

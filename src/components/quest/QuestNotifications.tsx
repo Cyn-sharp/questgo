@@ -14,6 +14,8 @@ import type { Quest } from "@/types/quest";
 import { InboxSkeleton } from "@/components/skeletons/PageSkeletons";
 import { alertEnabled, DEFAULT_NOTIFICATION_PREFS, newQuestText, parsePrefs, wantsNewQuest, type AlertKind, type NotificationPrefs } from "@/lib/notifications/preferences";
 import { showDeviceAlert } from "@/lib/notifications/device";
+import { alertId } from "@/lib/notifications/history";
+import { recordAlert } from "@/lib/notifications/history-store";
 
 type Inbox = InboxEntry & { title: string; sentAt: Timestamp };
 type Notice = { id: number; text: string; href: string };
@@ -67,13 +69,15 @@ function NotificationsForUser({ uid, children }: { uid: string; children: ReactN
   const announce = useCallback((text: string, href: string) => {
     setNotices((items) => [...items, { id: ++serial.current, text, href }].slice(-20));
   }, []);
-  // Settings decide whether an event interrupts the user. Unread badges and
-  // "New" tags are not interruptions, so they always stay accurate.
+  // Settings decide whether an event interrupts the user. The bell's list,
+  // unread badges and "New" tags are not interruptions, so they always stay
+  // accurate. Chats are listed by the Messages button, not the bell.
   const notify = useCallback((kind: AlertKind, text: string, href: string) => {
+    if (kind !== "message") recordAlert(uid, { id: alertId(kind, href, text), kind, text, href, at: Date.now() });
     if (!alertEnabled(prefsRef.current, kind)) return;
     announce(text, href);
     if (document.visibilityState !== "visible" || !document.hasFocus()) showDeviceAlert(text, href, () => router.push(href));
-  }, [announce, router]);
+  }, [announce, router, uid]);
   const savePrefs = useCallback(async (next: NotificationPrefs) => {
     await setDoc(doc(db, "users", uid, "preferences", "notifications"), { ...next, updatedAt: serverTimestamp() });
   }, [uid]);
