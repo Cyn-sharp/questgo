@@ -1,5 +1,5 @@
 import { adminAuth } from "@/lib/auth/firebase-admin";
-import { apiError, safety, verifiedActor } from "@/lib/quests/api";
+import { apiError, limiter, safety, verifiedActor } from "@/lib/quests/api";
 import { QuestError } from "@/lib/quests/policy";
 import { validateBlockTarget } from "@/lib/quests/safety";
 
@@ -7,6 +7,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const actor = await verifiedActor(request);
     const target = validateBlockTarget(actor.uid, (await context.params).id);
+    await limiter.hit(actor.uid, "block", 30, 60 * 60 * 1000);
     const account = await adminAuth.getUser(target).catch(() => null);
     if (!account) throw new QuestError("User not found.", 404);
     await safety.block(actor.uid, target, account.displayName?.trim() || "QuestGo User");

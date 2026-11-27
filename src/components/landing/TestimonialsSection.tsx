@@ -40,24 +40,24 @@ export const TestimonialsSection = () => {
   return (
     <section className="relative w-full py-24 md:py-32 overflow-hidden">
       {/* Decorative ambient background glows to layer over body background */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#7a1f32]/20 rounded-full blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#c9a227]/10 rounded-full blur-[110px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-maroon/20 rounded-full blur-[130px] pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-96 h-96 bg-gold/10 rounded-full blur-[110px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 md:px-16 relative z-10">
         
         {/* Header Block */}
         <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20">
-          <div className="inline-flex items-center gap-2 bg-[#f6ecc8] border border-[#c9a227]/30 px-4.5 py-1.5 rounded-full mb-5 animate-soft-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#7a1f32]" />
-            <span className="font-outfit font-extrabold text-[11px] tracking-[0.12em] uppercase text-[#7a1f32]">
+          <div className="inline-flex items-center gap-2 bg-parchment border border-gold/30 px-4.5 py-1.5 rounded-full mb-5 animate-soft-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-maroon" />
+            <span className="font-outfit font-extrabold text-xs tracking-[0.12em] uppercase text-maroon">
               Wildcat Wall of Fame
             </span>
           </div>
           
-          <h2 className="font-outfit font-extrabold text-4xl sm:text-5xl text-[#fbf8f0] leading-tight tracking-tight">
-            Loved by CIT-U <span className="text-[#c9a227]">Students</span>
+          <h2 className="font-outfit font-extrabold text-4xl sm:text-5xl text-cream leading-tight tracking-tight">
+            Loved by CIT-U <span className="text-gold-bright">Students</span>
           </h2>
-          <p className="mt-4 font-sans font-normal text-base md:text-lg text-[#d8d3cc] leading-relaxed">
+          <p className="mt-4 font-sans font-normal text-base md:text-lg text-subtle leading-relaxed">
             See how fellow Technologians are reclaiming their schedules, helping peers, and earning extra income right on campus.
           </p>
         </div>
@@ -67,10 +67,10 @@ export const TestimonialsSection = () => {
           {testimonials.map((test) => (
             <div 
               key={test.id} 
-              className="card-interactive card-surface shine-wrap flex flex-col justify-between p-7 sm:p-8 relative overflow-hidden group rounded-2xl bg-white/95 backdrop-blur-md"
+              className="card-interactive card-surface shine-wrap flex flex-col justify-between p-7 sm:p-8 relative overflow-hidden group rounded-2xl bg-white"
             >
               {/* Semi-transparent absolute blockquote background icon */}
-              <span className="absolute right-6 top-4 font-outfit text-8xl text-[#c9a227]/10 pointer-events-none select-none font-black leading-none">
+              <span className="absolute right-6 top-4 font-outfit text-8xl text-gold/10 pointer-events-none select-none font-black leading-none">
                 “
               </span>
 
@@ -100,21 +100,21 @@ export const TestimonialsSection = () => {
                 </div>
 
                 {/* Testimonial Quote */}
-                <p className="font-sans font-normal text-[14px] sm:text-[15px] leading-relaxed text-[#4a4340] italic relative z-10">
+                <p className="font-sans font-normal text-[14px] sm:text-[15px] leading-relaxed text-muted italic relative z-10">
                   &ldquo;{test.quote}&rdquo;
                 </p>
               </div>
 
               {/* Profile Footer with Default Avatar */}
-              <div className="flex items-center gap-4 mt-8 pt-5 border-t border-[#e5e0d8] relative z-10">
+              <div className="flex items-center gap-4 mt-8 pt-5 border-t border-border relative z-10">
                 {/* Custom Default Avatar Element */}
                 <div className="relative shrink-0">
                   {/* Dynamic border highlighting on hover */}
-                  <div className="absolute -inset-0.5 bg-gradient-to-tr from-[#c9a227] to-[#7a1f32] rounded-full opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className="w-11 h-11 rounded-full bg-[#f6ecc8] border-2 border-white flex items-center justify-center relative z-10 overflow-hidden shadow-sm">
+                  <div className="absolute -inset-0.5 bg-gradient-to-tr from-gold to-maroon rounded-full opacity-40 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="w-11 h-11 rounded-full bg-parchment border-2 border-white flex items-center justify-center relative z-10 overflow-hidden shadow-sm">
                     {/* Minimalist modern profile icon */}
                     <svg
-                      className="w-6 h-6 text-[#7a1f32]/85"
+                      className="w-6 h-6 text-maroon/85"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2.2"
@@ -130,10 +130,10 @@ export const TestimonialsSection = () => {
                 </div>
                 
                 <div className="text-left">
-                  <h4 className="font-outfit font-extrabold text-[15px] text-[#161414] tracking-tight group-hover:text-[#7a1f32] transition-colors duration-300">
+                  <h4 className="font-outfit font-extrabold text-[15px] text-dark tracking-tight group-hover:text-maroon transition-colors duration-300">
                     {test.name}
                   </h4>
-                  <p className="font-sans font-semibold text-[11px] text-[#8a6a1f] tracking-wide mt-0.5 uppercase">
+                  <p className="font-sans font-semibold text-xs text-[#8a6a1f] tracking-wide mt-0.5 uppercase">
                     {test.role}
                   </p>
                 </div>

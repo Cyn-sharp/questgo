@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth/firebase";
 
-export async function apiRequest(url: string, method: "POST" | "DELETE", body?: unknown) {
+export async function apiRequest(url: string, method: "POST" | "DELETE" | "PATCH", body?: unknown) {
   const user = auth.currentUser;
   if (!user) throw new Error("Please log in again.");
   const response = await fetch(url, {
@@ -19,4 +19,8 @@ export function questRequest(path: string, body: unknown) {
 
 export function setUserBlocked(userId: string, blocked: boolean) {
   return apiRequest(`/api/users/${encodeURIComponent(userId)}/block`, blocked ? "POST" : "DELETE");
+}
+
+export function updateMyProfile(fullName: string, course: string) {
+  return apiRequest("/api/users/me", "PATCH", { fullName, course }) as Promise<{ fullName: string; course: string }>;
 }

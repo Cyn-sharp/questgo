@@ -62,7 +62,7 @@ export function ForgotPasswordForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={EMAIL_PLACEHOLDER}
-            className="mt-1 h-11 w-full rounded-lg border border-[#e8e7e3] bg-[#fbf8f0] px-3 font-inter text-[13px] outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
+            className="mt-1 h-11 w-full rounded-lg border border-[#e8e7e3] bg-cream px-3 font-inter text-[13px] outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
             required
           />
           <button
@@ -91,7 +91,7 @@ export function ForgotPasswordForm() {
             Back to Login
           </Link>
         </p>
-        <p className="mt-5 border-t border-[#eee9df] pt-4 font-inter text-[10px] text-muted">
+        <p className="mt-5 border-t border-[#eee9df] pt-4 font-inter text-xs text-muted">
           Secured Firebase credential gateway.
         </p>
       </section>

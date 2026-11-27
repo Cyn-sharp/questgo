@@ -15,12 +15,12 @@ const legalLinks = [
 
 export const Footer = () => {
   return (
-    <footer className="bg-[#161414] text-white">
+    <footer className="bg-dark text-white">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-12 px-6 md:px-16 py-12 md:py-16 max-w-screen-2xl mx-auto">
         <div className="flex flex-col gap-4 max-w-sm">
           <Link href="/#home" className="inline-flex items-center gap-3">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="QuestGo logo"
               width={36}
               height={36}
@@ -30,7 +30,7 @@ export const Footer = () => {
               QuestGo
             </span>
           </Link>
-          <p className="font-normal text-sm leading-relaxed text-[#c9a227]">
+          <p className="font-normal text-sm leading-relaxed text-gold-bright">
             Turn Tasks Into Opportunities. Cebu Institute of Technology -
             University student-to-student peer marketplace.
           </p>
@@ -38,7 +38,7 @@ export const Footer = () => {
 
         <div className="flex flex-wrap gap-16 md:gap-24">
           <div className="flex flex-col gap-4">
-            <h3 className="font-semibold text-[11px] tracking-[0.14em] uppercase text-white">
+            <h3 className="font-semibold text-xs tracking-[0.14em] uppercase text-white">
               Explore
             </h3>
             <ul className="flex flex-col gap-3">
@@ -46,7 +46,7 @@ export const Footer = () => {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-medium text-sm text-gray-400 hover:text-[#c9a227] transition"
+                    className="font-medium text-sm text-gray-400 hover:text-gold-bright transition"
                   >
                     {link.label}
                   </Link>
@@ -56,7 +56,7 @@ export const Footer = () => {
           </div>
 
           <div className="flex flex-col gap-4">
-            <h3 className="font-semibold text-[11px] tracking-[0.14em] uppercase text-white">
+            <h3 className="font-semibold text-xs tracking-[0.14em] uppercase text-white">
               Legal
             </h3>
             <ul className="flex flex-col gap-3">
@@ -64,7 +64,7 @@ export const Footer = () => {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-medium text-sm text-gray-400 hover:text-[#c9a227] transition"
+                    className="font-medium text-sm text-gray-400 hover:text-gold-bright transition"
                   >
                     {link.label}
                   </Link>
@@ -76,10 +76,10 @@ export const Footer = () => {
       </div>
 
       <div className="border-t border-[#2a2a2a] px-6 md:px-16 py-5 flex flex-col md:flex-row items-center justify-between gap-3 max-w-screen-2xl mx-auto">
-        <p className="font-normal text-xs md:text-sm text-[#c9a227]">
+        <p className="font-normal text-xs md:text-sm text-gold-bright">
           © 2026 QuestGo. Designed for the CIT-U student community.
         </p>
-        <p className="font-medium text-xs md:text-sm text-gray-500">
+        <p className="font-medium text-xs md:text-sm text-gray-400">
           Cebu Institute of Technology - University
         </p>
       </div>

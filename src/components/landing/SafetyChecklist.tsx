@@ -61,7 +61,7 @@ export const SafetyChecklist = () => {
           <h2 id="safety-checklist-title" className="font-bold text-2xl sm:text-3xl tracking-tight text-white md:text-[32px]">
             Campus Safety First
           </h2>
-          <p className="font-normal text-sm sm:text-base text-[#f6ecc8]/85">Multiple layers of verification and transparency</p>
+          <p className="font-normal text-sm sm:text-base text-parchment/85">Multiple layers of verification and transparency</p>
         </header>
       </ScrollReveal>
 
@@ -104,19 +104,19 @@ export const SafetyChecklist = () => {
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.98 }}
-                  className={`group relative flex min-h-[68px] w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 text-left transition-[box-shadow,border-color,background-color] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] ${
+                  className={`group relative flex min-h-[68px] w-full items-center gap-3 overflow-hidden rounded-xl border px-4 py-3 text-left transition-[box-shadow,border-color,background-color] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
                     isActive
-                      ? "border-[#c9a227] bg-white shadow-[0_12px_28px_rgba(0,0,0,0.3)]"
-                      : "border-white/15 bg-white/95 backdrop-blur-md hover:border-[#c9a227] hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                      ? "border-gold bg-white shadow-[0_12px_28px_rgba(0,0,0,0.3)]"
+                      : "border-white/15 bg-white hover:border-gold hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
                   }`}
                   onClick={() => setSelectedIndex(selectedIndex === index ? null : index)}
                   aria-expanded={isActive}
                   aria-pressed={selectedIndex === index}
                 >
                   <span aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#e8d9a8] bg-[#fdf9eb]">
-                    <span className="text-[10px] font-bold text-[#8a6a1f]">&#10003;</span>
+                    <span className="text-xs font-bold text-[#8a6a1f]">&#10003;</span>
                   </span>
-                  <span className={`font-medium text-sm sm:text-[15px] leading-snug transition-opacity duration-200 ${isActive ? "opacity-0" : "text-[#161414]"}`}>
+                  <span className={`font-medium text-sm sm:text-[15px] leading-snug transition-opacity duration-200 ${isActive ? "opacity-0" : "text-dark"}`}>
                     {safetyCheck.title}
                   </span>
 
@@ -124,9 +124,9 @@ export const SafetyChecklist = () => {
                     initial={false}
                     animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 6 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
-                    className={`pointer-events-none absolute inset-0 flex items-center gap-3 bg-[#5f1727] px-4 py-3 text-white ${isActive ? "" : "invisible"}`}
+                    className={`pointer-events-none absolute inset-0 flex items-center gap-3 bg-maroon-dark px-4 py-3 text-white ${isActive ? "" : "invisible"}`}
                   >
-                    <span aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#c9a227] text-[10px] font-bold text-[#161414]">&#10003;</span>
+                    <span aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-dark">&#10003;</span>
                     <span className="font-inter text-xs sm:text-[13px] leading-relaxed text-white/95">{safetyCheck.description}</span>
                   </motion.span>
                 </motion.button>

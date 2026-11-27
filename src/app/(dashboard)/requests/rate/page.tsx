@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getQuestById } from "@/lib/db/quests";
 import { submitQuestRating } from "@/lib/db/ratings";
 import type { Quest } from "@/types/quest";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /* ─────────────────────────────────────────────────────────
    SCROLL REVEAL
@@ -157,18 +158,22 @@ export default function RateQuestPage() {
   }
 
   return (
-    <div className="bg-[#fbf8f0] min-h-full">
+    <div className="bg-cream min-h-full">
       <div className="page-container py-10 lg:py-14">
         <div className="flex justify-center">
           <ScrollReveal variant="scale" className="w-full max-w-lg">
             <section className="card-surface px-6 py-8 sm:px-10 sm:py-10 text-center">
               {/* Header */}
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#161414] mb-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-dark mb-2">
                 Rate Your Quest Experience
               </h1>
-              <p className="text-sm text-[#4a4340] mb-8">
+              <p className="text-sm text-muted mb-8">
                 How was your experience with{" "}
-                <span className="font-bold text-[#161414]">{revieweeName}</span>?
+                {quest || pageError ? (
+                  <span className="font-bold text-dark">{revieweeName}</span>
+                ) : (
+                  <Skeleton className="inline-block h-4 w-28 align-middle" />
+                )}?
               </p>
 
               {/* Interactive Star Rating */}
@@ -188,8 +193,8 @@ export default function RateQuestPage() {
                       <Star
                         className={`w-9 h-9 transition-colors duration-200 ${
                           active
-                            ? "text-[#c9a227] fill-[#c9a227]"
-                            : "text-[#d8d3cc] fill-transparent"
+                            ? "text-gold-star fill-gold-star"
+                            : "text-subtle fill-transparent"
                         }`}
                       />
                     </button>
@@ -202,7 +207,7 @@ export default function RateQuestPage() {
                 <div>
                   <label
                     htmlFor="comment"
-                    className="block text-sm font-semibold text-[#161414] mb-2"
+                    className="block text-sm font-semibold text-dark mb-2"
                   >
                     Review Comment (Optional)
                   </label>
@@ -213,10 +218,10 @@ export default function RateQuestPage() {
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Tell us about your experience..."
                     className="
-                      w-full rounded-2xl border border-[#e5e0d8] bg-[#fbf8f0]/60
-                      p-4 text-sm text-[#161414] placeholder:text-[#4a4340]/50
+                      w-full rounded-2xl border border-field bg-cream/60
+                      p-4 text-sm text-dark placeholder:text-muted/80
                       outline-none transition-all duration-300 resize-y min-h-[110px]
-                      focus:border-[#c9a227] focus:ring-2 focus:ring-[#c9a227]/20
+                      focus:border-gold focus:ring-2 focus:ring-gold/20
                       focus:bg-white
                     "
                   />
@@ -243,9 +248,9 @@ export default function RateQuestPage() {
                         type="button"
                         onClick={handleSkip}
                         className="
-                          px-4 py-1.5 rounded-full border border-[#e5e0d8] bg-white
-                          text-xs font-semibold text-[#4a4340]
-                          hover:border-[#7a1f32] hover:text-[#7a1f32]
+                          px-4 py-1.5 rounded-full border border-border bg-white
+                          text-xs font-semibold text-muted
+                          hover:border-maroon hover:text-maroon
                           transition-all duration-300
                         "
                       >

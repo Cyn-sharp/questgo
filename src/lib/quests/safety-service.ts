@@ -1,8 +1,9 @@
 import { FieldValue, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { QuestError, type WorkflowQuest } from "./policy";
+import type { auditService } from "./audit";
 import { reportId, reportTarget, validateReport, validateResolution } from "./safety";
 
-export function safetyService(db: Firestore) {
+export function safetyService(db: Firestore, audit?: Pick<ReturnType<typeof auditService>, "inTransaction">) {
   const blockRef = (uid: string, targetId: string) => db.doc(`users/${uid}/blocks/${targetId}`);
 
   return {
@@ -51,8 +52,26 @@ export function safetyService(db: Firestore) {
         if (!report || report.status !== "open") throw new QuestError("This report is no longer open.", 409);
         if (outcome === "suspended" && report.reportedId === adminId) throw new QuestError("You cannot suspend your own account.");
         tx.update(ref, { status: "resolved", outcome, resolutionNote: note, resolvedBy: adminId, resolvedByName: adminName, resolvedAt: FieldValue.serverTimestamp() });
+        audit?.inTransaction(tx, { uid: adminId, name: adminName }, `report-${outcome}`, { type: "report", id }, `Reported user ${report.reportedId}: ${note}`);
         return { outcome, reportedId: String(report.reportedId) };
       });
+    },
+    // After a suspension, the student's other open reports are closed too: the account is already suspended.
+    // Each one is re-checked first, so a report another admin just decided is left alone.
+    async closeOtherReports(adminId: string, adminName: string, reportedId: string, sourceId: string) {
+      const open = await db.collection("reports").where("reportedId", "==", reportedId).where("status", "==", "open").limit(100).get();
+      const closed: string[] = [];
+      for (const doc of open.docs) {
+        if (doc.id === sourceId) continue;
+        const done = await db.runTransaction(async (tx) => {
+          const report = (await tx.get(doc.ref)).data();
+          if (!report || report.status !== "open") return false;
+          tx.update(doc.ref, { status: "resolved", outcome: "suspended", resolutionNote: "Closed automatically: this account was suspended from another report.", resolvedBy: adminId, resolvedByName: adminName, resolvedAt: FieldValue.serverTimestamp(), closedWithReport: sourceId });
+          return true;
+        });
+        if (done) closed.push(doc.id);
+      }
+      return closed;
     },
   };
 }

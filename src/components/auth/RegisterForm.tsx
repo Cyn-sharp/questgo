@@ -4,16 +4,19 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EyeIcon } from "@/components/ui/icons/EyeIcon";
-import { auth, storage } from "@/lib/auth/firebase";
+import { auth } from "@/lib/auth/firebase";
 import { db } from "@/lib/auth/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile, type User } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { FirebaseError } from "firebase/app";
-import { ALLOW_TEST_GMAIL, EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
+import { EMAIL_PLACEHOLDER, EMAIL_POLICY_MESSAGE, isAllowedEmail } from "@/lib/auth/email-policy";
+import { STUDENT_ID_ACCEPT, shrinkStudentIdPhoto, studentIdPickProblem, uploadStudentId } from "@/lib/auth/student-id";
+import { COURSES, courseLabel, isCourse } from "@/lib/auth/courses";
+import { ChevronDown } from "lucide-react";
 
 type FormValues = {
   fullName: string;
+  course: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -21,15 +24,20 @@ type FormValues = {
 
 const initialFormValues: FormValues = {
   fullName: "",
+  course: "",
   email: "",
   password: "",
   confirmPassword: "",
 };
 
-function UploadIcon() {
+const ID_REQUIRED_MESSAGE = "Please add a photo of your CIT-U ID. An admin checks it to confirm you're a CIT-U student.";
+
+function IdCardIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="none" className="h-full w-full" aria-hidden="true">
-      <path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 13v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="7.5" cy="9" r="1.75" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4.75 13.25c.5-1.25 1.5-2 2.75-2s2.25.75 2.75 2M12 8.5h3M12 11.5h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -40,42 +48,73 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [formMessage, setFormMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [idPhoto, setIdPhoto] = useState<File | null>(null);
+  const [idUploadFailed, setIdUploadFailed] = useState(false);
+  const idInputRef = useRef<HTMLInputElement>(null);
+  // Set once the account exists, so a failed ID upload can be retried without signing up again.
+  const createdUserRef = useRef<User | null>(null);
 
   const updateField = (field: keyof FormValues, value: string) => {
     setFormValues((current) => ({ ...current, [field]: value }));
     setFormMessage("");
   };
 
-  const handlePhotoSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIdSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     if (!file) return;
 
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
-      setFormMessage("Please select a PNG or JPG image.");
+    const problem = studentIdPickProblem(file);
+    if (problem) {
+      setFormMessage(problem);
       event.target.value = "";
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setFormMessage("Your profile photo must be 5MB or smaller.");
-      event.target.value = "";
-      return;
-    }
-
-    setSelectedPhoto(file);
+    setIdPhoto(file);
     setFormMessage("");
+  };
+
+  // Shrinks and uploads the ID photo, then moves on to the "check your email" page.
+  const sendIdAndContinue = async (user: User, photo: File) => {
+    try {
+      await uploadStudentId(await user.getIdToken(), await shrinkStudentIdPhoto(photo));
+    } catch (error) {
+      const reason = error instanceof Error && error.message ? `${error.message} ` : "";
+      setIdUploadFailed(true);
+      setFormMessage(`Your account was created, but your ID photo didn't upload. ${reason}Press "Upload ID & Continue" to try again.`);
+      return;
+    }
+    router.replace(`/verify-email?email=${encodeURIComponent(user.email ?? "")}`);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormMessage("");
 
+    // The account already exists (an earlier ID upload failed), so only retry the ID photo.
+    const createdUser = createdUserRef.current;
+    if (createdUser) {
+      if (!idPhoto) {
+        setFormMessage(ID_REQUIRED_MESSAGE);
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        await sendIdAndContinue(createdUser, idPhoto);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!formValues.fullName.trim() || !formValues.email.trim()) {
       setFormMessage("Please complete your name and CIT-U email.");
+      return;
+    }
+    if (!isCourse(formValues.course)) {
+      setFormMessage("Please choose your course.");
       return;
     }
     const normalizedEmail = formValues.email.trim().toLowerCase();
@@ -89,6 +128,10 @@ export function RegisterForm() {
     }
     if (formValues.password !== formValues.confirmPassword) {
       setFormMessage("Your passwords do not match.");
+      return;
+    }
+    if (!idPhoto) {
+      setFormMessage(ID_REQUIRED_MESSAGE);
       return;
     }
     if (!hasAgreedToTerms) {
@@ -113,6 +156,7 @@ export function RegisterForm() {
           id: user.uid,
           email: normalizedEmail,
           fullName: displayName,
+          course: formValues.course,
           isVerified: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -121,22 +165,6 @@ export function RegisterForm() {
       );
 
       await sendEmailVerification(user);
-
-      let profilePhotoUrl: string | undefined;
-
-      if (selectedPhoto) {
-        try {
-          const photoRef = ref(storage, `profilePhotos/${user.uid}/profile`);
-          await uploadBytes(photoRef, selectedPhoto, { contentType: selectedPhoto.type });
-          profilePhotoUrl = await getDownloadURL(photoRef);
-        } catch (error) {
-          console.error("Profile photo upload failed during registration:", error);
-        }
-      }
-
-      if (profilePhotoUrl) {
-        await setDoc(doc(db, "users", user.uid), { profilePhotoUrl, updatedAt: serverTimestamp() }, { merge: true });
-      }
 
       try {
         const controller = new AbortController();
@@ -148,8 +176,8 @@ export function RegisterForm() {
           body: JSON.stringify({
             idToken: await user.getIdToken(),
             fullName: displayName,
+            course: formValues.course,
             email: normalizedEmail,
-            profilePhotoUrl,
           }),
         });
         window.clearTimeout(timeoutId);
@@ -157,7 +185,8 @@ export function RegisterForm() {
         console.error("Server profile sync failed during registration:", error);
       }
 
-      router.replace(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`);
+      createdUserRef.current = user;
+      await sendIdAndContinue(user, idPhoto);
     } catch (error) {
       const code = error instanceof FirebaseError ? error.code : "";
       const message =
@@ -171,9 +200,7 @@ export function RegisterForm() {
                 ? "Firebase temporarily blocked requests. Please wait and try again."
                 : code === "auth/network-request-failed"
                   ? "Could not contact Firebase. Check your internet connection and try again."
-                  : code === "storage/unauthorized"
-                    ? "Your account was created, but the profile photo could not be uploaded. Try registering without a photo."
-                    : "Something went wrong. Please try again.";
+                  : "Something went wrong. Please try again.";
       setFormMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -182,10 +209,10 @@ export function RegisterForm() {
 
   return (
     <section
-      className="flex w-full min-w-0 items-center justify-center bg-cream p-4 sm:p-8 lg:p-10"
+      className="flex w-full min-w-0 justify-center bg-cream p-4 [scrollbar-width:thin] sm:p-8 lg:overflow-y-auto lg:p-10"
       aria-labelledby="registration-heading"
     >
-      <div className="flex w-full max-w-[440px] flex-col gap-4">
+      <div className="my-auto flex w-full max-w-[440px] flex-col gap-4">
         <header className="flex flex-col gap-1.5">
           <h1
             id="registration-heading"
@@ -218,6 +245,30 @@ export function RegisterForm() {
                 className="h-11 rounded-xl border border-[#e8e7e3] bg-cream px-3.5 font-normal outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233]"
                 required
               />
+            </label>
+
+            <label className="flex flex-col gap-1.5 font-inter text-sm font-semibold text-dark">
+              Course
+              <span className="relative flex">
+                <select
+                  id="course"
+                  name="course"
+                  value={formValues.course}
+                  onChange={(event) => updateField("course", event.target.value)}
+                  className={`h-11 w-full appearance-none rounded-xl border border-[#e8e7e3] bg-cream pl-3.5 pr-10 font-normal outline-none transition-colors focus:border-maroon focus:bg-white focus:ring-2 focus:ring-[#7a1f3233] ${formValues.course ? "text-dark" : "text-gray-500"}`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select your course
+                  </option>
+                  {COURSES.map((course) => (
+                    <option key={course} value={course} className="text-dark">
+                      {courseLabel(course)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+              </span>
             </label>
 
             <label className="flex flex-col gap-1.5 font-inter text-sm font-semibold text-dark">
@@ -254,45 +305,44 @@ export function RegisterForm() {
             />
 
             <div className="flex flex-col gap-1.5">
-              <span className="font-inter text-sm font-semibold text-dark">Optional Profile Photo</span>
+              <span className="font-inter text-sm font-semibold text-dark">
+                CIT-U ID Photo <span className="text-maroon">*</span>
+              </span>
               <input
-                ref={photoInputRef}
-                id="profile-photo"
-                name="profilePhoto"
+                ref={idInputRef}
+                id="student-id-photo"
+                name="studentIdPhoto"
                 type="file"
-                accept="image/png,image/jpeg"
+                accept={STUDENT_ID_ACCEPT}
                 className="sr-only"
-                onChange={handlePhotoSelection}
+                onChange={handleIdSelection}
               />
               <button
                 type="button"
-                onClick={() => photoInputRef.current?.click()}
-                className="flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] border-dashed border-[#e8e7e3] bg-cream p-2.5 text-left text-maroon transition-colors hover:border-maroon hover:bg-[#fdf9eb] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-maroon"
-                aria-label="Upload your optional profile photo"
+                onClick={() => idInputRef.current?.click()}
+                className={`flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] border-dashed p-2.5 text-left text-maroon transition-colors hover:border-maroon hover:bg-[#fdf9eb] active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-maroon ${idPhoto ? "border-maroon bg-[#fdf9eb]" : "border-[#d9b8bf] bg-cream"}`}
+                aria-label="Upload a photo of your CIT-U ID (required)"
+                aria-describedby="student-id-help"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white">
                   <span className="h-5 w-5">
-                    <UploadIcon />
+                    <IdCardIcon />
                   </span>
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-inter text-[13px] font-semibold">
-                    {selectedPhoto ? selectedPhoto.name : "Click to upload your photo"}
+                    {idPhoto ? idPhoto.name : "Click to upload your CIT-U ID"}
                   </span>
-                  <span className="block font-inter text-[11px] font-normal text-muted">
-                    PNG, JPG up to 5MB
+                  <span className="block font-inter text-xs font-normal text-muted">
+                    Front side, JPG or PNG. Your name and photo must be clear.
                   </span>
                 </span>
               </button>
+              <p id="student-id-help" className="font-inter text-xs leading-4 text-muted">
+                An admin checks your ID to confirm you&apos;re a CIT-U student. Only QuestGo admins can see it.
+              </p>
             </div>
           </div>
-
-          {ALLOW_TEST_GMAIL ? (
-            <aside className="rounded-lg border border-[#f6ecc8] bg-[#fdf9eb] p-3 font-inter text-xs leading-[16.8px] text-[#8a6a1f]">
-              Testing mode: CIT-U and Gmail addresses are currently accepted. Verification is sent to
-              the address you enter.
-            </aside>
-          ) : null}
 
           <label className="flex items-start gap-2 font-inter text-[13px] text-muted cursor-pointer">
             <input
@@ -337,7 +387,9 @@ export function RegisterForm() {
             disabled={isSubmitting}
             className="h-12 rounded-xl bg-maroon px-6 py-2.5 font-inter text-[15px] font-semibold text-white shadow-[0_8px_18px_#7a1f3226] transition-all hover:opacity-95 hover:shadow-[0_12px_24px_#7a1f3240] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-maroon focus:ring-offset-2 disabled:opacity-60 disabled:active:scale-100"
           >
-            {isSubmitting ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+            {isSubmitting
+              ? idUploadFailed ? "UPLOADING ID..." : "CREATING ACCOUNT..."
+              : idUploadFailed ? "UPLOAD ID & CONTINUE" : "CREATE ACCOUNT"}
           </button>
           <p className="text-center font-inter text-sm text-muted">
             Already have an account?{" "}

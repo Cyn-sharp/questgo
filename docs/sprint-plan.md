@@ -193,7 +193,7 @@ Deliver the smallest trustworthy marketplace slice: a CIT-U student can create a
 - Official `@cit.edu` email validation and email verification gate.
 - Firebase Auth session handling and protected dashboard routes.
 - Firestore user profile document with verified-account state.
-- Quest creation with required SRS fields: title, category, description, reward, location, meet-up point, preferred time, and optional attachment path.
+- Quest creation with required SRS fields: title, category, description, reward, location and meet-up point; preferred time is optional (agreed in Messenger if omitted); and an attachment path (required for Printing).
 - Available Quest list and Quest detail view.
 - Visible 30-minute countdown and expired-Quest exclusion.
 - Firestore security rules and validation for users and Quests.

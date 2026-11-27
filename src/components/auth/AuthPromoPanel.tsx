@@ -56,16 +56,16 @@ export function AuthPromoPanel() {
     >
       <header className="inline-flex items-center gap-3 sm:gap-4">
         <div
-          className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl bg-[#7a1f32] sm:h-[60px] sm:w-[60px]"
+          className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-xl bg-maroon sm:h-[60px] sm:w-[60px]"
           role="img"
           aria-label="QuestGo logo"
         >
-          <Image src="/logo.png" alt="" fill sizes="60px" className="object-contain" />
+          <Image src="/logo.svg" alt="" fill sizes="60px" className="object-contain" />
         </div>
         <div className="inline-flex min-w-0 flex-col gap-0.5">
           <span className="font-outfit text-xl font-extrabold text-white sm:text-2xl">QuestGo</span>
           <span
-            className="font-inter text-[11px] font-semibold tracking-[0.18px] sm:text-xs"
+            className="font-inter text-xs font-semibold tracking-[0.18px] sm:text-xs"
             style={{ color: content.accentColor }}
           >
             CIT-U WILDCAT GIGS
@@ -86,14 +86,14 @@ export function AuthPromoPanel() {
             <span className="text-white">{content.heading} </span>
             <span style={{ color: content.accentColor }}>{content.accentWord}</span>
           </h2>
-          <p className="font-inter text-sm leading-relaxed text-[#fbf8f0]/95 sm:text-base lg:text-lg">
+          <p className="font-inter text-sm leading-relaxed text-cream/95 sm:text-base lg:text-lg">
             {content.copy}
           </p>
         </motion.section>
       </AnimatePresence>
 
       <footer className="inline-flex flex-wrap items-center gap-2 sm:gap-3">
-        <span className="inline-flex items-center gap-1 rounded-full border border-[#f6ecc8] bg-[#fdf9eb] px-2.5 py-1 font-inter text-[11px] font-semibold tracking-[0.06px] text-[#7a1f32]">
+        <span className="inline-flex items-center gap-1 rounded-full border border-parchment bg-[#fdf9eb] px-2.5 py-1 font-inter text-xs font-semibold tracking-[0.06px] text-maroon">
           <span aria-hidden="true">&#10003;</span> CIT-U VERIFIED
         </span>
         <AnimatePresence mode="wait">
@@ -103,7 +103,7 @@ export function AuthPromoPanel() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
-            className="font-inter text-[12px] text-[#f6ecc8] sm:text-[13px]"
+            className="font-inter text-[12px] text-parchment sm:text-[13px]"
           >
             {content.badgeCaption}
           </motion.p>
