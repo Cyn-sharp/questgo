@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuest, useQuestClock } from "@/hooks/useQuests";
@@ -14,6 +14,7 @@ import { QuestRecovery } from "./QuestRecovery";
 import { PrintingFile } from "./PrintingFile";
 import { SafetyActions } from "./SafetyActions";
 import { RunnerMap } from "./RunnerMap";
+import { HandoverQr } from "./HandoverQr";
 import { QuestDetailSkeleton } from "@/components/skeletons/PageSkeletons";
 import { useMinimumLoading } from "@/hooks/useMinimumLoading";
 
@@ -22,10 +23,25 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
   const loading = useMinimumLoading(dataLoading) && !error;
   const now = useQuestClock();
   const router = useRouter();
-  const [receiptConfirmed, setReceiptConfirmed] = useState(false);
-  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState("");
+  const prevStatusRef = useRef<string | undefined>(undefined);
+
+  const questId = quest?.id;
+  const questRequesterId = quest?.requesterId;
+  const questStatus = quest?.status;
+  const userId = user?.uid;
+
+  useEffect(() => {
+    if (!questStatus || !questId) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = questStatus;
+
+    if (userId && questRequesterId === userId && prev && prev !== "completed" && questStatus === "completed") {
+      router.replace(`/requests/rate?id=${encodeURIComponent(questId)}`);
+    }
+  }, [questId, questRequesterId, questStatus, router, userId]);
+
   if (loading) return <QuestDetailSkeleton />;
   if (error || !quest || !user) return <div className="page-container py-10 text-white"><p role="alert">{error || "Quest not found or you are signed out."}</p><Link href="/requests">Back to My Quests</Link></div>;
   const requester = user.uid === quest.requesterId;
@@ -37,7 +53,6 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
   async function act(action: string) {
     if (pending) return;
     const confirmations: Record<string, string> = {
-      complete: "Have you received your item or service and paid the runner reward and any approved reimbursement? Completing this quest makes chat read-only.",
       "request-cancellation": "Ask to cancel this quest? The other person must agree. Discuss any work already done or money spent in chat first.",
       "approve-cancellation": "Agree to cancel this quest? Make sure you have settled any work or money spent. This does not issue a refund and will make chat read-only.",
     };
@@ -45,7 +60,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
     if (action === "accept" && quest?.fundingMethod === "abono" && !window.confirm(`This quest requires you to advance up to ₱${quest.purchaseBudget}. The requester owes the approved actual cost plus ₱${quest.reward} reward at handover. Accept this abono arrangement?`)) return;
     setPending(true); setActionError("");
     try {
-      await questRequest(`/${encodeURIComponent(id)}`, { action, ...(action === "complete" ? { receiptConfirmed, paymentConfirmed } : {}), ...(action === "accept" && quest?.fundingMethod === "abono" ? { acceptAdvance: true } : {}) });
+      await questRequest(`/${encodeURIComponent(id)}`, { action, ...(action === "accept" && quest?.fundingMethod === "abono" ? { acceptAdvance: true } : {}) });
       if (action === "accept") router.replace(`/quests/active?id=${encodeURIComponent(id)}`);
     } catch (error) { setActionError(error instanceof Error ? error.message : "Unable to update quest."); }
     finally { setPending(false); }
@@ -74,7 +89,7 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
         {quest.status === "available" && <div><dt className="font-semibold">Time to accept</dt><dd>{expired ? "Expired" : `${Math.floor(remaining / 60000)}:${String(Math.floor(remaining / 1000) % 60).padStart(2, "0")}`}</dd></div>}
       </dl>
       {["available", "accepted", "in_progress"].includes(status) && <RunnerMap quest={quest} uid={user.uid} now={now} />}
-      {quest.completionRequestedAt && quest.status === "in_progress" ? <p className="rounded-xl bg-amber-50 p-4">The runner has marked the work ready. The runner acknowledges receiving payment, then the requester confirms receipt and payment to complete the quest.</p> : null}
+      {quest.completionRequestedAt && quest.status === "in_progress" ? <p className="rounded-xl bg-amber-50 p-4">The runner has marked the work ready. At meet-up, the requester shows the handover QR code and the runner scans it after payment to complete the quest.</p> : null}
       {requester && quest.status === "available" && !expired && <p>Waiting for a runner. You can post again after this quest is cancelled, expires, or is completed.</p>}
       {quest.cancellationRequestedBy && (requester || runner) && ["accepted", "in_progress"].includes(status) && <section aria-label="Cancellation request" className="rounded-xl bg-amber-50 p-4 space-y-3">
         <p>{quest.cancellationRequestedBy === user.uid ? "You asked to cancel. Waiting for the other person to respond." : "The other person has asked to cancel this quest."} Discuss any costs or work already done in chat before agreeing. Quest progress is paused until this request is resolved.</p>
@@ -83,14 +98,22 @@ export function LiveQuest({ id, participantsOnly = false }: { id: string; partic
           : <div className="flex flex-wrap gap-3"><Button disabled={pending} onClick={() => act("approve-cancellation")}>Agree to Cancel</Button><Button variant="outline" disabled={pending} onClick={() => act("decline-cancellation")}>Keep Quest</Button></div>}
       </section>}
       {(requester || runner) && ["accepted", "in_progress"].includes(status) && quest.workflowVersion !== 2 && !quest.cancellationRequestedBy && <Button variant="outline" disabled={pending} onClick={() => act("request-cancellation")}>Request Cancellation</Button>}
-      {requester && quest.workflowVersion === 2 && status === "in_progress" && Boolean(quest.completionRequestedAt) && <div className="space-y-2 rounded border p-4"><label className="flex gap-2"><input type="checkbox" checked={receiptConfirmed} onChange={(e) => setReceiptConfirmed(e.target.checked)} />I received and checked the item or service.</label><label className="flex gap-2"><input type="checkbox" checked={paymentConfirmed} onChange={(e) => setPaymentConfirmed(e.target.checked)} />I paid the runner reward and any approved reimbursement.</label><p className="text-xs">The runner must also acknowledge receiving payment before completion.</p></div>}
+      {status === "in_progress" && Boolean(quest.completionRequestedAt) && !quest.cancellationRequestedBy && !quest.issueRequestedBy && (
+        <HandoverQr
+          questId={id}
+          user={user}
+          isRequester={requester}
+          isRunner={runner}
+          disabled={pending}
+        />
+      )}
       {actionError && <p role="alert" className="text-red-700">{actionError}</p>}
       <div className="flex flex-wrap gap-3">
         {!requester && status === "available" && <Button disabled={pending} onClick={() => act("accept")}>Accept Quest</Button>}
         {requester && status === "available" && <Button variant="outline" disabled={pending} onClick={() => act("cancel")}>Cancel Quest</Button>}
         {!quest.cancellationRequestedBy && !quest.issueRequestedBy && runner && status === "accepted" && <Button disabled={pending} onClick={() => act("start")}>Start Quest</Button>}
         {!quest.cancellationRequestedBy && runner && status === "in_progress" && !quest.completionRequestedAt && (quest.workflowVersion !== 2 || Boolean(quest.committedAt)) && <Button disabled={pending} onClick={() => act("request-completion")}>Mark Work Ready</Button>}
-        {!quest.cancellationRequestedBy && !quest.issueRequestedBy && requester && status === "in_progress" && Boolean(quest.completionRequestedAt) && <Button disabled={pending || (quest.workflowVersion === 2 && (!receiptConfirmed || !paymentConfirmed || !quest.paymentReceivedAt))} onClick={() => act("complete")}>Confirm Receipt & Cash Payment</Button>}
+        {(requester || runner) && status === "completed" && <Link className="btn-primary" href={`/requests/rate?id=${encodeURIComponent(id)}`}>Rate {requester ? "Runner" : "Requester"}</Link>}
         {(requester || runner) && ["accepted", "in_progress", "settlement", "completed", "cancelled"].includes(status) && <Link className="btn-outline" href={`/messenger?id=${encodeURIComponent(id)}`}>{["completed", "cancelled"].includes(status) ? "View Conversation" : "Open Messenger"}</Link>}
       </div>
       {pending && <p role="status">Updating quest…</p>}

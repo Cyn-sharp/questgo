@@ -100,6 +100,7 @@ const CASE_EVENTS: Record<string, string> = {
   start: "Started the work",
   "request-completion": "Marked the work as done",
   complete: "Confirmed the quest is complete",
+  "complete-by-qr": "Confirmed handover by QR scan",
   cancel: "Cancelled the quest",
   "request-cancellation": "Asked to cancel",
   "approve-cancellation": "Agreed to cancel",

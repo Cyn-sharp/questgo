@@ -1,3 +1,4 @@
+import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { abandonedChanges, recoveryChanges, suspensionChanges } from "./recovery";
 import { ABANDON_AFTER_MS } from "./recovery";
 import { attachmentExpired } from "./files";
@@ -6,6 +7,13 @@ import type { safetyService } from "./safety-service";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { canMessage, isActiveQuest, QuestError, QUEST_WINDOW_MS, transitionQuest, validateQuest, type WorkflowQuest } from "./policy";
 import { canShareLocation, MIN_LOCATION_INTERVAL_MS, TRACKING_STATUSES, validateLocation } from "./tracking";
+
+function matchesSecret(given: unknown, expected: unknown) {
+  if (typeof given !== "string" || typeof expected !== "string") return false;
+  const a = Buffer.from(given.trim());
+  const b = Buffer.from(expected);
+  return a.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+}
 
 // Fields written when a quest is closed or escalated by the system (suspension, abandonment).
 function closingChanges(outcome: { status: string; closedReason: string }) {
@@ -35,6 +43,11 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         tx.create(questRef, { ...data, ...(attachment ? { attachment } : {}), requesterId: uid, requesterName: name, status: "available",
           createdAt: now, expiresAt: Timestamp.fromMillis(now.toMillis() + QUEST_WINDOW_MS) });
         tx.set(lockRef, { questId: questRef.id, updatedAt: now });
+        tx.create(questRef.collection("private").doc("handover"), {
+          token: randomBytes(16).toString("base64url"),
+          shortCode: String(randomInt(100000, 1000000)),
+          createdAt: now,
+        });
         tx.create(questRef.collection("events").doc(), { actorId: uid, actorName: name, action: "post", toStatus: "available", createdAt: now });
       });
       return questRef.id;
@@ -44,6 +57,7 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
       await db.runTransaction(async (tx) => {
         const snapshot = await tx.get(ref);
         if (!snapshot.exists) throw new QuestError("Quest not found.", 404);
+        const handoverSnap = action === "complete-by-qr" ? await tx.get(ref.collection("private").doc("handover")) : null;
         const quest = snapshot.data() as WorkflowQuest;
         // Deliberately vague so a user cannot discover who has blocked them.
         if (action === "accept" && safety && await safety.eitherBlocked(tx, uid, quest.requesterId)) throw new QuestError("You can't accept this quest.", 403);
@@ -58,6 +72,21 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         if (action === "complete" && quest.workflowVersion === 2) {
           const payment = quest as WorkflowQuest & { paymentReceivedAt?: unknown };
           if (!payment.paymentReceivedAt || input.receiptConfirmed !== true || input.paymentConfirmed !== true) throw new QuestError("The runner must acknowledge payment, and you must confirm receipt and payment.", 409);
+        }
+        if (action === "complete-by-qr") {
+          if (quest.workflowVersion === 2 && !quest.committedAt) {
+            throw new QuestError("Record the purchase or item collection checkpoint first.", 409);
+          }
+          if (funded.fundingMethod === "abono" && !funded.receiptRecordedAt) {
+            throw new QuestError("Record the actual purchase cost and receipt details first.", 409);
+          }
+          if (input.paymentConfirmed !== true) {
+            throw new QuestError("Confirm that you received the agreed reward and any reimbursement.", 400);
+          }
+          const secret = handoverSnap?.data();
+          if (!secret || (!matchesSecret(input.token, secret.token) && !matchesSecret(input.shortCode, secret.shortCode))) {
+            throw new QuestError("Invalid handover QR code or backup code.", 403);
+          }
         }
         const changes: Record<string, unknown> = { ...recovery, status, updatedAt: FieldValue.serverTimestamp() };
         if (changes.clearIssue) { delete changes.clearIssue; changes.issueRequestedBy = FieldValue.delete(); changes.issueReason = FieldValue.delete(); changes.issueDeadline = FieldValue.delete(); }
@@ -75,7 +104,14 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         if (action === "accept") Object.assign(changes, { questRunnerId: uid, runnerName: name, acceptedAt: FieldValue.serverTimestamp() });
         if (action === "start") changes.startedAt = FieldValue.serverTimestamp();
         if (action === "request-completion") changes.completionRequestedAt = FieldValue.serverTimestamp();
-        if (action === "complete") { changes.completedAt = FieldValue.serverTimestamp(); changes.receiptConfirmedAt = FieldValue.serverTimestamp(); }
+        if (action === "complete" || action === "complete-by-qr") {
+          changes.completedAt = FieldValue.serverTimestamp();
+          changes.receiptConfirmedAt = FieldValue.serverTimestamp();
+        }
+        if (action === "complete-by-qr") {
+          changes.handoverVerifiedAt = FieldValue.serverTimestamp();
+          changes.paymentReceivedAt = FieldValue.serverTimestamp();
+        }
         if (action === "cancel") changes.cancelledAt = FieldValue.serverTimestamp();
         tx.update(ref, changes);
         if (!TRACKING_STATUSES.includes(String(status))) tx.delete(ref.collection("tracking").doc("runner"));
@@ -191,6 +227,11 @@ export function questService(db: Firestore, safety?: Pick<ReturnType<typeof safe
         if (existing.docs.some((record) => isActiveQuest(record.data() as WorkflowQuest, now.toMillis()))) throw new QuestError("Manage your current active quest before posting again.", 409);
         const data = validateQuest(old, Boolean(old.attachment));
         tx.create(target, { ...data, ...(old.attachment ? { attachment: old.attachment } : {}), requesterId: uid, requesterName: old.requesterName || "Requester", status: "available", createdAt: now, expiresAt: Timestamp.fromMillis(now.toMillis() + QUEST_WINDOW_MS), replacesQuestId: id });
+        tx.create(target.collection("private").doc("handover"), {
+          token: randomBytes(16).toString("base64url"),
+          shortCode: String(randomInt(100000, 1000000)),
+          createdAt: now,
+        });
         tx.create(target.collection("events").doc(), { actorId: uid, actorName: old.requesterName || "Requester", action: "post-replacement", fromQuestId: id, toStatus: "available", createdAt: now });
         tx.update(source, { replacementQuestId: target.id, updatedAt: now });
         tx.set(lock, { questId: target.id, updatedAt: now });
