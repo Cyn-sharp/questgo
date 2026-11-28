@@ -84,6 +84,7 @@ export function transitionQuest(quest: WorkflowQuest, uid: string, action: strin
   if (action === "start" && quest.questRunnerId === uid && quest.status === "accepted") return "in_progress";
   if (action === "request-completion" && quest.questRunnerId === uid && quest.status === "in_progress" && !quest.completionRequestedAt) return "in_progress";
   if (action === "complete" && quest.requesterId === uid && quest.status === "in_progress" && quest.completionRequestedAt) return "completed";
+  if (action === "complete-by-qr" && quest.questRunnerId === uid && quest.status === "in_progress" && quest.completionRequestedAt) return "completed";
   throw new QuestError("You cannot perform this action at the current quest stage.", 403);
 }
 

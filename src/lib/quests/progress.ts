@@ -15,7 +15,7 @@ export function questUpdate(before: ProgressQuest, after: ProgressQuest, request
   if (!before.paymentReceivedAt && after.paymentReceivedAt) return requester ? "The runner acknowledged payment. Confirm receipt to finish the quest." : "Payment acknowledged. Waiting for requester confirmation.";
   if (!before.cancellationRequestedBy && after.cancellationRequestedBy) return "Cancellation requested. Open the quest to respond.";
   if (before.cancellationRequestedBy && !after.cancellationRequestedBy) return "Cancellation request closed. The quest can continue.";
-  if (!before.completionRequestedAt && after.completionRequestedAt) return requester ? "Your quest is ready! Check your item and confirm receipt and payment." : "Work marked ready. Waiting for the requester to confirm.";
+  if (!before.completionRequestedAt && after.completionRequestedAt) return requester ? "Your quest is ready! Inspect the item, pay the runner, and show your handover QR." : "Work marked ready. Scan the requester's handover QR at meet-up.";
   return null;
 }
 
@@ -29,7 +29,7 @@ export function questNextStep(quest: ProgressQuest, requester: boolean) {
   if (quest.status === "available") return requester ? "Waiting for a runner. Chat opens once someone accepts your quest." : "Check the task, reward, and locations. Accept only if you can do this quest.";
   if (quest.status === "accepted") return requester ? "Your runner has accepted. Open chat to confirm the pickup and meeting details." : "Message the requester to confirm the details, then tap Start Quest.";
   if (quest.workflowVersion === 2 && quest.status === "in_progress" && !quest.committedAt) return requester ? "Confirm vendor payment or approve the runner’s quoted cost before they commit work." : "Check funding below, then record the purchase or collection commitment before proceeding.";
-  if (quest.completionRequestedAt && quest.paymentReceivedAt) return requester ? "The runner acknowledged payment. Check receipt and payment below to finish." : "Payment acknowledged. Waiting for the requester to confirm receipt.";
-  if (quest.completionRequestedAt) return requester ? "Check that you received the item or service, pay the runner, then confirm below." : "The requester needs to confirm receipt and payment. You can still chat while waiting.";
+  if (quest.completionRequestedAt && quest.paymentReceivedAt) return requester ? "The runner acknowledged payment. Show your handover QR below to finish." : "Scan the requester’s handover QR code below to complete the quest.";
+  if (quest.completionRequestedAt) return requester ? "Check that you received the item or service, pay the runner, then show your handover QR below." : "Scan the requester’s handover QR code after receiving payment to complete the quest.";
   return requester ? "Your runner is working on the quest. Use chat for updates and wait until they mark it ready." : "Complete the task and arrange the handover in chat. Tap Mark Work Ready when it is ready.";
 }

@@ -57,7 +57,7 @@ export const BUILDINGS: Building[] = [
   { id: "gsmart", label: "G-SMART", name: "G-Smart Classrooms", points: rect(141, 228, 28, 17), aliases: ["g-smart"] },
   { id: "physlab", label: "G-PHYSLAB", name: "G-Physics Lab", points: rect(170, 228, 28, 17), aliases: ["physlab", "physics lab", "g-physlab"] },
   { id: "lrac", label: "LRAC", name: "Learning Resource & Activity Center (Library)", points: rect(112, 250, 86, 30), aliases: ["lrac", "library", "auditorium"] },
-  { id: "rtl", label: "RTL", name: "Don Rodolfo T. Lizares Building (OAS, FAO, Guidance)", points: rect(112, 288, 92, 52), courtyard: rect(128, 300, 60, 28), aliases: ["rtl", "rodolfo", "oas", "fao", "eto", "guidance", "gdnc", "cashier"] },
+   { id: "rtl", label: "RTLE", name: "Don Rodolfo T. Lizares Building (OAS, FAO, Guidance)", points: rect(112, 288, 92, 52), courtyard: rect(128, 300, 60, 28), aliases: ["rtl", "rtle", "rodolfo", "oas", "fao", "eto", "guidance", "gdnc", "cashier"] },
   { id: "rtl-smart", label: "RTL 101–108", name: "RTL 101–108 Smart Classrooms", points: rect(140, 308, 36, 12), aliases: ["rtl 101", "smart classroom"] },
   { id: "gle", label: "GLE", name: "Gregorio L. Escario Building", points: rect(220, 262, 20, 76), aliases: ["gle", "gregorio", "cit tower"] },
   { id: "acad", label: "ACAD", name: "Academic Building", points: [[214, 222], [286, 239], [286, 250], [214, 236]], aliases: ["acad", "academic"] },
@@ -66,6 +66,9 @@ export const BUILDINGS: Building[] = [
   { id: "plaza", label: "PLAZA", name: "GLE Front Plaza", points: [[218, 352], [238, 340], [262, 374], [248, 394], [230, 404], [221, 384]], aliases: ["plaza", "quadrangle"], kind: "open" },
   { id: "main-gate", label: "MAIN GATE", name: "Main Gate (N. Bacalso Ave)", points: rect(214, 404, 14, 8), aliases: ["main gate", "front gate", "bacalso"], kind: "gate" },
   { id: "back-gate", label: "BACK GATE", name: "Back Gate (Tres de Abril St)", points: rect(115, 28, 14, 8), aliases: ["back gate", "tres de abril"], kind: "gate" },
+    { id: "main-canteen", label: "MAIN CANTEEN", name: "Main Canteen", points: rect(90, 348, 24, 14), aliases: ["main canteen"], kind: "open" },
+  { id: "elem-canteen", label: "ELEM CANTEEN", name: "Elementary Canteen", points: rect(176, 158, 24, 14), aliases: ["elementary canteen", "elem canteen"], kind: "open" },
+  { id: "shs-canteen", label: "SHS CANTEEN", name: "SHS Canteen", points: rect(218, 246, 22, 13), aliases: ["shs canteen"], kind: "open" },
 ];
 
 // Internal driveway from the back gate, past the buildings, to the main gate.

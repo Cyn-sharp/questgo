@@ -99,17 +99,49 @@ export function useAvailableQuests() {
 // Notifications need ongoing work and recent closures, not the entire quest history.
 export function useNotificationQuests() {
   const { user, isLoading } = useAuth();
-  const [state, setState] = useState<{ uid: string; groups: Record<string, Quest[]>; error?: string }>();
+  const [state, setState] = useState<{ uid: string; groups: Record<string, Quest[]>; errors: Record<string, string> }>();
   useEffect(() => {
     if (!user) return;
     const uid = user.uid;
     const stops = ["requesterId", "questRunnerId"].flatMap((field) => [false, true].map((closed) => {
       const key = field + closed;
-      const source = query(collection(db, "quests"), where(field, "==", uid), where("status", "in", closed ? ["completed", "cancelled"] : ["accepted", "in_progress", "settlement"]), ...(closed ? [orderBy("updatedAt", "desc"), limit(3)] : []));
-      return onSnapshot(source, (snapshot) => setState((current) => ({ uid, groups: { ...(current?.uid === uid ? current.groups : {}), [key]: snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Quest) } })), () => setState((current) => ({ uid, groups: current?.uid === uid ? current.groups : {}, error: "Unable to load quest updates." })));
+      const source = query(
+        collection(db, "quests"),
+        where(field, "==", uid),
+        where("status", "in", closed ? ["completed", "cancelled"] : ["accepted", "in_progress", "settlement"]),
+        ...(closed ? [orderBy("updatedAt", "desc"), limit(3)] : []),
+      );
+      return onSnapshot(
+        source,
+        (snapshot) => setState((current) => {
+          const prev = current?.uid === uid ? current : { uid, groups: {}, errors: {} };
+          const nextErrors = { ...prev.errors };
+          delete nextErrors[key];
+          return {
+            uid,
+            groups: { ...prev.groups, [key]: snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Quest) },
+            errors: nextErrors,
+          };
+        }),
+        () => setState((current) => {
+          const prev = current?.uid === uid ? current : { uid, groups: {}, errors: {} };
+          return {
+            uid,
+            groups: { ...prev.groups, [key]: prev.groups[key] ?? [] },
+            errors: { ...prev.errors, [key]: "Unable to load quest updates." },
+          };
+        }),
+      );
     }));
     return () => stops.forEach((stop) => stop());
   }, [user]);
   const current = state?.uid === user?.uid ? state : undefined;
-  return { posted: [...(current?.groups.requesterIdfalse || []), ...(current?.groups.requesterIdtrue || [])], running: [...(current?.groups.questRunnerIdfalse || []), ...(current?.groups.questRunnerIdtrue || [])], loading: isLoading || !current || Object.keys(current.groups).length < 4, error: current?.error };
+  const settledCount = current ? Object.keys(current.groups).length : 0;
+  const firstError = current ? Object.values(current.errors)[0] : undefined;
+  return {
+    posted: [...(current?.groups.requesterIdfalse || []), ...(current?.groups.requesterIdtrue || [])],
+    running: [...(current?.groups.questRunnerIdfalse || []), ...(current?.groups.questRunnerIdtrue || [])],
+    loading: isLoading || settledCount < 4,
+    error: firstError,
+  };
 }

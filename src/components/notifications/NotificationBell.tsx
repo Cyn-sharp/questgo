@@ -76,13 +76,13 @@ function BellMenu({ uid }: { uid: string }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[min(23rem,calc(100vw-2rem))] origin-top-right overflow-hidden rounded-2xl border border-white/10 bg-[#161414]/95 text-white shadow-[0_24px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(201,162,39,0.06)] backdrop-blur-xl"
+            className="fixed inset-x-4 top-[4.75rem] z-50 flex max-h-[calc(100dvh-6rem)] flex-col origin-top overflow-hidden rounded-2xl border border-white/15 bg-[#161414] text-white shadow-[0_24px_60px_rgba(0,0,0,0.72),0_0_0_1px_rgba(201,162,39,0.1)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+0.75rem)] sm:w-[23rem] sm:max-h-[min(32rem,calc(100dvh-6rem))] sm:origin-top-right"
           >
             {/* Gold hairline, like the bottom bar's specular edge */}
             <div aria-hidden className="pointer-events-none absolute left-[10%] right-[10%] top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
             <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-maroon/30 blur-3xl" />
 
-            <header className="relative flex items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5">
+            <header className="relative flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.08] px-4 py-3.5">
               <div>
                 <h2 className="font-display text-[15px] font-bold tracking-wide">Notifications</h2>
                 <p className="text-[11px] text-white/50">Quest updates from the last 3 days</p>
@@ -101,7 +101,7 @@ function BellMenu({ uid }: { uid: string }) {
                 <p className="mt-1 max-w-[16rem] text-xs text-white/50">Quest updates and new quests will show up here. Chats are under Messages.</p>
               </div>
             ) : (
-              <ul className="relative max-h-[min(24rem,60vh)] divide-y divide-white/[0.06] overflow-y-auto overscroll-contain">
+              <ul className="relative min-h-0 flex-1 divide-y divide-white/[0.06] overflow-y-auto overscroll-contain">
                 {alerts.map((item, index) => (
                   <AlertRow key={item.id + item.at} item={item} index={index} isNew={highlight.has(item.id)} now={now} onOpen={() => setOpen(false)} />
                 ))}
@@ -109,7 +109,7 @@ function BellMenu({ uid }: { uid: string }) {
             )}
 
             <Link href="/notifications" onClick={() => setOpen(false)}
-              className="group relative flex items-center gap-2 border-t border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white/75 transition hover:bg-white/[0.06] hover:text-gold">
+              className="group relative flex shrink-0 items-center gap-2 border-t border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white/75 transition hover:bg-white/[0.06] hover:text-gold">
               <Settings className="h-4 w-4 transition-transform duration-300 group-hover:rotate-45" /> Notification settings
               <ChevronRight className="ml-auto h-4 w-4 text-white/30 transition group-hover:translate-x-0.5 group-hover:text-gold" />
             </Link>

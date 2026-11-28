@@ -29,6 +29,15 @@ import { ReviewQuestDialogBody } from "@/components/quest/ReviewQuestDialogBody"
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PostQuestSkeleton } from "@/components/skeletons/PageSkeletons";
 
+import {
+  MEETUP_GROUPS,
+  MEETUP_SPOTS,
+  PICKUP_LOCATIONS,
+  floorOptionsFor,
+  formatMeetupLocation,
+  parseMeetupLocation,
+} from "@/lib/campus/locations";
+
 function ScrollReveal({
   children,
   className = "",
@@ -74,18 +83,7 @@ function ScrollReveal({
 const CATEGORIES = ["Printing", "Pickup", "Delivery", "Shopping", "Other"] as const;
 
 
-const CAMPUS_LOCATIONS = [
-  "CIT-U Library",
-  "CIT-U Main Entrance",
-  "Main Campus",
-  "Main Library",
-  "Science Building",
-  "CPE Lab",
-  "N-Building",
-  "Main Canteen",
-  "Gym Area",
-  "Engineering Building",
-];
+
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
@@ -109,8 +107,8 @@ const initialForm = (): FormState => ({
   fundingMethod: "prepaid",
   purchaseBudget: "",
   vendorInstructions: "",
-  pickupLocation: "CIT-U Library",
-  meetupLocation: "CIT-U Main Entrance",
+  pickupLocation: PICKUP_LOCATIONS[0],
+  meetupLocation: "Front Gate",
   setTime: false,
   ...defaultMeetup(),
 });
@@ -182,6 +180,8 @@ export default function PostQuestPage() {
   useEffect(() => { if (review) dialog.current?.showModal(); else dialog.current?.close(); }, [review]);
   const [form, setForm] = useState<FormState>(initialForm);
   const requirements = requirementsByCategory[form.category] ?? {};
+  const { spot: meetupSpot, floor: meetupFloor } = parseMeetupLocation(form.meetupLocation);
+  const meetupFloors = floorOptionsFor(meetupSpot.stories);
   const funding = effectiveFunding(form.category, form.fundingMethod);
   const setRequirement = (key: string, value: string) => { setReview(false); setRequirementsByCategory((current) => ({ ...current, [form.category]: { ...current[form.category], [key]: value } })); };
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -513,6 +513,7 @@ export default function PostQuestPage() {
               </section>
 </Reveal>
               {/* LOCATION */}
+              {/* LOCATION */}
 <Reveal show={shown >= 5}>
               <section className="mb-6 sm:mb-8">
                 <SectionLabel step={5} hint="Where the runner picks up, and where you'll meet.">Location</SectionLabel>
@@ -527,7 +528,7 @@ export default function PostQuestPage() {
                         onChange={(e) => update("pickupLocation", e.target.value)}
                         className={`${inputClass} pl-10 pr-10 appearance-none cursor-pointer`}
                       >
-                        {CAMPUS_LOCATIONS.map((loc) => (
+                        {PICKUP_LOCATIONS.map((loc) => (
                           <option key={loc} value={loc}>{loc}</option>
                         ))}
                       </select>
@@ -541,17 +542,47 @@ export default function PostQuestPage() {
                       <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/45 pointer-events-none" />
                       <select
                         id="meetup"
-                        value={form.meetupLocation}
-                        onChange={(e) => update("meetupLocation", e.target.value)}
+                        value={meetupSpot.label}
+                        onChange={(e) => {
+                          const nextSpot = MEETUP_SPOTS.find((item) => item.label === e.target.value);
+                          if (nextSpot) update("meetupLocation", formatMeetupLocation(nextSpot, meetupFloor));
+                        }}
                         className={`${inputClass} pl-10 pr-10 appearance-none cursor-pointer`}
                       >
-                        {CAMPUS_LOCATIONS.map((loc) => (
-                          <option key={`meet-${loc}`} value={loc}>{loc}</option>
+                        {MEETUP_GROUPS.map((group) => (
+                          <optgroup key={group} label={group}>
+                            {MEETUP_SPOTS.filter((item) => item.group === group).map((item) => (
+                              <option key={item.id} value={item.label}>
+                                {item.stories ? `${item.label} (${item.stories} floors)` : item.label}
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                       <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
                     </div>
                   </div>
+
+                  {meetupFloors.length > 0 && (
+                    <div className="sm:col-span-2">
+                      <FieldLabel htmlFor="meetup-floor">
+                        {meetupSpot.label} Floor <span aria-hidden="true" className="text-maroon">*</span>
+                      </FieldLabel>
+                      <div className="relative">
+                        <select
+                          id="meetup-floor"
+                          value={meetupFloor}
+                          onChange={(e) => update("meetupLocation", formatMeetupLocation(meetupSpot, e.target.value))}
+                          className={`${inputClass} pr-10 appearance-none cursor-pointer`}
+                        >
+                          {meetupFloors.map((floor) => (
+                            <option key={floor} value={floor}>{floor}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted/55 pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 </Reveal>
