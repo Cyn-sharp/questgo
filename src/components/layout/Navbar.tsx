@@ -202,7 +202,7 @@ export const Navbar = (): ReactElement => {
   return (
     // Shown at every width: phones get the brand and avatar (links live in the bottom bar),
     // tablets and up get the full link row.
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-dark/95 backdrop-blur-md">
+    <header className="sticky top-0 z-[62] w-full border-b border-white/[0.08] bg-dark/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-screen-2xl items-center gap-4 px-4 sm:px-6 lg:px-10">
         <Link href="/dashboard" aria-label="QuestGo home" className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold">
           <BrandMark />
